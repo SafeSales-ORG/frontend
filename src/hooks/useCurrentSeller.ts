@@ -39,8 +39,7 @@ export interface CurrentSeller {
   bankName?: string;
   bankAccount?: string;
   bankHolder?: string;
-  /** Lightning payout address (LNURL-pay), set at onboarding or from Earnings. */
-  lnAddress?: string | null;
+
   /** ISO timestamp of when this seller record was created on the backend. */
   createdAt: string;
 }

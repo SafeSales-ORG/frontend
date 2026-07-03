@@ -1,7 +1,7 @@
 /**
  * SafeSale HTTP API — real (fetch) implementation.
  *
- * Hits the backend (Fastify + Prisma + Postgres, MavaPay rail).
+ * Hits the backend (Fastify + Prisma + Postgres, Nomba rail).
  * Activated by setting `VITE_API_URL`; the toggle lives in `client.ts`.
  *
  * All methods reject with `ApiError` on non-2xx. The backend's error
@@ -166,7 +166,7 @@ export const httpApi = {
   /**
    * DEMO-only: mark an order paid without a real bank transfer. The
    * backend route is `simulate-payment` and returns 404 unless DEMO_MODE
-   * is on. In production, payment is confirmed by the MavaPay webhook.
+   * is on. In production, payment is confirmed by the Nomba webhook.
    */
   confirmPayment(token: string): Promise<SimulatePaymentResponse> {
     return request<SimulatePaymentResponse>(
@@ -189,7 +189,7 @@ export const httpApi = {
   },
   releaseOrder(token: string): Promise<ReleaseOrderResponse> {
     // No body — possession of the orderToken in the URL is the buyer's
-    // authority. The backend triggers the MavaPay payout to the seller.
+    // authority. The backend triggers the Nomba payout to the seller.
     return request<ReleaseOrderResponse>(
       "POST",
       `/api/orders/${encodeURIComponent(token)}/release`,

@@ -7,7 +7,7 @@
  * the seller dashboard updates the instant a buyer acts, escrow earnings
  * move Locked → Available on completion, and disputes flow end-to-end.
  *
- * Payment is modelled as a Naira bank transfer (MavaPay rail) — no crypto,
+ * Payment is modelled as a Naira bank transfer (Nomba rail) — no crypto,
  * no sats. Lifecycle emails are sent by the real backend (Resend), so the
  * mock does not send any.
  *
@@ -97,7 +97,6 @@ function registerHint(hint: MockListingHint): ApiListing {
       category: hint.category,
       bio: null,
       verified: hint.seller.verified ?? false,
-      lnAddress: null,
       createdAt: now,
     });
   }
@@ -116,7 +115,6 @@ function sellerForListing(listing: ApiListing) {
       category: listing.category,
       bio: null,
       verified: false,
-      lnAddress: null,
       createdAt: marketNow(),
     }
   );
@@ -142,7 +140,6 @@ export const mockApi = {
       category: req.category,
       bio: req.bio ?? null,
       verified: false,
-      lnAddress: req.lnAddress ?? null,
       avatarUrl: req.avatarUrl ?? null,
       createdAt: marketNow(),
     });
@@ -283,7 +280,7 @@ export const mockApi = {
       deliveryFee: listing.deliveryFee ?? 0,
       amountNGN: totalNGN,
       status: "pending_payment",
-      mavapayPaymentRef: null,
+      nombaPaymentRef: null,
       trackingNumber: null,
       carrier: null,
       shippedAt: null,
@@ -318,7 +315,7 @@ export const mockApi = {
 
   /**
    * Confirm the buyer's bank transfer → lock escrow. This is what the
-   * MavaPay webhook would do on the real backend. Idempotent. Decrements
+   * Nomba webhook would do on the real backend. Idempotent. Decrements
    * stock.
    */
   async confirmPayment(token: string): Promise<SimulatePaymentResponse> {

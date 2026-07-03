@@ -250,7 +250,7 @@ function Hero() {
             </span>
             <span className="inline-flex items-center gap-2 transition-transform duration-300 hover:translate-x-1">
               <CheckCircle2 className="h-4 w-4 text-brand" />
-              Built on MavaPay + Nostr
+              Built on Nomba + Nostr
             </span>
           </div>
         </div>

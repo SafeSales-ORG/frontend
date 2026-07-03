@@ -79,7 +79,7 @@ export const listings: Listing[] = [
     sellerId: "seller_amaka",
     title: "Vintage Denim Jacket (demo seed)",
     description:
-      "Lightly worn vintage Levi denim jacket, size M. Perfect condition, no rips. This listing exists on the live backend; ordering it runs the real MavaPay escrow flow.",
+      "Lightly worn vintage Levi denim jacket, size M. Perfect condition, no rips. This listing exists on the live backend; ordering it runs the real Nomba escrow flow.",
     priceNGN: 28500,
     images: [
       { seed: "demo-denim-jacket", hueA: 210, hueB: 220, label: "Front" },

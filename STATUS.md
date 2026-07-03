@@ -15,7 +15,7 @@ organisation repo. Delete or update this file once the repo has its own history.
 
 ## What this is
 
-The **web frontend only** for SafeSale (MavaPay / NGN bank-transfer escrow, Nostr
+The **web frontend only** for SafeSale (Nomba / NGN bank-transfer escrow, Nostr
 identity + listings). Backend is a separate repo. All backend access goes through
 the seam in `src/lib/api/` — `client.ts` picks `http.ts` (real) or `mocks.ts`
 (demo) based on `VITE_DEMO_MODE`.

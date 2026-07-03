@@ -60,8 +60,6 @@ export interface ApiSeller {
   category: string;
   bio?: string | null;
   verified: boolean;
-  /** Present when the seller has set a Lightning payout address. */
-  lnAddress?: string | null;
   /** Shop avatar / profile image URL (https). */
   avatarUrl?: string | null;
   createdAt: string;
@@ -88,8 +86,8 @@ export interface ApiListing {
 }
 
 /**
- * `Order` row from the backend. Mirrors prisma `Order` (MavaPay rail).
- * Payment is a Naira bank transfer via MavaPay — there is no crypto,
+ * `Order` row from the backend. Mirrors prisma `Order` (Nomba rail).
+ * Payment is a Naira bank transfer via Nomba — there is no crypto,
  * no sats, and no bearer token held server-side.
  */
 export interface ApiOrder {
@@ -127,8 +125,8 @@ export interface ApiOrder {
 
   status: ApiOrderStatus;
 
-  /** MavaPay transaction reference, set once the pay-in webhook confirms. */
-  mavapayPaymentRef?: string | null;
+  /** Nomba transaction reference, set once the pay-in webhook confirms. */
+  nombaPaymentRef?: string | null;
 
   trackingNumber?: string | null;
   carrier?: string | null;
@@ -238,8 +236,8 @@ export interface CreateOrderRequest {
 }
 
 /**
- * MavaPay pay-in bank details the buyer transfers Naira to. Returned by
- * `POST /api/orders` under `payIn` (null if the MavaPay quote failed —
+ * Nomba pay-in bank details the buyer transfers Naira to. Returned by
+ * `POST /api/orders` under `payIn` (null if the Nomba quote failed —
  * see `payInError`). Mirrors the quote shape in `routes/orders.ts`.
  */
 export interface PayInDetails {
@@ -259,7 +257,7 @@ export interface CreateOrderResponse {
   orderToken: string;
   shortId: string;
   amountNGN: number;
-  /** Bank-transfer details, or null if the MavaPay quote failed. */
+  /** Bank-transfer details, or null if the Nomba quote failed. */
   payIn: PayInDetails | null;
   /** Set when `payIn` is null — the reason the quote could not be created. */
   payInError?: string | null;
@@ -292,7 +290,7 @@ export interface SimulatePaymentResponse {
  * `POST /api/orders/:token/release` response.
  *
  * Release takes no request body — possession of the `orderToken` in the
- * URL is the buyer's authority. The backend triggers the MavaPay payout
+ * URL is the buyer's authority. The backend triggers the Nomba payout
  * to the seller's bank and flips the order to `completed`.
  */
 export interface ReleaseOrderResponse {
@@ -415,8 +413,6 @@ export interface CreateSellerRequest {
   bankName?: string;
   bankAccount?: string;
   bankHolder?: string;
-  /** Lightning address (LNURL-pay), e.g. `seller@coinos.io`. */
-  lnAddress?: string;
   /** Shop avatar / profile image URL. */
   avatarUrl?: string;
 }
@@ -427,17 +423,15 @@ export interface CreateSellerResponse {
 
 /**
  * `PATCH /api/sellers/:id/payout` request body. Updates the seller's payout
- * preference — bank details (NGN, via MavaPay) and/or a Lightning address.
- * The backend requires at least one of `bankName` or `lnAddress`. When full
- * bank details are supplied it runs a MavaPay Name Enquiry, which needs a
- * valid `bankCode`.
+ * preference — bank details (NGN, via Nomba).
+ * The backend requires bankName. When full bank details are supplied it runs 
+ * a Nomba Name Enquiry, which needs a valid `bankCode`.
  */
 export interface UpdatePayoutRequest {
   bankName?: string;
   bankCode?: string;
   bankAccount?: string;
   bankHolder?: string;
-  lnAddress?: string;
 }
 
 /* -------------------------- listing endpoints ------------------------- */

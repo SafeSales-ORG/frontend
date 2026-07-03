@@ -166,7 +166,7 @@ function fixtureSellerToApi(id: string): ApiSeller {
     category: base.category,
     bio: base.bio ?? null,
     verified: base.verified,
-    lnAddress: null,
+
     avatarUrl: REAL_SELLER_AVATARS[base.id] ?? null,
     createdAt: base.joinedAt,
   };

@@ -113,14 +113,9 @@ export default function EarningsPage() {
     [orders],
   );
 
-  // Payout method. A seller may have a bank account, a Lightning address, or
-  // both. When both are set the seller chooses; otherwise the available one
-  // wins. Defaults to Naira.
+  // Payout method. A seller must have a bank account to cash out.
   const hasBank = !!seller?.bankName && !!seller?.bankAccount;
-  const hasLn = !!seller?.lnAddress;
-  const [payoutPref, setPayoutPref] = useState<"ngn" | "sats">("ngn");
-  const method: "ngn" | "sats" =
-    hasBank && hasLn ? payoutPref : hasLn && !hasBank ? "sats" : "ngn";
+  const method: "ngn" = "ngn";
 
   const canCashOut = earnings.availableNGN > 0;
   const onCashOut = () => {
@@ -136,10 +131,7 @@ export default function EarningsPage() {
     cashOut(ngn);
     toast({
       title: "Cash-out initiated",
-      description:
-        method === "sats"
-          ? `${formatNGN(ngn)} worth of sats is on its way to your Lightning address.`
-          : `${formatNGN(ngn)} is on its way to your bank. Allow 1–2 business days.`,
+      description: `${formatNGN(ngn)} is on its way to your bank. Allow 1–2 business days.`,
     });
   };
 
@@ -167,25 +159,7 @@ export default function EarningsPage() {
                 </>
               )}
             </div>
-            {hasBank && hasLn && (
-              <div className="mt-4">
-                <Label className="text-[11px] font-medium uppercase tracking-wider text-brand-soft-foreground">
-                  Payout method
-                </Label>
-                <Select
-                  value={payoutPref}
-                  onValueChange={(v) => setPayoutPref(v as "ngn" | "sats")}
-                >
-                  <SelectTrigger className="mt-1.5 h-10 bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ngn">Naira — bank transfer</SelectItem>
-                    <SelectItem value="sats">Sats — Lightning</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            
             <Button
               type="button"
               onClick={onCashOut}
@@ -193,16 +167,8 @@ export default function EarningsPage() {
               size="lg"
               className="mt-4 h-11 w-full rounded-lg bg-brand text-sm font-semibold text-brand-foreground hover:bg-brand/90 disabled:opacity-50"
             >
-              {method === "sats" ? (
-                <Zap className="mr-2 h-4 w-4" aria-hidden />
-              ) : (
-                <ArrowDownCircle className="mr-2 h-4 w-4" aria-hidden />
-              )}
-              {!canCashOut
-                ? "Nothing to cash out yet"
-                : method === "sats"
-                  ? "Cash out to sats"
-                  : "Cash out to Naira"}
+              <ArrowDownCircle className="mr-2 h-4 w-4" aria-hidden />
+              {!canCashOut ? "Nothing to cash out yet" : "Cash out to Naira"}
             </Button>
             {earnings.paidOutNGN > 0 && (
               <p className="mt-2 text-[11px] text-ink-soft tabular-nums">
@@ -464,32 +430,24 @@ function BankPanel({
   const [bankName, setBankName] = useState(seller?.bankName ?? "");
   const [accountNumber, setAccountNumber] = useState(seller?.bankAccount ?? "");
   const [accountName, setAccountName] = useState(seller?.bankHolder ?? "");
-  const [lnAddress, setLnAddress] = useState(seller?.lnAddress ?? "");
-
   const hasBank = !!seller?.bankName && !!seller?.bankAccount;
-  const hasLn = !!seller?.lnAddress;
 
   const bankValid =
     bankName.trim().length > 1 &&
     /^\d{10}$/.test(accountNumber.trim()) &&
     accountName.trim().length > 1;
-  // A Lightning address is roughly user@domain. Optional, so an empty field
-  // is fine — it just means "no Lightning payout".
-  const lnValid = lnAddress.trim().length === 0 || /^[^@\s]+@[^@\s]+$/.test(lnAddress.trim());
-  // Backend requires at least one payout method.
-  const valid = (bankValid || lnAddress.trim().length > 0) && lnValid;
+  // Backend requires a bank payout method.
+  const valid = bankValid;
 
   const openDialog = () => {
     setBankName(seller?.bankName ?? "");
     setAccountNumber(seller?.bankAccount ?? "");
     setAccountName(seller?.bankHolder ?? "");
-    setLnAddress(seller?.lnAddress ?? "");
     setOpen(true);
   };
 
   const save = async () => {
     if (!valid || !seller) return;
-    const ln = lnAddress.trim();
     setSaving(true);
     try {
       await apiClient.updatePayout(seller.id, {
@@ -500,7 +458,7 @@ function BankPanel({
               bankHolder: accountName.trim(),
             }
           : {}),
-        ...(ln ? { lnAddress: ln } : {}),
+        
       });
       onSave({
         ...seller,
@@ -511,14 +469,12 @@ function BankPanel({
               bankHolder: accountName.trim(),
             }
           : {}),
-        lnAddress: ln || null,
+        
       });
       setOpen(false);
       toast({
         title: "Payout details saved",
-        description: ln
-          ? "You can now cash out to Naira or sats."
-          : "You can now cash out to Naira.",
+        description: "You can now cash out to Naira.",
       });
     } catch (err) {
       toast({
@@ -534,7 +490,7 @@ function BankPanel({
     }
   };
 
-  const hasAny = hasBank || hasLn;
+  const hasAny = hasBank;
 
   return (
     <section
@@ -565,12 +521,7 @@ function BankPanel({
                   · {seller?.bankHolder}
                 </p>
               )}
-              {hasLn && (
-                <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-soft">
-                  <Zap className="h-3.5 w-3.5 text-amber-500" aria-hidden />
-                  {seller?.lnAddress}
-                </p>
-              )}
+              
             </>
           ) : (
             <>
@@ -578,8 +529,7 @@ function BankPanel({
                 No payout details on file yet
               </p>
               <p className="mt-1 text-sm text-ink-soft">
-                Add a Nigerian bank account to cash out to Naira, or a Lightning
-                address to get paid in sats. You can set either or both.
+                Add a Nigerian bank account to cash out to Naira.
               </p>
             </>
           )}
@@ -606,8 +556,7 @@ function BankPanel({
           <DialogHeader>
             <DialogTitle>{hasAny ? "Edit payout details" : "Add payout details"}</DialogTitle>
             <DialogDescription>
-              Where we send your earnings. Add a bank account for Naira, a
-              Lightning address for sats, or both. You can update this any time.
+              Where we send your earnings. Add a bank account for Naira. You can update this any time.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -653,33 +602,7 @@ function BankPanel({
               />
             </div>
 
-            <div className="flex items-center gap-3 pt-1">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-[11px] uppercase tracking-wider text-ink-soft">or / and</span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-
-            <div>
-              <Label htmlFor="ln-address-earnings" className="flex items-center gap-1.5">
-                <Zap className="h-3.5 w-3.5 text-amber-500" aria-hidden />
-                Lightning address
-              </Label>
-              <Input
-                id="ln-address-earnings"
-                value={lnAddress}
-                onChange={(e) => setLnAddress(e.target.value)}
-                placeholder="you@coinos.io"
-                className="mt-1.5 h-11"
-              />
-              {lnAddress.trim().length > 0 && !lnValid && (
-                <p className="mt-1 text-[11px] text-amber-700">
-                  That doesn't look like a Lightning address (user@domain).
-                </p>
-              )}
-              <p className="mt-1.5 text-[11px] text-ink-soft">
-                Get paid in sats instead of Naira. No bank account needed.
-              </p>
-            </div>
+            
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>

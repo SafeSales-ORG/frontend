@@ -918,7 +918,7 @@ function SummaryCard({
       </dl>
 
       <p className="mt-4 text-[11px] italic text-ink-soft">
-        Buyer paid in Naira via MavaPay; funds are held in escrow until the
+        Buyer paid in Naira via Nomba; funds are held in escrow until the
         buyer confirms delivery.
       </p>
     </Card>

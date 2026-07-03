@@ -188,7 +188,7 @@ export default function BuyerOrder() {
   const releaseMutation = useMutation({
     mutationFn: async () => {
       // Release takes no body — possession of the orderToken in the URL is
-      // the buyer's authority. The backend triggers the MavaPay payout to
+      // the buyer's authority. The backend triggers the Nomba payout to
       // the seller's bank.
       return apiClient.releaseOrder(token);
     },

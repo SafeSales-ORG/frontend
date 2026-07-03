@@ -18,7 +18,7 @@ Millions of social-commerce transactions happen weekly between parties who don't
 know each other. Buyers fear "pay-before-delivery" scams; sellers fear
 "ship-before-payment" theft. SafeSale sits in the middle as a neutral escrow:
 
-1. **Buyer pays** into a bank account via **MavaPay** (Naira bank transfer).
+1. **Buyer pays** into a bank account via **Nomba** (Naira bank transfer).
 2. **Funds are held in escrow** — neither party can move them unilaterally.
 3. **Seller ships**, buyer marks delivered, buyer **releases** → seller is paid out.
 4. **Dispute?** A mediator reviews both sides' evidence and resolves

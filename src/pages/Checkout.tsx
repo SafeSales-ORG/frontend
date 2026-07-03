@@ -90,7 +90,7 @@ export default function Checkout() {
    * (e.g. webhook → paid).
    *
    * Shape mirrors the `CreateOrderResponse` returned by
-   * `POST /api/orders` — orderToken + MavaPay bank-transfer (pay-in)
+   * `POST /api/orders` — orderToken + Nomba bank-transfer (pay-in)
    * details flattened from the response's `payIn` object.
    */
   const [createdOrder, setCreatedOrder] = useState<{
@@ -107,7 +107,7 @@ export default function Checkout() {
 
   // Poll the order's current state once we have a token. The mock
   // client transitions pending_payment → paid ~5s after
-  // createOrder, simulating the MavaPay webhook landing.
+  // createOrder, simulating the Nomba webhook landing.
   //
   // `apiClient.getOrder` returns the full `{order, listing, seller, dispute}`
   // envelope; for checkout we only care about `order.status`.
@@ -241,7 +241,7 @@ export default function Checkout() {
   //  2. Send the corresponding npub to the backend along with the
   //     buyer's name / phone / city / address (the real backend
   //     requires these fields — see `routes/orders.ts::CreateOrderSchema`).
-  //  3. Store the `CreateOrderResponse` (orderToken + MavaPay pay-in
+  //  3. Store the `CreateOrderResponse` (orderToken + Nomba pay-in
   //     bank details) so the Instructions step can render them.
   //
   //  KEY ORDER MATTERS: we generate-and-persist the keypair BEFORE
@@ -348,7 +348,7 @@ export default function Checkout() {
   //   - Mock mode (no VITE_API_URL): the mock client transitions the
   //     order to paid ~5s after createOrder on its own, so we
   //     just show "waiting" and let the polling effect advance the UI.
-  //   - Real backend (VITE_API_URL set): in production the MavaPay pay-in
+  //   - Real backend (VITE_API_URL set): in production the Nomba pay-in
   //     webhook flips the order to paid. For demos the bank rail isn't
   //     wired, so we trigger the transition ourselves via the demo-only
   //     POST /api/orders/:token/simulate-payment (apiClient.confirmPayment).
@@ -415,7 +415,7 @@ export default function Checkout() {
   };
 
   // The bank-transfer (pay-in) details come from the API response. In
-  // real mode MavaPay issues them; in mock mode the mock client makes
+  // real mode Nomba issues them; in mock mode the mock client makes
   // them up. Either way they're per-order and survive across polls.
   const payTo: {
     accountNumber: string;

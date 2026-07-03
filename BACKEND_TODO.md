@@ -75,7 +75,7 @@ routes + Prisma schema in `Fejo/safe-sales-backend`.
      evidence photos are dropped.** Persist them too.
 
 ### 7. `Seller.bankCode` on signup
-- MavaPay payouts need `bankCode`; the backend `Seller` has a `bankCode` column.
+- Nomba payouts need `bankCode`; the backend `Seller` has a `bankCode` column.
 - Frontend `POST /api/sellers` currently sends `bankName` / `bankAccount` /
   `bankHolder` but **not** `bankCode`. Either the frontend adds a bank picker
   that sends the code, or the backend derives `bankCode` from `bankName`.

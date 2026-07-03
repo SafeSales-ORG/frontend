@@ -133,7 +133,6 @@ function OpenShopForm() {
   const [handle, setHandle] = useState("");
   const [shopName, setShopName] = useState("");
   const [phone, setPhone] = useState("");
-  const [lnAddress, setLnAddress] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -177,8 +176,7 @@ function OpenShopForm() {
         location: DEFAULT_LOCATION,
         category: DEFAULT_CATEGORY,
         avatarUrl: avatarUrl || undefined,
-        lnAddress: lnAddress.trim() || undefined,
-      });
+        });
 
       // CRITICAL: clear every previously-stored session before persisting
       // the new one. Without this, opening a second shop on the same
@@ -215,7 +213,6 @@ function OpenShopForm() {
         handle: seller.handle,
         name: seller.name,
         avatarUrl: seller.avatarUrl ?? null,
-        lnAddress: seller.lnAddress ?? null,
         createdAt: seller.createdAt,
       });
 
@@ -311,8 +308,6 @@ function OpenShopForm() {
       <ShopNameField value={shopName} onChange={setShopName} />
 
       <PhoneField value={phone} onChange={setPhone} />
-
-      <LnAddressField value={lnAddress} onChange={setLnAddress} />
 
       <Disclosure>
         We'll generate a Nostr key and store it securely in this browser.
@@ -441,7 +436,6 @@ function SignInWithNsecDialog({ open, onOpenChange }: SignInDialogProps) {
   const [handle, setHandle] = useState("");
   const [shopName, setShopName] = useState("");
   const [phone, setPhone] = useState("");
-  const [lnAddress, setLnAddress] = useState("");
   const [opening, setOpening] = useState(false);
 
   /**
@@ -467,7 +461,6 @@ function SignInWithNsecDialog({ open, onOpenChange }: SignInDialogProps) {
     setHandle("");
     setShopName("");
     setPhone("");
-    setLnAddress("");
     setOpening(false);
     setSignedInNpub(null);
   };
@@ -541,14 +534,12 @@ function SignInWithNsecDialog({ open, onOpenChange }: SignInDialogProps) {
         phone: phone.trim(),
         location: DEFAULT_LOCATION,
         category: DEFAULT_CATEGORY,
-        lnAddress: lnAddress.trim() || undefined,
-      });
+        });
       setCurrentSeller({
         id: seller.id,
         npub: seller.npub,
         handle: seller.handle,
         name: seller.name,
-        lnAddress: seller.lnAddress ?? null,
         createdAt: seller.createdAt,
       });
       // TODO: publish kind 0 profile metadata under the connected key.
@@ -690,8 +681,6 @@ function SignInWithNsecDialog({ open, onOpenChange }: SignInDialogProps) {
             <ShopNameField value={shopName} onChange={setShopName} />
 
             <PhoneField value={phone} onChange={setPhone} />
-
-            <LnAddressField value={lnAddress} onChange={setLnAddress} />
 
             <DialogFooter className="gap-2 sm:gap-2">
               <Button
@@ -847,30 +836,6 @@ function PhoneField({
       />
       <p className="mt-1.5 text-[11px] text-ink-soft">
         Buyers see this on the order page so they can reach you about delivery.
-      </p>
-    </div>
-  );
-}
-
-function LnAddressField({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  return (
-    <div>
-      <Label htmlFor="ln-address">Lightning address (optional)</Label>
-      <Input
-        id="ln-address"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="you@coinos.io"
-        className="mt-1.5"
-      />
-      <p className="mt-1.5 text-[11px] text-ink-soft">
-        Get paid in sats instead of Naira. No bank account needed.
       </p>
     </div>
   );
