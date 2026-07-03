@@ -1,32 +1,107 @@
-# React + TypeScript + Vite
+# SafeSale — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+> **Trustless escrow for social-commerce sellers — works wherever you can paste a link.**
 
-Currently, two official plugins are available:
+Instagram, WhatsApp, TikTok, X, Telegram, Threads, Linktree — anywhere a Nigerian
+seller can share a URL, SafeSale lets buyers pay safely. The buyer's Naira is held
+in escrow and only released to the seller once the buyer confirms delivery. If
+something goes wrong, a mediator resolves the dispute.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This repository is the **web frontend only**. The backend (payments, escrow,
+orders, disputes) lives in a separate repository.
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## The problem
 
-## Expanding the Oxlint configuration
+Millions of social-commerce transactions happen weekly between parties who don't
+know each other. Buyers fear "pay-before-delivery" scams; sellers fear
+"ship-before-payment" theft. SafeSale sits in the middle as a neutral escrow:
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+1. **Buyer pays** into a bank account via **MavaPay** (Naira bank transfer).
+2. **Funds are held in escrow** — neither party can move them unilaterally.
+3. **Seller ships**, buyer marks delivered, buyer **releases** → seller is paid out.
+4. **Dispute?** A mediator reviews both sides' evidence and resolves
+   (refund buyer / release seller / split).
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+Seller identity is a **Nostr keypair** generated in the browser; listings are
+published as Nostr events (see [`NIP.md`](./NIP.md)). The buyer needs no account —
+the order-link URL itself is their credential.
+
+---
+
+## Tech stack
+
+- **React + TypeScript** (Vite)
+- **Tailwind CSS 4** + **shadcn/ui** components, **lucide-react** icons
+- **TanStack Query** for server state
+- **Nostrify** for Nostr (listing publish/read, identity)
+- All backend access goes through a single API seam in
+  [`src/lib/api/`](./src/lib/api/) (`client.ts` → `http.ts` real / `mocks.ts` demo).
+
+---
+
+## Getting started
+
+```bash
+npm install
+cp .env.example .env   # then fill in the values below
+npm run dev            # http://localhost:8080
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+### Build / check
+
+```bash
+npm run build          # production build → dist/
+npx tsc --noEmit       # type-check
+npx eslint .           # lint
+npm test               # vitest
+```
+
+---
+
+## Environment
+
+Copy `.env.example` to `.env`. Key variables:
+
+| Variable | Purpose |
+|---|---|
+| `VITE_API_URL` | Backend base URL (e.g. the deployed backend, or `http://localhost:3000`). |
+| `VITE_DEMO_MODE` | `true` runs the whole app on an in-memory mock (no backend) and unlocks `/admin` — useful for UI work and demos. `false` uses the real backend. |
+| `VITE_MEDIATOR_NPUB` | The mediator's Nostr npub; only this key can access `/admin`. |
+| `VITE_NOSTR_RELAYS` | Comma-separated relay list. |
+| `VITE_BLOSSOM_SERVERS` | Image-host servers (comma-separated). |
+| `VITE_APP_URL` | Public app URL, used in shared links. |
+| `VITE_SUPPORT_EMAIL` / `VITE_SUPPORT_WHATSAPP` | Shown in the Help dialog (optional). |
+
+> **Demo mode** is the fastest way to click through the whole flow with no backend.
+> Set `VITE_DEMO_MODE=true` and run `npm run dev`.
+
+---
+
+## Backend contract
+
+The frontend and backend talk over a fixed HTTP contract. The single source of
+truth for request/response shapes is [`src/lib/api/types.ts`](./src/lib/api/types.ts)
+and the calls in [`src/lib/api/http.ts`](./src/lib/api/http.ts).
+
+[`BACKEND_TODO.md`](./BACKEND_TODO.md) tracks the endpoints/fields the frontend
+needs that the backend hasn't implemented yet — hand it to whoever owns the
+backend.
+
+---
+
+## Project structure
+
+```
+src/
+  components/        UI — shadcn primitives (ui/), app shell + SafeSale-specific (safesale/), auth/
+  hooks/             data hooks (useSellerOrders, useListing, useUploadFile, …)
+  lib/
+    api/             the backend seam: client.ts, http.ts, mocks.ts, types.ts
+    store/           local demo store (marketStore)
+  pages/             routes — buyer flow (Checkout, BuyerOrder), Onboarding, Admin
+    app/             seller dashboard (DashboardHome, ListingsPage, Orders, Earnings, Dispute)
+NIP.md               Nostr event spec (kinds 30018 listings, 33889 resolutions, etc.)
+BACKEND_TODO.md      what the backend still needs to implement
+```
