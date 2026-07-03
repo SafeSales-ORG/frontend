@@ -1,0 +1,486 @@
+/**
+ * SafeSale API DTOs.
+ *
+ * Mirrors the shapes returned by the SafeSale backend on
+ * `origin/backend` (Fastify + Prisma + Postgres). Specifically:
+ *
+ *   - `prisma/schema.prisma`  — the `Order`, `Listing`, `Seller`,
+ *     `Dispute` models + `EscrowStatus`/`DisputeStatus` enums.
+ *   - `src/routes/orders.ts`   — POST /api/orders, GET /api/orders/:token,
+ *                                ship | release | dispute
+ *   - `src/routes/listings.ts` — POST /api/listings, GET /api/listings/:id
+ *   - `src/routes/sellers.ts`  — POST /api/sellers, GET /api/sellers/:handle
+ *
+ * Keep this file in lockstep with that schema. When the backend evolves,
+ * update it here in the same PR — the build will catch every consumer.
+ *
+ * Buyer-slice endpoints are typed in full. Seller and admin endpoints
+ * are added as those flows are wired (currently just enough to make the
+ * checkout → buyer-order flow work end-to-end).
+ */
+
+/* --------------------------------- enums ------------------------------- */
+
+/** Mirrors prisma `EscrowStatus`. 7 values, no aliases. */
+export type ApiOrderStatus =
+  | "pending_payment"
+  | "paid"
+  | "shipped"
+  | "delivered"
+  | "completed"
+  | "disputed"
+  | "refunded";
+
+/** Mirrors prisma `DisputeStatus`. */
+export type ApiDisputeStatus =
+  | "direct_resolution"
+  | "escalated"
+  | "evidence_requested"
+  | "mediating"
+  | "resolved";
+
+/* -------------------------------- entities ----------------------------- */
+
+/** A listing image as stored in `Listing.images` (Json field). */
+export interface ApiListingImage {
+  url?: string;
+  /** Deterministic seed used by `ProductImage` when no URL is present. */
+  seed?: string;
+  alt?: string;
+}
+
+/** Subset of `Seller` returned by `GET /api/orders/:token` (no payout details). */
+export interface ApiSeller {
+  id: string;
+  npub: string;
+  pubkey: string;
+  handle: string;
+  name: string;
+  location: string;
+  category: string;
+  bio?: string | null;
+  verified: boolean;
+  /** Present when the seller has set a Lightning payout address. */
+  lnAddress?: string | null;
+  /** Shop avatar / profile image URL (https). */
+  avatarUrl?: string | null;
+  createdAt: string;
+}
+
+/** Subset of `Listing` returned by `GET /api/orders/:token`. */
+export interface ApiListing {
+  id: string;
+  sellerId: string;
+  title: string;
+  description: string;
+  priceNGN: number;
+  images: ApiListingImage[];
+  category: string;
+  variants?: string[] | null;
+  inStock: number;
+  delivery?: string | null;
+  /** Delivery fee in NGN, shown to the buyer before payment. 0 = free. */
+  deliveryFee?: number;
+  active: boolean;
+  nostrEventId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * `Order` row from the backend. Mirrors prisma `Order` (MavaPay rail).
+ * Payment is a Naira bank transfer via MavaPay — there is no crypto,
+ * no sats, and no bearer token held server-side.
+ */
+export interface ApiOrder {
+  id: string;
+  shortId: string;
+  /**
+   * URL-safe secret. This is the buyer's only credential — possession
+   * of the token IS the auth. Present in the URL at /order/:token.
+   */
+  orderToken: string;
+
+  listingId: string;
+  sellerId: string;
+
+  /** Bech32 of the buyer's one-time Nostr key (order identity / DM target). */
+  buyerNpub: string;
+  /** Hex form of the same key. */
+  buyerPubkey: string;
+
+  buyerName: string;
+  buyerPhone: string;
+  buyerEmail?: string | null;
+  buyerCity: string;
+  buyerAddress?: string | null;
+  contactMethod?: "phone" | "email" | null;
+
+  variant?: string | null;
+
+  /** Item subtotal in NGN (before delivery). */
+  itemNGN?: number;
+  /** Delivery fee locked into escrow alongside the item. */
+  deliveryFee?: number;
+  /** Total NGN locked in escrow (item + delivery). */
+  amountNGN: number;
+
+  status: ApiOrderStatus;
+
+  /** MavaPay transaction reference, set once the pay-in webhook confirms. */
+  mavapayPaymentRef?: string | null;
+
+  trackingNumber?: string | null;
+  carrier?: string | null;
+
+  shippedAt?: string | null;
+  releasedAt?: string | null;
+  refundedAt?: string | null;
+
+  /** 7 days after `shippedAt` — silent-buyer auto-release deadline. */
+  autoReleaseAt?: string | null;
+
+  notes?: string | null;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One piece of dispute evidence (an uploaded image), tagged by uploader. */
+export interface ApiDisputeEvidence {
+  url: string;
+  by: "buyer" | "seller";
+  at: string;
+}
+
+/** A `Dispute` row, nullable on the order envelope. */
+export interface ApiDispute {
+  id: string;
+  orderId: string;
+  reason: string;
+  summary?: string | null;
+  openedBy: "buyer" | "seller";
+  priority: "low" | "medium" | "high";
+  status: ApiDisputeStatus;
+  directResolutionUntil?: string | null;
+  evidenceDueAt?: string | null;
+  isReturn: boolean;
+  /** Photo evidence references (Blossom URLs), tagged by uploader. */
+  evidence?: ApiDisputeEvidence[];
+  /** The seller's written response to the dispute. */
+  sellerResponse?: string | null;
+  /** Photo evidence references (Blossom URLs etc.). Shape evolves with the dispute flow. */
+  returnEvidence?: unknown;
+  /** Final outcome JSON, populated only when `status === 'resolved'`. */
+  resolution?: unknown;
+  createdAt: string;
+  resolvedAt?: string | null;
+}
+
+/* ------------------------- request / response shapes ------------------- */
+
+/**
+ * Subset of an `ApiListing` that the mock client can use to register a
+ * newly-discovered listing in its in-memory store. Only relevant when
+ * the listing didn't come from a fixture — e.g. it was just published
+ * to Nostr by the seller and the buyer found it via the relay. The
+ * real backend ignores this field; on Postgres the listing already
+ * exists (the seller's POST /api/listings created it). This is the
+ * "bridge" that lets the mock pretend it has a backend DB without
+ * forcing the buyer flow to know which world it's in.
+ */
+export interface MockListingHint {
+  /** Same as CreateOrderRequest.listingId; carried for clarity. */
+  id: string;
+  sellerId: string;
+  title: string;
+  description: string;
+  priceNGN: number;
+  /** Mix of URL-based and seed-based images is fine. */
+  images: ApiListingImage[];
+  category: string;
+  variants?: string[] | null;
+  inStock?: number;
+  delivery?: string | null;
+  deliveryFee?: number;
+  /** Optional seller-side display info for the mock seller stub. */
+  seller?: {
+    name?: string;
+    handle?: string;
+    location?: string;
+    verified?: boolean;
+  };
+}
+
+/**
+ * `POST /api/orders` request body. Field names match the Zod schema in
+ * `backend/src/routes/orders.ts::CreateOrderSchema`.
+ *
+ * The optional `_listingHint` field is **mock-only** and is stripped
+ * by the real HTTP client before serialization. See `MockListingHint`
+ * for why it exists.
+ */
+export interface CreateOrderRequest {
+  /** cuid from `GET /api/listings/:id`. */
+  listingId: string;
+  /** Bech32 of the buyer's one-time Nostr key (generated in browser). */
+  buyerNpub: string;
+  buyerName: string;
+  buyerPhone: string;
+  buyerEmail?: string;
+  buyerCity: string;
+  buyerAddress?: string;
+  contactMethod?: "phone" | "email";
+  variant?: string;
+
+  /** @internal — mock-only. The HTTP client strips this. */
+  _listingHint?: MockListingHint;
+}
+
+/**
+ * MavaPay pay-in bank details the buyer transfers Naira to. Returned by
+ * `POST /api/orders` under `payIn` (null if the MavaPay quote failed —
+ * see `payInError`). Mirrors the quote shape in `routes/orders.ts`.
+ */
+export interface PayInDetails {
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  /** Total to transfer, in kobo (NGN × 100). */
+  totalAmountKobo: number;
+  expiresAt: string;
+}
+
+/**
+ * `POST /api/orders` response body — flat, no nested `order`. Mirrors
+ * the explicit return statement in `routes/orders.ts`.
+ */
+export interface CreateOrderResponse {
+  orderToken: string;
+  shortId: string;
+  amountNGN: number;
+  /** Bank-transfer details, or null if the MavaPay quote failed. */
+  payIn: PayInDetails | null;
+  /** Set when `payIn` is null — the reason the quote could not be created. */
+  payInError?: string | null;
+}
+
+/**
+ * `GET /api/orders/:token` response — the envelope this page is built
+ * around. Buyer Order Page, Seller Orders, and Admin Dispute Detail
+ * all rely on this shape.
+ */
+export interface GetOrderResponse {
+  order: ApiOrder;
+  listing: ApiListing;
+  seller: ApiSeller;
+  /** Null when no dispute has been opened on this order. */
+  dispute: ApiDispute | null;
+}
+
+/**
+ * `POST /api/orders/:token/simulate-payment` response. DEMO-only on the
+ * backend — marks an order paid without a real bank transfer so the
+ * escrow flow can be walked on a demo link.
+ */
+export interface SimulatePaymentResponse {
+  order: ApiOrder;
+  alreadyPaid?: boolean;
+}
+
+/**
+ * `POST /api/orders/:token/release` response.
+ *
+ * Release takes no request body — possession of the `orderToken` in the
+ * URL is the buyer's authority. The backend triggers the MavaPay payout
+ * to the seller's bank and flips the order to `completed`.
+ */
+export interface ReleaseOrderResponse {
+  order: ApiOrder;
+  /** Backend-generated reference for receipts (e.g. "release-<id>"). */
+  txRef: string;
+}
+
+/** `POST /api/orders/:token/ship` — seller-side. */
+export interface ShipOrderRequest {
+  trackingNumber?: string;
+  carrier?: string;
+}
+
+export interface ShipOrderResponse {
+  order: ApiOrder;
+}
+
+/** `POST /api/orders/:token/dispute` */
+export interface OpenDisputeRequest {
+  reason: string;
+  summary?: string;
+  openedBy: "buyer" | "seller";
+  /** Uploaded evidence image URLs (Blossom), from the dispute form. */
+  evidence?: string[];
+}
+
+export interface OpenDisputeResponse {
+  order: ApiOrder;
+  dispute: ApiDispute;
+}
+
+/* ----------------------------- admin / mediator ----------------------- */
+
+/**
+ * Mediator resolution outcome.
+ *   - refund_buyer    → full refund, order → refunded
+ *   - release_seller  → full release, order → completed
+ *   - split           → buyer gets `splitPct`%, seller the rest; order → completed
+ */
+export type DisputeOutcome = "refund_buyer" | "release_seller" | "split";
+
+/**
+ * One row in the admin dispute queue — the full order context joined to
+ * its open dispute. Mirrors what `GET /api/admin/disputes` would return
+ * once the backend ships it; for the hackathon demo it's served by the
+ * mock client from the in-memory order store.
+ */
+export interface AdminDisputeRow {
+  order: ApiOrder;
+  listing: ApiListing;
+  seller: ApiSeller;
+  dispute: ApiDispute;
+}
+
+export interface GetDisputesResponse {
+  disputes: AdminDisputeRow[];
+}
+
+/** `POST /api/admin/disputes/:id/resolve` request body. */
+export interface ResolveDisputeRequest {
+  outcome: DisputeOutcome;
+  /** Buyer's share 0–100, only meaningful when `outcome === "split"`. */
+  splitPct?: number;
+  /** Public rationale — published in the mediator's signed resolution. */
+  rationale: string;
+}
+
+export interface ResolveDisputeResponse {
+  order: ApiOrder;
+  dispute: ApiDispute;
+}
+
+/**
+ * `POST /api/disputes/:id/respond` — the seller's reply to a dispute the
+ * buyer opened. Sends their stance + a written message (and optional
+ * counter-evidence photos) to the mediator and buyer. Does NOT resolve
+ * the dispute — only a mediator can do that via the admin resolve route.
+ */
+export interface RespondToDisputeRequest {
+  /**
+   * The seller's position:
+   *   - explain → "I'd like to explain" (no refund offered)
+   *   - partial → offering a partial refund
+   *   - full    → accepting a full refund
+   *   - counter → disputing / countering the buyer's claim
+   */
+  stance: "explain" | "partial" | "full" | "counter";
+  /** Free-text message both the buyer and the mediator will read. */
+  message: string;
+  /** Optional counter-evidence image URLs (Blossom). */
+  evidence?: string[];
+}
+
+export interface RespondToDisputeResponse {
+  order: ApiOrder;
+  dispute: ApiDispute;
+}
+
+/* --------------------------- seller endpoints -------------------------- */
+
+/**
+ * `POST /api/sellers` request body. Field names match the backend's
+ * `CreateSellerSchema` (Zod). Required minima copied verbatim so the
+ * frontend can validate before hitting the network:
+ *   - handle: 3–24 chars, `^[a-z0-9][a-z0-9._-]*[a-z0-9]$`
+ *   - name: 2–80 chars
+ *   - location: 2–80 chars
+ *   - phone: 7–20 chars
+ *   - category: 2–60 chars
+ */
+export interface CreateSellerRequest {
+  npub: string;
+  handle: string;
+  name: string;
+  location: string;
+  phone: string;
+  category: string;
+  bio?: string;
+  bankName?: string;
+  bankAccount?: string;
+  bankHolder?: string;
+  /** Lightning address (LNURL-pay), e.g. `seller@coinos.io`. */
+  lnAddress?: string;
+  /** Shop avatar / profile image URL. */
+  avatarUrl?: string;
+}
+
+export interface CreateSellerResponse {
+  seller: ApiSeller;
+}
+
+/**
+ * `PATCH /api/sellers/:id/payout` request body. Updates the seller's payout
+ * preference — bank details (NGN, via MavaPay) and/or a Lightning address.
+ * The backend requires at least one of `bankName` or `lnAddress`. When full
+ * bank details are supplied it runs a MavaPay Name Enquiry, which needs a
+ * valid `bankCode`.
+ */
+export interface UpdatePayoutRequest {
+  bankName?: string;
+  bankCode?: string;
+  bankAccount?: string;
+  bankHolder?: string;
+  lnAddress?: string;
+}
+
+/* -------------------------- listing endpoints ------------------------- */
+
+/**
+ * `POST /api/listings` request body. Field names match
+ * `CreateListingSchema` on the backend. Note the image schema requires
+ * each image to have *either* a `url` or a `seed` — at least one.
+ */
+export interface CreateListingRequest {
+  sellerNpub: string;
+  title: string;
+  description: string;
+  priceNGN: number;
+  images: ApiListingImage[];
+  category: string;
+  variants?: string[];
+  inStock?: number;
+  delivery?: string;
+  deliveryFee?: number;
+}
+
+export interface CreateListingResponse {
+  listing: ApiListing;
+}
+
+/* --------------- seller dashboard endpoints (read-only) --------------- */
+
+/**
+ * `GET /api/orders/seller/:npub` — returns all orders across all of
+ * this seller's listings, ordered `createdAt desc`. Powers the seller
+ * dashboard KPIs + "Needs your attention" list.
+ */
+export interface GetSellerOrdersResponse {
+  orders: SellerOrderRow[];
+}
+
+/**
+ * One row on the seller dashboard. Same as `ApiOrder` but joined to
+ * the full listing and (optional) dispute so the dashboard renders
+ * each row without further roundtrips.
+ */
+export interface SellerOrderRow extends ApiOrder {
+  listing: ApiListing;
+  dispute: ApiDispute | null;
+}
