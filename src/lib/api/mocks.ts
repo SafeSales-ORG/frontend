@@ -30,6 +30,8 @@ import type {
   GetDisputesResponse,
   GetOrderResponse,
   GetSellerOrdersResponse,
+  GoogleAuthRequest,
+  GoogleAuthResponse,
   MockListingHint,
   OpenDisputeRequest,
   OpenDisputeResponse,
@@ -123,6 +125,62 @@ function sellerForListing(listing: ApiListing) {
 /* ------------------------------ public API ----------------------------- */
 
 export const mockApi = {
+  /**
+   * DEMO mock for POST /api/auth/google.
+   *
+   * In demo/mock mode there is no real Google token to verify, so we
+   * parse the JWT payload (without verifying the signature — fine for
+   * demo) to extract the `sub` and `name` fields and synthesise a
+   * deterministic Nostr keypair from them. The first time a given
+   * sub is seen the account is created; subsequent calls return the
+   * same keypair (simulating the backend's key storage).
+   */
+  async googleAuth(req: GoogleAuthRequest): Promise<GoogleAuthResponse> {
+    // Decode the JWT payload (base64url, no signature check — demo only).
+    let sub = "demo-google-user";
+    let name = "Demo Seller";
+    let picture: string | undefined;
+    try {
+      const parts = req.idToken.split(".");
+      if (parts.length >= 2) {
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as {
+          sub?: string;
+          name?: string;
+          picture?: string;
+        };
+        if (payload.sub) sub = payload.sub;
+        if (payload.name) name = payload.name;
+        if (payload.picture) picture = payload.picture;
+      }
+    } catch {
+      /* ignore decode errors — fall through to demo defaults */
+    }
+
+    // Deterministic "keypair" from the Google sub (demo only).
+    // We use a simple hash of the sub as the seed so repeated logins
+    // return the same npub/nsec without persisting a real secret.
+    const seed = `google:${sub}`;
+    const npub = `npub1google${seed.replace(/[^a-z0-9]/gi, "").slice(0, 20)}`;
+    const nsec = `nsec1google${seed.replace(/[^a-z0-9]/gi, "").slice(0, 40)}`;
+
+    // Find or create the seller in the mock store.
+    const existing = marketStore.getSellerByNpub(npub);
+    if (existing) {
+      return { nsec, npub, seller: existing, isNew: false };
+    }
+
+    // First login — return null seller so the frontend shows the
+    // handle + phone collection step.
+    return {
+      nsec,
+      npub,
+      seller: null,
+      isNew: true,
+      // Pass the Google profile data along so the form can pre-fill.
+      _googleProfile: { name, picture },
+    } as GoogleAuthResponse & { _googleProfile?: { name: string; picture?: string } };
+  },
+
   async createSeller(req: CreateSellerRequest): Promise<CreateSellerResponse> {
     const existing = marketStore.getSellerByNpub(req.npub);
     if (existing) {

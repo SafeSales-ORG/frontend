@@ -29,6 +29,8 @@ import type {
   GetDisputesResponse,
   GetOrderResponse,
   GetSellerOrdersResponse,
+  GoogleAuthRequest,
+  GoogleAuthResponse,
   OpenDisputeRequest,
   OpenDisputeResponse,
   ReleaseOrderResponse,
@@ -116,6 +118,9 @@ interface BackendAdminDispute extends ApiDispute {
 }
 
 export const httpApi = {
+  googleAuth(req: GoogleAuthRequest): Promise<GoogleAuthResponse> {
+    return request<GoogleAuthResponse>("POST", "/api/auth/google", req);
+  },
   createSeller(req: CreateSellerRequest): Promise<CreateSellerResponse> {
     return request<CreateSellerResponse>("POST", "/api/sellers", req);
   },

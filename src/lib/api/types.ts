@@ -478,3 +478,45 @@ export interface SellerOrderRow extends ApiOrder {
   listing: ApiListing;
   dispute: ApiDispute | null;
 }
+
+/* ----------------------------- auth endpoints -------------------------- */
+
+/**
+ * `POST /api/auth/google` request body.
+ * The frontend sends the raw Google ID token received from the Google
+ * Identity Services SDK. The backend verifies it with Google's JWKS,
+ * creates or fetches the seller's Nostr keypair, and returns a session.
+ */
+export interface GoogleAuthRequest {
+  /** Raw Google ID token from `useGoogleLogin` / `GoogleLogin` callback. */
+  idToken: string;
+}
+
+/**
+ * `POST /api/auth/google` response.
+ *
+ * The backend returns:
+ *   - `nsec`   — the seller's Nostr private key (bech32 nsec1…), so the
+ *                frontend can call `NLogin.fromNsec` and enter the existing
+ *                Nostrify-keyed session machinery unchanged.
+ *   - `npub`   — the corresponding public key (bech32 npub1…).
+ *   - `seller` — the full seller profile (or `null` on first-ever login,
+ *                in which case the frontend collects handle + phone and calls
+ *                `POST /api/sellers` before navigating to /app).
+ *   - `isNew`  — `true` when the account was just created; the frontend
+ *                should show the "choose handle + phone" step.
+ *
+ * NOTE: the nsec is transmitted over HTTPS only and is never logged or
+ * persisted server-side after it leaves the response. The backend stores
+ * the private key bytes AES-256-GCM encrypted at rest; the server secret
+ * is in `GOOGLE_AUTH_ENCRYPT_KEY`.
+ */
+export interface GoogleAuthResponse {
+  nsec: string;
+  npub: string;
+  /** Full seller profile, or null if this is the first sign-in. */
+  seller: ApiSeller | null;
+  /** True when the account was just created (first Google sign-in). */
+  isNew: boolean;
+}
+

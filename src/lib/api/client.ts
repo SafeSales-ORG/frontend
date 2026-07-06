@@ -25,6 +25,8 @@ import type {
   GetDisputesResponse,
   GetOrderResponse,
   GetSellerOrdersResponse,
+  GoogleAuthRequest,
+  GoogleAuthResponse,
   OpenDisputeRequest,
   OpenDisputeResponse,
   ReleaseOrderResponse,
@@ -39,6 +41,12 @@ import type {
 } from "./types";
 
 export interface ApiClient {
+  /**
+   * POST /api/auth/google — exchange a Google ID token for a Nostr keypair.
+   * The backend verifies the token with Google, creates/fetches an encrypted
+   * Nostr keypair for this Google account, and returns the nsec + npub.
+   */
+  googleAuth(req: GoogleAuthRequest): Promise<GoogleAuthResponse>;
   /** POST /api/sellers — register a new seller from their Nostr identity. */
   createSeller(req: CreateSellerRequest): Promise<CreateSellerResponse>;
   /** PATCH /api/sellers/:id/payout — update the seller's payout details. */
