@@ -403,7 +403,7 @@ export interface RespondToDisputeResponse {
  *   - handle: 3–30 chars, `^[a-z0-9_]+$` (lowercase, digits, underscore only)
  *   - name: 2–140 chars
  *   - bankCode: 3–10 chars (NIBSS code, e.g. "058")
- *   - bankAccountNumber: exactly 10 digits
+ *   - bankAccountNumber: 9–10 digits (`^\d{9,10}$`)
  * The backend derives the account holder name via a Nomba lookup, so it is
  * NOT sent. `location`/`category`/`bio`/`avatarUrl` are demo-mock extras the
  * real backend silently strips (it has no columns for them).

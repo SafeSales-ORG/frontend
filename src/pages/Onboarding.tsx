@@ -75,8 +75,12 @@ const NIGERIAN_BANKS: { code: string; name: string }[] = [
   { code: "057", name: "Zenith Bank" },
 ];
 
-/** Backend `bankAccountNumber` must be exactly 10 digits. */
-const ACCOUNT_NUMBER_LEN = 10;
+/**
+ * Backend `bankAccountNumber` accepts `^\d{9,10}$` — 9 or 10 digits. Standard
+ * Nigerian NUBANs are 10; Nomba's sandbox test account is 9, so we allow both.
+ */
+const ACCOUNT_NUMBER_MIN = 9;
+const ACCOUNT_NUMBER_MAX = 10;
 
 /* -------------------------------------------------------------------------- */
 /*                               Page root                                    */
@@ -426,7 +430,9 @@ function ShopDetailsForm({ npub, prefillName, prefillAvatar, onSuccess }: ShopDe
   const handleValid = isHandleValid(handle);
   const shopNameValid = shopName.trim().length >= SHOP_NAME_MIN;
   const bankValid = bankCode.length > 0;
-  const accountValid = accountNumber.length === ACCOUNT_NUMBER_LEN;
+  const accountValid =
+    accountNumber.length >= ACCOUNT_NUMBER_MIN &&
+    accountNumber.length <= ACCOUNT_NUMBER_MAX;
   const canSubmit =
     handleValid && shopNameValid && bankValid && accountValid && !saving;
 
@@ -604,7 +610,8 @@ function AccountNumberField({
   value: string;
   onChange: (next: string) => void;
 }) {
-  const complete = value.length === ACCOUNT_NUMBER_LEN;
+  const complete =
+    value.length >= ACCOUNT_NUMBER_MIN && value.length <= ACCOUNT_NUMBER_MAX;
   return (
     <div>
       <Label htmlFor="shop-account">Account number</Label>
@@ -615,7 +622,7 @@ function AccountNumberField({
           autoComplete="off"
           value={value}
           onChange={(e) =>
-            onChange(e.target.value.replace(/\D/g, "").slice(0, ACCOUNT_NUMBER_LEN))
+            onChange(e.target.value.replace(/\D/g, "").slice(0, ACCOUNT_NUMBER_MAX))
           }
           placeholder="0123456789"
           className="pr-10"
@@ -633,7 +640,7 @@ function AccountNumberField({
         )}
       </div>
       <p className="mt-1.5 text-[11px] text-ink-soft">
-        Your 10-digit NUBAN. Escrow payouts for completed orders go straight here.
+        Your bank account number. Escrow payouts for completed orders go straight here.
       </p>
     </div>
   );
