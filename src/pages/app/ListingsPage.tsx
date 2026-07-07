@@ -91,11 +91,10 @@ import { useCurrentSeller } from "@/hooks/useCurrentSeller";
 import { useAuth } from "@/hooks/useAuth";
 import { type MyListing } from "@/hooks/useMyListings";
 import { useSellerListingsLive } from "@/hooks/useMarket";
-import { useNostrPublish } from "@/hooks/useNostrPublish";
 import { useToast } from "@/hooks/useToast";
 import { useUploadFile } from "@/hooks/useUploadFile";
 
-import { apiClient, DEMO_MODE } from "@/lib/api";
+import { apiClient } from "@/lib/api";
 import { ApiError, isEndpointMissing, backendPendingMessage } from "@/lib/api/errors";
 import type { ApiListing } from "@/lib/api/types";
 import { marketStore } from "@/lib/store/marketStore";
@@ -934,7 +933,6 @@ function CreateListingSheet({
   const queryClient = useQueryClient();
   const { isAuthed } = useAuth();
   const [currentSeller] = useCurrentSeller();
-  const { mutateAsync: publish, isPending: isPublishing } = useNostrPublish();
   const { mutateAsync: uploadFile } = useUploadFile();
 
   const [title, setTitle] = useState("");
@@ -943,7 +941,7 @@ function CreateListingSheet({
   const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState<PendingPhoto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  /** Backend round-trip; the publish button must wait on both this AND `isPublishing`. */
+  /** Backend round-trip the publish button waits on. */
   const [isSavingToBackend, setIsSavingToBackend] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -980,7 +978,6 @@ function CreateListingSheet({
     Number(price) > 0 &&
     uploadedPhotos.length > 0 &&
     !stillUploading &&
-    !isPublishing &&
     !isSavingToBackend;
 
   const onFilesPicked = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -1141,67 +1138,19 @@ function CreateListingSheet({
       publishedAt: now,
     };
 
-    // Demo mode: the store IS the source of truth (already written above) and
-    // there's no Nostr relay to broadcast to — so skip it, close the form, and
-    // jump straight to the share step. No scary "broadcast failed" toast.
-    if (DEMO_MODE) {
-      toast({
-        title: "Listing published",
-        description: "It's live — share the link to start selling.",
-      });
-      onClose();
-      setIsSavingToBackend(false);
-      setTimeout(() => onPublished(optimistic), 250);
-      return;
-    }
-
-    // 2. Real mode: broadcast to Nostr using the backend cuid as the `d` tag.
-    const tags: string[][] = [
-      ["d", backendListingId],
-      ["title", trimmedTitle],
-      ["price", String(priceNGN), "NGN"],
-      ["published_at", String(now)],
-      ["stock", "1"],
-      ["r", buyUrlFor(backendListingId)],
-    ];
-    for (const photo of uploadedPhotos) {
-      tags.push(["image", photo.uploadedUrl]);
-    }
-
-    try {
-      const event = await publish({
-        kind: 30018,
-        content: trimmedDescription,
-        tags,
-        created_at: now,
-      });
-
-      toast({
-        title: "Listing published",
-        description: "It's live on SafeSale — share the link to start selling.",
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: ["safesale", "my-listings", currentSeller.npub],
-      });
-
-      onClose();
-      setIsSavingToBackend(false);
-      setTimeout(() => onPublished({ ...optimistic, event }), 250);
-    } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Saved on SafeSale, but couldn't broadcast on Nostr.";
-      setIsSavingToBackend(false);
-      setError(msg);
-      toast({
-        title: "Published on SafeSale, not on Nostr",
-        description:
-          "Your listing is live and orderable. Nostr broadcast failed — buyers will see it via the SafeSale link.",
-        variant: "destructive",
-      });
-    }
+    // The SafeSale backend (created above) is the source of truth. Nostr is an
+    // internal-only detail the user never manages, so there's nothing else to
+    // broadcast — show success and jump to the share step.
+    toast({
+      title: "Listing published",
+      description: "It's live — share the link to start selling.",
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["safesale", "my-listings", currentSeller.npub],
+    });
+    onClose();
+    setIsSavingToBackend(false);
+    setTimeout(() => onPublished(optimistic), 250);
   };
 
   return (
@@ -1219,8 +1168,8 @@ function CreateListingSheet({
         <SheetHeader className="px-5 pt-4">
           <SheetTitle className="text-left text-lg">New listing</SheetTitle>
           <SheetDescription className="text-left">
-            Add a clear title, photos and price. Saved to SafeSale and
-            published to Nostr with your key.
+            Add a clear title, photos and price. Your listing goes live on
+            SafeSale immediately.
           </SheetDescription>
         </SheetHeader>
 
@@ -1388,7 +1337,7 @@ function CreateListingSheet({
           <Button
             variant="outline"
             onClick={onClose}
-            disabled={isPublishing || isSavingToBackend}
+            disabled={isSavingToBackend}
           >
             Cancel
           </Button>
@@ -1398,11 +1347,6 @@ function CreateListingSheet({
             className="bg-brand text-brand-foreground hover:bg-brand/90"
           >
             {isSavingToBackend ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving…
-              </>
-            ) : isPublishing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Publishing…
