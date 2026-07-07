@@ -131,40 +131,6 @@ interface BackendAdminDispute extends ApiDispute {
   order: ApiOrder & { listing: ApiListing; seller: ApiSeller };
 }
 
-/**
- * The backend's order row: it nests `listing`/`seller` inside `order` and uses
- * its own field names (`priceNGN`, `nombaReference`, `deliveryAddress`). The FE
- * wants them flat + renamed. `unwrapOrder` bridges the two.
- */
-type BackendOrder = ApiOrder & {
-  listing?: ApiListing;
-  seller?: ApiSeller;
-  dispute?: ApiDispute | null;
-  priceNGN?: number;
-  nombaReference?: string;
-  deliveryAddress?: string | null;
-};
-
-/** Backend `GET /api/disputes/:id` — dispute with the order nested inside. */
-type BackendDispute = ApiDispute & { order: BackendOrder };
-
-/** Un-nest + field-bridge a backend order into the flat `GetOrderResponse`. */
-function unwrapOrder(raw: BackendOrder): GetOrderResponse {
-  const { listing, seller, dispute, ...order } = raw;
-  const bridged: ApiOrder = {
-    ...(order as ApiOrder),
-    amountNGN: order.amountNGN ?? raw.priceNGN ?? 0,
-    nombaPaymentRef: order.nombaPaymentRef ?? raw.nombaReference,
-    buyerAddress: order.buyerAddress ?? raw.deliveryAddress ?? null,
-  };
-  return {
-    order: bridged,
-    listing: listing as ApiListing,
-    seller: seller as ApiSeller,
-    dispute: dispute ?? null,
-  };
-}
-
 export const httpApi = {
   register(req: RegisterRequest): Promise<AuthResponse> {
     return request<AuthResponse>("POST", "/api/auth/register", req);
@@ -286,13 +252,13 @@ export const httpApi = {
     );
     return { order };
   },
-  async getOrder(token: string): Promise<GetOrderResponse> {
-    // Backend nests listing/seller inside `order` and doesn't send `dispute`.
-    const { order } = await request<{ order: BackendOrder }>(
+  getOrder(token: string): Promise<GetOrderResponse> {
+    // Backend returns the flat { order, listing, seller, dispute } shape
+    // (normalized server-side) — matches GetOrderResponse directly.
+    return request<GetOrderResponse>(
       "GET",
       `/api/orders/${encodeURIComponent(token)}`,
     );
-    return unwrapOrder(order);
   },
   deliverOrder(token: string): Promise<ShipOrderResponse> {
     return request<ShipOrderResponse>(
@@ -308,23 +274,16 @@ export const httpApi = {
       `/api/orders/${encodeURIComponent(token)}/release`,
     );
   },
-  async openDispute(
+  openDispute(
     token: string,
     req: OpenDisputeRequest,
   ): Promise<OpenDisputeResponse> {
-    // Backend route is `POST /api/disputes` with `orderToken` in the body and
-    // it derives `openedBy` from the auth token. Returns just `{ dispute }`, so
-    // we re-read the order to satisfy the FE `{ order, dispute }` shape.
-    const { dispute } = await request<{ dispute: ApiDispute }>(
+    // Backend exposes this at the FE's original path and returns { order, dispute }.
+    return request<OpenDisputeResponse>(
       "POST",
-      `/api/disputes`,
-      { orderToken: token, reason: req.reason, summary: req.summary },
+      `/api/orders/${encodeURIComponent(token)}/dispute`,
+      req,
     );
-    const { order } = await request<{ order: BackendOrder }>(
-      "GET",
-      `/api/orders/${encodeURIComponent(token)}`,
-    );
-    return { order: unwrapOrder(order).order, dispute };
   },
   shipOrder(
     token: string,
@@ -336,34 +295,21 @@ export const httpApi = {
       req,
     );
   },
-  async respondToDispute(
+  respondToDispute(
     disputeId: string,
     req: RespondToDisputeRequest,
   ): Promise<RespondToDisputeResponse> {
-    // Backend has no `/respond`; a seller reply is a dispute message.
-    // `POST /api/disputes/:id/messages { content }`. We prefix the stance so
-    // the buyer/mediator can see the seller's position in the thread.
-    const content =
-      req.stance && req.stance !== "explain"
-        ? `[${req.stance}] ${req.message}`
-        : req.message;
-    await request<{ message: unknown }>(
+    // Backend exposes this at the FE's original path and returns { order, dispute }.
+    return request<RespondToDisputeResponse>(
       "POST",
-      `/api/disputes/${encodeURIComponent(disputeId)}/messages`,
-      { content },
+      `/api/disputes/${encodeURIComponent(disputeId)}/respond`,
+      req,
     );
-    // Re-read the dispute (order nested) for the FE `{ order, dispute }` shape.
-    const { dispute } = await request<{ dispute: BackendDispute }>(
-      "GET",
-      `/api/disputes/${encodeURIComponent(disputeId)}`,
-    );
-    const { order, ...disputeRest } = dispute;
-    return { order: unwrapOrder(order).order, dispute: disputeRest as ApiDispute };
   },
   async getDisputes(): Promise<GetDisputesResponse> {
     const { disputes } = await request<{ disputes: BackendAdminDispute[] }>(
       "GET",
-      `/api/mediator/disputes`,
+      `/api/admin/disputes`,
     );
     // Flatten the backend's nested shape into the frontend's AdminDisputeRow.
     const rows: AdminDisputeRow[] = disputes.map((d) => {
@@ -373,31 +319,17 @@ export const httpApi = {
     });
     return { disputes: rows };
   },
-  async resolveDispute(
+  resolveDispute(
     disputeId: string,
     req: ResolveDisputeRequest,
   ): Promise<ResolveDisputeResponse> {
-    // Backend route is `PATCH /api/mediator/disputes/:id` with `{ status,
-    // resolution }` (resolution is free-form JSON). Pack the FE outcome/split/
-    // rationale into `resolution` and mark it resolved.
-    await request<{ dispute: ApiDispute }>(
-      "PATCH",
-      `/api/mediator/disputes/${encodeURIComponent(disputeId)}`,
-      {
-        status: "resolved",
-        resolution: {
-          outcome: req.outcome,
-          buyerPercent: req.splitPct,
-          rationale: req.rationale,
-        },
-      },
+    // Backend expects `buyerPercent`; the frontend form uses `splitPct`.
+    const { splitPct, ...rest } = req;
+    const body = splitPct === undefined ? rest : { ...rest, buyerPercent: splitPct };
+    return request<ResolveDisputeResponse>(
+      "POST",
+      `/api/admin/disputes/${encodeURIComponent(disputeId)}/resolve`,
+      body,
     );
-    // Re-read for the `{ order, dispute }` shape the FE expects.
-    const { dispute } = await request<{ dispute: BackendDispute }>(
-      "GET",
-      `/api/disputes/${encodeURIComponent(disputeId)}`,
-    );
-    const { order, ...disputeRest } = dispute;
-    return { order: unwrapOrder(order).order, dispute: disputeRest as ApiDispute };
   },
 };
