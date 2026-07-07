@@ -1,3 +1,4 @@
+
 import { useSeoMeta } from "@unhead/react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
@@ -22,7 +23,7 @@ import {
 import { InstagramIcon } from "@/components/safesale/BrandIcons";
 import { cn } from "@/lib/utils";
 
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useAuth } from "@/hooks/useAuth";
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
 
 /**
@@ -76,11 +77,11 @@ export default function Landing() {
  * on the page and we never duplicate it.
  */
 function useCallToAction(): { to: string; label: string } {
-  const { user } = useCurrentUser();
+  const { isAuthed } = useAuth();
   const [seller] = useCurrentSeller();
 
-  if (!user) return { to: "/onboarding", label: "Start selling safely" };
   if (seller) return { to: "/app", label: "Go to your dashboard" };
+  if (!isAuthed) return { to: "/onboarding", label: "Start selling safely" };
   return { to: "/onboarding", label: "Finish setting up" };
 }
 
@@ -250,7 +251,7 @@ function Hero() {
             </span>
             <span className="inline-flex items-center gap-2 transition-transform duration-300 hover:translate-x-1">
               <CheckCircle2 className="h-4 w-4 text-brand" />
-              Built on Nomba + Nostr
+              Built on Nomba
             </span>
           </div>
         </div>
@@ -327,10 +328,10 @@ function TrustStrip() {
   const pillars = [
     "Escrow held by a licensed payment processor",
     "Funds released only on buyer confirmation",
-    "Mediated by signed Nostr resolutions",
+    "Every dispute mediated and fairly resolved",
     "Naira in, Naira out — straight to your bank",
     "Reputation owned by the seller, not the platform",
-    "Built for Hack4Freedom",
+    "Built for the DevCareer × Nomba Hackathon",
   ];
   return (
     <section className="border-y border-border/60 bg-white">
@@ -865,14 +866,15 @@ function FAQ() {
 /* -------------------------------------------------------------------------- */
 
 function FinalCTA() {
-  const { user } = useCurrentUser();
+  const { isAuthed } = useAuth();
+  const [seller] = useCurrentSeller();
   const cta = useCallToAction();
 
   // For already-signed-in users, the "Start selling without fear today"
   // pitch is noise — they ARE signed in. Hide the section so they don't
   // get nudged into creating a second account by accident. (The site
   // header still gives them a direct "Go to dashboard" link.)
-  if (user) return null;
+  if (isAuthed || seller) return null;
 
   return (
     <section className="container py-20">

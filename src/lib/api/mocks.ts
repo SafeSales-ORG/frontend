@@ -21,6 +21,7 @@ import type {
   ApiDispute,
   ApiListing,
   ApiOrder,
+  AuthResponse,
   CreateListingRequest,
   CreateListingResponse,
   CreateOrderRequest,
@@ -32,8 +33,11 @@ import type {
   GetSellerOrdersResponse,
   GoogleAuthRequest,
   GoogleAuthResponse,
+  LoginRequest,
+  MeResponse,
   MockListingHint,
   OpenDisputeRequest,
+  RegisterRequest,
   OpenDisputeResponse,
   PayInDetails,
   ReleaseOrderResponse,
@@ -55,6 +59,37 @@ import {
   marketStore,
   type OrderEnvelope,
 } from "@/lib/store/marketStore";
+import { getSession } from "@/lib/auth/session";
+
+/* ------------------------------ mock auth ----------------------------- */
+
+/**
+ * Deterministic pseudo-`npub` for demo mode. Same seed (email or Google id)
+ * always yields the same key, so a seller who signs back in re-finds their
+ * shop. This is NOT a real Nostr key — the backend mints the real one; the
+ * mock only needs a stable identifier.
+ */
+function mockNpubFromSeed(seed: string): string {
+  const clean = seed.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return `npub1mock${clean.slice(0, 24).padEnd(24, "0")}`;
+}
+
+function mockUserId(seed: string): string {
+  return `usr_${seed.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 16)}`;
+}
+
+/** Opaque demo token — the real backend issues a signed JWT. */
+function mockToken(userId: string): string {
+  return `mock.${btoa(userId)}`;
+}
+
+function mockSession(email: string, seed: string): AuthResponse {
+  const npub = mockNpubFromSeed(seed);
+  return {
+    token: mockToken(mockUserId(seed)),
+    user: { id: mockUserId(seed), email, nostrNpub: npub },
+  };
+}
 
 /* --------------------- listing-hint session bridge -------------------- */
 
@@ -125,60 +160,60 @@ function sellerForListing(listing: ApiListing) {
 /* ------------------------------ public API ----------------------------- */
 
 export const mockApi = {
+  /** DEMO mock for POST /api/auth/register. Any valid email/password works. */
+  async register(req: RegisterRequest): Promise<AuthResponse> {
+    return mockSession(req.email, `email:${req.email}`);
+  },
+
   /**
-   * DEMO mock for POST /api/auth/google.
-   *
-   * In demo/mock mode there is no real Google token to verify, so we
-   * parse the JWT payload (without verifying the signature — fine for
-   * demo) to extract the `sub` and `name` fields and synthesise a
-   * deterministic Nostr keypair from them. The first time a given
-   * sub is seen the account is created; subsequent calls return the
-   * same keypair (simulating the backend's key storage).
+   * DEMO mock for POST /api/auth/login. In demo mode we accept any password
+   * (there is no password store) and return a stable session for the email.
+   */
+  async login(req: LoginRequest): Promise<AuthResponse> {
+    return mockSession(req.email, `email:${req.email}`);
+  },
+
+  /**
+   * DEMO mock for GET /api/auth/me. Reflects the persisted demo session and
+   * attaches the seller record if one exists for this user's npub.
+   */
+  async getMe(): Promise<MeResponse> {
+    const session = getSession();
+    if (!session) {
+      throw new ApiError("UNAUTHORIZED", "Not signed in.", 401);
+    }
+    const { user } = session;
+    const seller = user.nostrNpub
+      ? marketStore.getSellerByNpub(user.nostrNpub)
+      : null;
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        authProvider: "EMAIL",
+        emailVerified: false,
+        nostrNpub: user.nostrNpub,
+        createdAt: marketNow(),
+        seller: seller
+          ? {
+              id: seller.id,
+              handle: seller.handle,
+              name: seller.name,
+              npub: seller.npub,
+            }
+          : null,
+      },
+    };
+  },
+
+  /**
+   * DEMO mock for POST /api/auth/google. There is no real Google token to
+   * verify in demo mode, so we key a stable session off the Google account
+   * id (or email). Same account → same session → same shop.
    */
   async googleAuth(req: GoogleAuthRequest): Promise<GoogleAuthResponse> {
-    // Decode the JWT payload (base64url, no signature check — demo only).
-    let sub = "demo-google-user";
-    let name = "Demo Seller";
-    let picture: string | undefined;
-    try {
-      const parts = req.idToken.split(".");
-      if (parts.length >= 2) {
-        const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as {
-          sub?: string;
-          name?: string;
-          picture?: string;
-        };
-        if (payload.sub) sub = payload.sub;
-        if (payload.name) name = payload.name;
-        if (payload.picture) picture = payload.picture;
-      }
-    } catch {
-      /* ignore decode errors — fall through to demo defaults */
-    }
-
-    // Deterministic "keypair" from the Google sub (demo only).
-    // We use a simple hash of the sub as the seed so repeated logins
-    // return the same npub/nsec without persisting a real secret.
-    const seed = `google:${sub}`;
-    const npub = `npub1google${seed.replace(/[^a-z0-9]/gi, "").slice(0, 20)}`;
-    const nsec = `nsec1google${seed.replace(/[^a-z0-9]/gi, "").slice(0, 40)}`;
-
-    // Find or create the seller in the mock store.
-    const existing = marketStore.getSellerByNpub(npub);
-    if (existing) {
-      return { nsec, npub, seller: existing, isNew: false };
-    }
-
-    // First login — return null seller so the frontend shows the
-    // handle + phone collection step.
-    return {
-      nsec,
-      npub,
-      seller: null,
-      isNew: true,
-      // Pass the Google profile data along so the form can pre-fill.
-      _googleProfile: { name, picture },
-    } as GoogleAuthResponse & { _googleProfile?: { name: string; picture?: string } };
+    const seed = `google:${req.googleId || req.email}`;
+    return mockSession(req.email, seed);
   },
 
   async createSeller(req: CreateSellerRequest): Promise<CreateSellerResponse> {
@@ -194,8 +229,8 @@ export const mockApi = {
       pubkey: `pk_${req.npub.slice(5, 21)}`,
       handle: req.handle.toLowerCase(),
       name: req.name,
-      location: req.location,
-      category: req.category,
+      location: req.location ?? "Nigeria",
+      category: req.category ?? "General",
       bio: req.bio ?? null,
       verified: false,
       avatarUrl: req.avatarUrl ?? null,

@@ -246,7 +246,12 @@ export interface PayInDetails {
   bankAccountName: string;
   /** Total to transfer, in kobo (NGN × 100). */
   totalAmountKobo: number;
-  expiresAt: string;
+  /**
+   * When the pay-in account expires (ISO). The real backend's virtual-account
+   * response doesn't include one, so this is optional — the checkout UI falls
+   * back to a client-side placeholder when it's absent.
+   */
+  expiresAt?: string;
 }
 
 /**
@@ -393,26 +398,25 @@ export interface RespondToDisputeResponse {
 /* --------------------------- seller endpoints -------------------------- */
 
 /**
- * `POST /api/sellers` request body. Field names match the backend's
- * `CreateSellerSchema` (Zod). Required minima copied verbatim so the
- * frontend can validate before hitting the network:
- *   - handle: 3–24 chars, `^[a-z0-9][a-z0-9._-]*[a-z0-9]$`
- *   - name: 2–80 chars
- *   - location: 2–80 chars
- *   - phone: 7–20 chars
- *   - category: 2–60 chars
+ * `POST /api/sellers` request body. Field names/minima match the backend's
+ * `CreateSellerSchema` (Zod), verified against the deployed backend:
+ *   - handle: 3–30 chars, `^[a-z0-9_]+$` (lowercase, digits, underscore only)
+ *   - name: 2–140 chars
+ *   - bankCode: 3–10 chars (NIBSS code, e.g. "058")
+ *   - bankAccountNumber: exactly 10 digits
+ * The backend derives the account holder name via a Nomba lookup, so it is
+ * NOT sent. `location`/`category`/`bio`/`avatarUrl` are demo-mock extras the
+ * real backend silently strips (it has no columns for them).
  */
 export interface CreateSellerRequest {
   npub: string;
   handle: string;
   name: string;
-  location: string;
-  phone: string;
-  category: string;
+  bankCode: string;
+  bankAccountNumber: string;
+  location?: string;
+  category?: string;
   bio?: string;
-  bankName?: string;
-  bankAccount?: string;
-  bankHolder?: string;
   /** Shop avatar / profile image URL. */
   avatarUrl?: string;
 }
@@ -482,41 +486,73 @@ export interface SellerOrderRow extends ApiOrder {
 /* ----------------------------- auth endpoints -------------------------- */
 
 /**
- * `POST /api/auth/google` request body.
- * The frontend sends the raw Google ID token received from the Google
- * Identity Services SDK. The backend verifies it with Google's JWKS,
- * creates or fetches the seller's Nostr keypair, and returns a session.
+ * The authenticated user, as returned by the backend on register / login /
+ * google. Auth is a standard JWT session — no Nostr keys are surfaced to
+ * the user. `nostrNpub` is an internal messaging identity the backend mints
+ * on signup; the frontend uses it only as the seller's stable key when
+ * creating a seller record.
  */
-export interface GoogleAuthRequest {
-  /** Raw Google ID token from `useGoogleLogin` / `GoogleLogin` callback. */
-  idToken: string;
+export interface AuthUser {
+  id: string;
+  email: string;
+  /** Backend-minted messaging identity. Internal — never shown to users. */
+  nostrNpub: string | null;
 }
 
 /**
- * `POST /api/auth/google` response.
- *
- * The backend returns:
- *   - `nsec`   — the seller's Nostr private key (bech32 nsec1…), so the
- *                frontend can call `NLogin.fromNsec` and enter the existing
- *                Nostrify-keyed session machinery unchanged.
- *   - `npub`   — the corresponding public key (bech32 npub1…).
- *   - `seller` — the full seller profile (or `null` on first-ever login,
- *                in which case the frontend collects handle + phone and calls
- *                `POST /api/sellers` before navigating to /app).
- *   - `isNew`  — `true` when the account was just created; the frontend
- *                should show the "choose handle + phone" step.
- *
- * NOTE: the nsec is transmitted over HTTPS only and is never logged or
- * persisted server-side after it leaves the response. The backend stores
- * the private key bytes AES-256-GCM encrypted at rest; the server secret
- * is in `GOOGLE_AUTH_ENCRYPT_KEY`.
+ * A JWT session envelope. Returned by `POST /api/auth/register`,
+ * `POST /api/auth/login` and `POST /api/auth/google`.
  */
-export interface GoogleAuthResponse {
-  nsec: string;
+export interface AuthSession {
+  /** Bearer token to send as `Authorization: Bearer <token>`. */
+  token: string;
+  user: AuthUser;
+}
+
+/** `POST /api/auth/register` — email + password sign-up. */
+export interface RegisterRequest {
+  email: string;
+  password: string;
+}
+
+/** `POST /api/auth/login` — email + password sign-in. */
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+/**
+ * `POST /api/auth/google` request body. The backend takes the Google
+ * account's stable id + verified email (obtained by the frontend from the
+ * Google Identity SDK) and returns a JWT session.
+ */
+export interface GoogleAuthRequest {
+  email: string;
+  googleId: string;
+}
+
+/** All three auth endpoints return the same session envelope. */
+export type AuthResponse = AuthSession;
+export type GoogleAuthResponse = AuthSession;
+
+/** Seller summary nested under `GET /api/auth/me`. */
+export interface MeSeller {
+  id: string;
+  handle: string;
+  name: string;
   npub: string;
-  /** Full seller profile, or null if this is the first sign-in. */
-  seller: ApiSeller | null;
-  /** True when the account was just created (first Google sign-in). */
-  isNew: boolean;
+}
+
+/** `GET /api/auth/me` — current user + linked seller (if any). */
+export interface MeResponse {
+  user: {
+    id: string;
+    email: string;
+    authProvider: string;
+    emailVerified: boolean;
+    nostrNpub: string | null;
+    createdAt: string;
+    seller: MeSeller | null;
+  };
 }
 

@@ -74,7 +74,6 @@ import {
   ShieldCheck,
   TrendingUp,
   Wallet,
-  Zap,
 } from "lucide-react";
 import { NIGERIAN_BANKS } from "@/lib/nigeria";
 import type { CurrentSeller } from "@/hooks/useCurrentSeller";
@@ -112,10 +111,6 @@ export default function EarningsPage() {
         .sort((a, b) => +new Date(b.releasedAt ?? b.updatedAt) - +new Date(a.releasedAt ?? a.updatedAt)),
     [orders],
   );
-
-  // Payout method. A seller must have a bank account to cash out.
-  const hasBank = !!seller?.bankName && !!seller?.bankAccount;
-  const method: "ngn" = "ngn";
 
   const canCashOut = earnings.availableNGN > 0;
   const onCashOut = () => {

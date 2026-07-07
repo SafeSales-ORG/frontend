@@ -96,7 +96,7 @@ import { useToast } from "@/hooks/useToast";
 import { useUploadFile } from "@/hooks/useUploadFile";
 
 import { apiClient, DEMO_MODE } from "@/lib/api";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError, isEndpointMissing, backendPendingMessage } from "@/lib/api/errors";
 import type { ApiListing } from "@/lib/api/types";
 import { marketStore } from "@/lib/store/marketStore";
 import { formatNGN, formatRelative } from "@/lib/format";
@@ -504,7 +504,11 @@ function ListingCard({
     } catch (err) {
       toast({
         title: "Couldn't update stock",
-        description: err instanceof Error ? err.message : "Try again.",
+        description: isEndpointMissing(err)
+          ? backendPendingMessage("Changing stock")
+          : err instanceof Error
+            ? err.message
+            : "Try again.",
         variant: "destructive",
       });
     } finally {
@@ -1562,8 +1566,9 @@ function EditListingSheet({
       });
       onClose();
     } catch (err) {
-      const msg =
-        err instanceof ApiError
+      const msg = isEndpointMissing(err)
+        ? backendPendingMessage("Editing a listing")
+        : err instanceof ApiError
           ? err.message
           : err instanceof Error
             ? err.message

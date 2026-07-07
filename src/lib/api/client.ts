@@ -20,6 +20,7 @@ import type {
   CreateListingResponse,
   CreateOrderRequest,
   CreateOrderResponse,
+  AuthResponse,
   CreateSellerRequest,
   CreateSellerResponse,
   GetDisputesResponse,
@@ -27,7 +28,10 @@ import type {
   GetSellerOrdersResponse,
   GoogleAuthRequest,
   GoogleAuthResponse,
+  LoginRequest,
+  MeResponse,
   OpenDisputeRequest,
+  RegisterRequest,
   OpenDisputeResponse,
   ReleaseOrderResponse,
   ResolveDisputeRequest,
@@ -41,10 +45,15 @@ import type {
 } from "./types";
 
 export interface ApiClient {
+  /** POST /api/auth/register — email + password sign-up, returns a JWT session. */
+  register(req: RegisterRequest): Promise<AuthResponse>;
+  /** POST /api/auth/login — email + password sign-in, returns a JWT session. */
+  login(req: LoginRequest): Promise<AuthResponse>;
+  /** GET /api/auth/me — current user + linked seller (Bearer token required). */
+  getMe(): Promise<MeResponse>;
   /**
-   * POST /api/auth/google — exchange a Google ID token for a Nostr keypair.
-   * The backend verifies the token with Google, creates/fetches an encrypted
-   * Nostr keypair for this Google account, and returns the nsec + npub.
+   * POST /api/auth/google — sign in with a Google account ({ email, googleId })
+   * and receive a JWT session. No Nostr keys are surfaced to the user.
    */
   googleAuth(req: GoogleAuthRequest): Promise<GoogleAuthResponse>;
   /** POST /api/sellers — register a new seller from their Nostr identity. */

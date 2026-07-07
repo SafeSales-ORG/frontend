@@ -20,6 +20,7 @@ import type {
   ApiListing,
   ApiOrder,
   ApiSeller,
+  AuthResponse,
   CreateListingRequest,
   CreateListingResponse,
   CreateOrderRequest,
@@ -31,7 +32,10 @@ import type {
   GetSellerOrdersResponse,
   GoogleAuthRequest,
   GoogleAuthResponse,
+  LoginRequest,
+  MeResponse,
   OpenDisputeRequest,
+  RegisterRequest,
   OpenDisputeResponse,
   ReleaseOrderResponse,
   ResolveDisputeRequest,
@@ -44,6 +48,7 @@ import type {
   UpdatePayoutRequest,
 } from "./types";
 import { ApiError } from "./errors";
+import { getToken } from "@/lib/auth/session";
 
 function getBaseUrl(): string {
   const url = import.meta.env.VITE_API_URL;
@@ -63,11 +68,20 @@ async function request<T>(
   body?: unknown,
 ): Promise<T> {
   const url = getBaseUrl() + path;
+
+  // Attach the JWT bearer token (email/password or Google session) when the
+  // user is signed in. Protected seller/admin routes require it; public
+  // routes (buyer order pages) simply ignore it.
+  const headers: Record<string, string> = {};
+  if (body) headers["Content-Type"] = "application/json";
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   let res: Response;
   try {
     res = await fetch(url, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (cause) {
@@ -118,6 +132,15 @@ interface BackendAdminDispute extends ApiDispute {
 }
 
 export const httpApi = {
+  register(req: RegisterRequest): Promise<AuthResponse> {
+    return request<AuthResponse>("POST", "/api/auth/register", req);
+  },
+  login(req: LoginRequest): Promise<AuthResponse> {
+    return request<AuthResponse>("POST", "/api/auth/login", req);
+  },
+  getMe(): Promise<MeResponse> {
+    return request<MeResponse>("GET", "/api/auth/me");
+  },
   googleAuth(req: GoogleAuthRequest): Promise<GoogleAuthResponse> {
     return request<GoogleAuthResponse>("POST", "/api/auth/google", req);
   },
@@ -161,24 +184,73 @@ export const httpApi = {
       `/api/orders/seller/${encodeURIComponent(npub)}`,
     );
   },
-  createOrder(req: CreateOrderRequest): Promise<CreateOrderResponse> {
-    // Strip mock-only fields before sending over the wire. The real
-    // backend has no notion of `_listingHint`; the listing already
-    // exists in its Postgres DB from the seller's POST /api/listings.
-    const { _listingHint: _hint, ...body } = req;
-    return request<CreateOrderResponse>("POST", "/api/orders", body);
+  async createOrder(req: CreateOrderRequest): Promise<CreateOrderResponse> {
+    // The real backend's `CreateOrderSchema` differs from the FE's request
+    // shape, so adapt both directions here (Checkout stays backend-agnostic):
+    //  - it REQUIRES a single `deliveryAddress` (min 5) — the FE collects a
+    //    city + optional street, so we join them.
+    //  - `_listingHint`/`buyerNpub`/`buyerName`/`contactMethod` are mock-only
+    //    or backend-ignored; we drop them (backend hardcodes buyerName).
+    const deliveryAddress =
+      [req.buyerAddress, req.buyerCity].filter(Boolean).join(", ").trim() ||
+      req.buyerCity;
+    const body = {
+      listingId: req.listingId,
+      quantity: 1,
+      variant: req.variant,
+      deliveryAddress,
+      buyerPhone: req.buyerPhone || undefined,
+      buyerEmail: req.buyerEmail || undefined,
+    };
+
+    // Backend responds `{ order, payment }`; the FE wants a flat
+    // `{ orderToken, shortId, amountNGN, payIn }`. Map it.
+    const raw = await request<{
+      order: { orderToken: string; shortId: string; priceNGN: number };
+      payment: {
+        accountName: string;
+        accountNumber: string;
+        bankName: string;
+        amount: number;
+      } | null;
+    }>("POST", "/api/orders", body);
+
+    const amountNGN = raw.payment?.amount ?? raw.order.priceNGN;
+    return {
+      orderToken: raw.order.orderToken,
+      shortId: raw.order.shortId,
+      amountNGN,
+      payIn: raw.payment
+        ? {
+            bankName: raw.payment.bankName,
+            bankAccountNumber: raw.payment.accountNumber,
+            bankAccountName: raw.payment.accountName,
+            totalAmountKobo: amountNGN * 100,
+          }
+        : null,
+      payInError: raw.payment
+        ? null
+        : "The escrow pay-in account couldn't be created. Please try again.",
+    };
   },
   /**
-   * DEMO-only: mark an order paid without a real bank transfer. The
-   * backend route is `simulate-payment` and returns 404 unless DEMO_MODE
-   * is on. In production, payment is confirmed by the Nomba webhook.
+   * DEV/DEMO: mark an order funded without a real bank transfer. The real
+   * backend route is `POST /api/dev/simulate-payment` with `{ orderToken }`
+   * (enabled on the deployed server via `NOMBA_SIMULATION`; in true production
+   * payment is confirmed by the Nomba webhook instead). We then re-read the
+   * order so callers get the updated `{ order }` shape.
    */
-  confirmPayment(token: string): Promise<SimulatePaymentResponse> {
-    return request<SimulatePaymentResponse>(
+  async confirmPayment(token: string): Promise<SimulatePaymentResponse> {
+    await request<{ ok: boolean; simulatedAmountNGN: number }>(
       "POST",
-      `/api/orders/${encodeURIComponent(token)}/simulate-payment`,
-      {},
+      `/api/dev/simulate-payment`,
+      { orderToken: token },
     );
+    const { order } = await request<GetOrderResponse>(
+      "GET",
+      `/api/orders/${encodeURIComponent(token)}`,
+    );
+    return { order };
   },
   getOrder(token: string): Promise<GetOrderResponse> {
     return request<GetOrderResponse>(

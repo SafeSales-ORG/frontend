@@ -1,73 +1,58 @@
 import { Link } from "react-router-dom";
-import { nip19 } from "nostr-tools";
 
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Lock } from "lucide-react";
 
 /**
- * `MediatorGate` — wraps `/admin` so only the mediator nsec holder
- * can see the admin / dispute resolution UI.
+ * `MediatorGate` — wraps `/admin` so only a designated mediator account can
+ * see the admin / dispute resolution UI.
  *
- * Trust model: SafeSale's mediator surface should never be reachable
- * by the public. In Joy's backend STATE.md the mediator key for MVP
- * equals the brand key (single npub). The frontend trusts whatever
- * npub is configured at build time via `VITE_MEDIATOR_NPUB`.
+ * Trust model: SafeSale's mediator surface should never be reachable by the
+ * public. Auth is the JWT session (`useAuth`); the mediator is whoever signs in
+ * with the email configured at build time via `VITE_MEDIATOR_EMAIL`.
  *
  * Three render branches:
  *
- *   1. Not logged in              → "Access restricted" + sign-in CTA
- *   2. Logged in, wrong npub      → "Access restricted" + back to home
- *   3. Logged in, mediator npub   → renders the wrapped children
+ *   1. Not signed in                → "Access restricted" + sign-in CTA
+ *   2. Signed in, wrong account     → "Access restricted" + back to home
+ *   3. Signed in, mediator account  → renders the wrapped children
  *
- * Misconfiguration (env var unset or invalid) is treated as case (2):
- * we deny rather than open. Safer for a hackathon submission than a
- * leaky default.
+ * Misconfiguration (env var unset) is treated as case (2): we deny rather than
+ * open. Safer for a hackathon submission than a leaky default.
  */
 export function MediatorGate({ children }: { children: React.ReactNode }) {
-  const { user } = useCurrentUser();
+  const { user, isAuthed } = useAuth();
 
-  // Demo mode: the mediator key isn't held by the frontend team, so for a
-  // judges' demo we open /admin directly. The whole app is on the mock in
-  // this mode — no real funds, no real backend — so there's nothing to gate.
+  // Demo mode: no real mediator account exists, so for a judges' demo we open
+  // /admin directly. The whole app is on the mock — no real funds — so there's
+  // nothing to gate.
   if (import.meta.env.VITE_DEMO_MODE === "true") {
     return <>{children}</>;
   }
 
-  const mediatorNpub = import.meta.env.VITE_MEDIATOR_NPUB?.trim();
-  const expectedHex = decodeMediatorPubkey(mediatorNpub);
+  const mediatorEmail = import.meta.env.VITE_MEDIATOR_EMAIL?.trim().toLowerCase();
 
-  if (!expectedHex) {
-    // Env var unset or malformed. Treat as "no mediator yet" — deny
-    // everyone rather than open the door. Logged for the operator.
+  if (!mediatorEmail) {
+    // Env var unset. Treat as "no mediator yet" — deny everyone rather than
+    // open the door. Logged for the operator.
     if (import.meta.env.DEV) {
       console.warn(
-        "[MediatorGate] VITE_MEDIATOR_NPUB is not set or invalid; /admin denied to all.",
+        "[MediatorGate] VITE_MEDIATOR_EMAIL is not set; /admin denied to all.",
       );
     }
     return <AccessDenied reason="not-configured" />;
   }
 
-  if (!user) {
+  if (!isAuthed) {
     return <AccessDenied reason="signed-out" />;
   }
 
-  if (user.pubkey !== expectedHex) {
+  if (user?.email?.trim().toLowerCase() !== mediatorEmail) {
     return <AccessDenied reason="wrong-account" />;
   }
 
   return <>{children}</>;
-}
-
-/** Decode an `npub1...` env-var value into a hex pubkey, or null. */
-function decodeMediatorPubkey(npub: string | undefined): string | null {
-  if (!npub) return null;
-  try {
-    const decoded = nip19.decode(npub);
-    return decoded.type === "npub" ? decoded.data : null;
-  } catch {
-    return null;
-  }
 }
 
 function AccessDenied({
@@ -79,9 +64,9 @@ function AccessDenied({
     reason === "signed-out" ? "Mediator access only" : "Access restricted";
   const body =
     reason === "signed-out"
-      ? "This area is restricted to SafeSale mediators. Sign in with the mediator key to continue."
+      ? "This area is restricted to SafeSale mediators. Sign in with the mediator account to continue."
       : reason === "wrong-account"
-        ? "Your account doesn't have mediator permissions. If you're on the mediation team, switch to the mediator key."
+        ? "Your account doesn't have mediator permissions. If you're on the mediation team, switch to the mediator account."
         : "The mediator account isn't configured for this environment. Contact your administrator.";
 
   return (

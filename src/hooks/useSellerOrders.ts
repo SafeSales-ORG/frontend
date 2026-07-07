@@ -21,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
 import { apiClient, type SellerOrderRow } from "@/lib/api";
+import { ApiError } from "@/lib/api/errors";
 
 export interface UseSellerOrdersResult {
   /** All orders for this seller, newest first. Empty array when none. */
@@ -39,11 +40,27 @@ export function useSellerOrders(): UseSellerOrdersResult {
   const [seller] = useCurrentSeller();
   const npub = seller?.npub;
 
-  const query = useQuery<{ orders: SellerOrderRow[] }>({
+  const query = useQuery<{ orders: SellerOrderRow[]; _endpointMissing?: boolean }>({
     queryKey: ["safesale", "seller-orders", npub ?? ""],
     enabled: !!npub,
-    queryFn: () => apiClient.getSellerOrders(npub as string),
-    refetchInterval: 15_000,
+    queryFn: async () => {
+      try {
+        return await apiClient.getSellerOrders(npub as string);
+      } catch (err) {
+        // The backend has no `GET /api/orders/seller/:npub` route yet, so it
+        // 404s. Treat that as an empty feed so the dashboard renders its
+        // "no orders yet" state instead of an error, and flag it so we stop
+        // polling (no 15s console-spam). Self-heals once the backend adds the
+        // route (see PROGRESS.md backend handoff).
+        if (err instanceof ApiError && err.status === 404) {
+          return { orders: [], _endpointMissing: true };
+        }
+        throw err;
+      }
+    },
+    // Poll every 15s for new orders, but stop once we know the route is missing.
+    refetchInterval: (query) =>
+      query.state.data?._endpointMissing ? false : 15_000,
     staleTime: 10_000,
   });
 

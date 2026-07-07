@@ -33,3 +33,6 @@ yarn.lock
 .env
 .env.*
 !.env.example
+
+# Local progress notes (never commit)
+PROGRESS.md

@@ -1,25 +1,20 @@
 import { useMutation } from "@tanstack/react-query";
-import { DEMO_MODE } from "@/lib/api";
 
 /**
- * Upload an image to the SafeSale backend (self-contained — no external
- * Blossom host, no Nostr signer needed). The file is read as a base64 data
- * URL in the browser, POSTed to /api/upload, and the backend returns a
- * permanent URL.
+ * Turn a chosen image file into a small, self-contained `data:` URL the app
+ * can store and render directly — no external Blossom host, no Nostr signer.
  *
- * In demo mode (`VITE_DEMO_MODE=true`) there is no backend, so we skip the
- * network call and return the image as a `data:` URL — browsers render those
- * directly, so avatars and listing images work fully offline. To stay inside
- * the ~5 MB localStorage budget the demo store serialises into, the image is
- * first downscaled + JPEG-compressed (a 3 MB photo becomes ~50–120 KB); a raw
- * multi-MB data URL would overflow the quota and silently break persistence.
+ * The backend has NO `/api/upload` route yet (see PROGRESS.md), and its listing
+ * `images[].url` field accepts any valid URL — including `data:` URLs. So in
+ * BOTH demo and real mode we downscale + JPEG-compress the image in the browser
+ * (a 3 MB photo becomes ~50–120 KB) and embed that data URL. This keeps demo
+ * mode inside its localStorage budget and lets real listings carry their image
+ * without a dedicated upload endpoint. Swap back to a POST /api/upload once the
+ * backend adds one (larger images, real CDN URLs).
  *
  * Returns NIP-94-style tags: `[["url", <url>], ["x", ""]]`, so existing
  * callers that do `const [[_, url]] = await uploadFile(file)` keep working.
  */
-
-const API_BASE =
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "";
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -76,38 +71,12 @@ export function useUploadFile() {
         throw new Error("Image is too large (max 8 MB)");
       }
 
-      // Demo mode: no backend — return a downscaled data URL so uploads work
-      // offline AND stay small enough to persist in localStorage.
-      if (DEMO_MODE) {
-        const url = await downscaleToDataUrl(file);
-        return [
-          ["url", url],
-          ["x", ""],
-        ];
-      }
-
-      const dataUrl = await fileToDataUrl(file);
-      const res = await fetch(`${API_BASE}/api/upload`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dataUrl, filename: file.name }),
-      });
-
-      if (!res.ok) {
-        let msg = `Upload failed (HTTP ${res.status})`;
-        try {
-          const body = await res.json();
-          msg = body?.error?.message || body?.message || msg;
-        } catch {
-          /* ignore */
-        }
-        throw new Error(msg);
-      }
-
-      const body = (await res.json()) as { url: string };
-      // NIP-94 tag shape expected by callers: tags[0][1] === url
+      // Downscale + compress to a small JPEG data URL. Works offline (demo) and
+      // against the real backend (which accepts data: URLs and has no upload
+      // route). The result is small enough to persist and to POST inline.
+      const url = await downscaleToDataUrl(file);
       return [
-        ["url", body.url],
+        ["url", url],
         ["x", ""],
       ];
     },

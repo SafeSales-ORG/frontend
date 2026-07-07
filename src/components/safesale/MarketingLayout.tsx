@@ -1,16 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { nip19 } from "nostr-tools";
 import { Logo } from "./Logo";
 import { Avatar } from "./Avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
-import AuthDialog from "@/components/auth/AuthDialog";
 
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useAuth } from "@/hooks/useAuth";
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
-import { genUserName } from "@/lib/genUserName";
 
 interface Props {
   children: React.ReactNode;
@@ -39,27 +36,19 @@ const PUBLIC_LINKS = [
 
 export function MarketingLayout({ children }: Props) {
   const [open, setOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
   const { pathname } = useLocation();
 
-  const { user, metadata } = useCurrentUser();
+  const { isAuthed, user: authUser } = useAuth();
   const [seller] = useCurrentSeller();
 
-  // Treat the user as a confirmed seller only when both their Nostr
-  // login and the SafeSale seller record agree on the same npub. A
-  // stale `currentSeller` from a previous session pointing at a
-  // different key gets ignored — same defensive check we use in
-  // AppShell and the gated routes.
-  const userNpub = user?.pubkey
-    ? safeNpub(user.pubkey)
-    : null;
-  const isSeller = !!user && !!seller && seller.npub === userNpub;
+  // The header chrome is driven by the JWT session. A user who has opened a
+  // shop (has a seller record) is treated as a seller; a signed-in user with
+  // no shop yet is nudged to finish setup.
+  const loggedIn = isAuthed || !!seller;
+  const isSeller = !!seller;
 
-  const displayName =
-    seller?.name ??
-    metadata?.name ??
-    metadata?.display_name ??
-    (user ? genUserName(user.pubkey) : null);
+  const displayName = seller?.name ?? authUser?.email ?? null;
+  const avatarSeed = seller?.npub ?? authUser?.id ?? "guest";
 
   // Signed in: a seller goes to their dashboard; a plain account (buyer)
   // sees a "Start selling" prompt — signing in is account access, not shop
@@ -92,7 +81,7 @@ export function MarketingLayout({ children }: Props) {
           </nav>
 
           <div className="hidden items-center gap-2 md:flex">
-            {user ? (
+            {loggedIn ? (
               <>
                 <Link
                   to={dashboardCta.to}
@@ -100,10 +89,10 @@ export function MarketingLayout({ children }: Props) {
                   aria-label={`${dashboardCta.label} — signed in as ${displayName ?? "you"}`}
                 >
                   <Avatar
-                    seed={user.pubkey}
+                    seed={avatarSeed}
                     name={displayName ?? "Guest"}
                     size={28}
-                    src={seller?.avatarUrl ?? metadata?.picture ?? null}
+                    src={seller?.avatarUrl ?? null}
                   />
                   <span className="hidden lg:inline">{dashboardCta.label}</span>
                 </Link>
@@ -111,12 +100,12 @@ export function MarketingLayout({ children }: Props) {
             ) : (
               <>
                 <Button
+                  asChild
                   variant="ghost"
                   size="sm"
-                  onClick={() => setAuthOpen(true)}
                   className="text-sm font-medium text-ink-soft hover:text-ink"
                 >
-                  Sign in
+                  <Link to="/onboarding">Sign in</Link>
                 </Button>
                 <Button asChild size="sm" className="bg-brand text-brand-foreground hover:bg-brand/90">
                   <Link to="/onboarding">Start selling</Link>
@@ -149,7 +138,7 @@ export function MarketingLayout({ children }: Props) {
                 </Link>
               ))}
               <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
-                {user ? (
+                {loggedIn ? (
                   <Button
                     asChild
                     size="sm"
@@ -161,15 +150,10 @@ export function MarketingLayout({ children }: Props) {
                   </Button>
                 ) : (
                   <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setOpen(false);
-                        setAuthOpen(true);
-                      }}
-                    >
-                      Sign in
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/onboarding" onClick={() => setOpen(false)}>
+                        Sign in
+                      </Link>
                     </Button>
                     <Button
                       asChild
@@ -189,22 +173,8 @@ export function MarketingLayout({ children }: Props) {
       </header>
       <main>{children}</main>
       <SiteFooter />
-      <AuthDialog isOpen={authOpen} onClose={() => setAuthOpen(false)} />
     </div>
   );
-}
-
-/**
- * Convert a hex pubkey to its bech32 npub, returning null if the input
- * isn't a real hex string. Used to compare against the stored seller
- * record's npub (same defensive check as AppShell + gated routes).
- */
-function safeNpub(pubkeyHex: string): string | null {
-  try {
-    return nip19.npubEncode(pubkeyHex);
-  } catch {
-    return null;
-  }
 }
 
 function SiteFooter() {
@@ -247,7 +217,7 @@ function SiteFooter() {
         </div>
         <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-border/60 pt-6 text-xs text-ink-soft sm:flex-row sm:items-center">
           <p>© 2026 SafeSale. Made with care in Lagos.</p>
-          <p>Built for Hack4Freedom.</p>
+          <p>Built for the DevCareer × Nomba Hackathon.</p>
         </div>
       </div>
     </footer>
