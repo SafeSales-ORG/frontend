@@ -58,8 +58,8 @@ export interface ApiClient {
   googleAuth(req: GoogleAuthRequest): Promise<GoogleAuthResponse>;
   /** POST /api/sellers — register a new seller from their Nostr identity. */
   createSeller(req: CreateSellerRequest): Promise<CreateSellerResponse>;
-  /** PATCH /api/sellers/:id/payout — update the seller's payout details. */
-  updatePayout(sellerId: string, req: UpdatePayoutRequest): Promise<void>;
+  /** PUT /api/sellers — update the caller's own payout details. */
+  updatePayout(req: UpdatePayoutRequest): Promise<void>;
   /** POST /api/listings — seller publishes a new listing. */
   createListing(req: CreateListingRequest): Promise<CreateListingResponse>;
   /** PATCH /api/listings/:id — edit a listing or toggle stock. */

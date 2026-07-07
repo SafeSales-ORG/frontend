@@ -240,7 +240,6 @@ export const mockApi = {
   },
 
   async updatePayout(
-    _sellerId: string,
     _req: UpdatePayoutRequest,
   ): Promise<void> {
     // Demo: payout preference is reflected via the local seller record

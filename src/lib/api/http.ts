@@ -63,7 +63,7 @@ function getBaseUrl(): string {
 }
 
 async function request<T>(
-  method: "GET" | "POST" | "PATCH",
+  method: "GET" | "POST" | "PATCH" | "PUT",
   path: string,
   body?: unknown,
 ): Promise<T> {
@@ -166,12 +166,10 @@ export const httpApi = {
   createSeller(req: CreateSellerRequest): Promise<CreateSellerResponse> {
     return request<CreateSellerResponse>("POST", "/api/sellers", req);
   },
-  updatePayout(sellerId: string, req: UpdatePayoutRequest): Promise<void> {
-    return request<void>(
-      "PATCH",
-      `/api/sellers/${encodeURIComponent(sellerId)}/payout`,
-      req,
-    );
+  updatePayout(req: UpdatePayoutRequest): Promise<void> {
+    // Backend updates the caller's OWN seller via the JWT at PUT /api/sellers
+    // (no `:id`); it re-runs the Nomba lookup to refresh the account name.
+    return request<void>("PUT", "/api/sellers", req);
   },
   createListing(req: CreateListingRequest): Promise<CreateListingResponse> {
     return request<CreateListingResponse>("POST", "/api/listings", req);

@@ -75,7 +75,7 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import { NIGERIAN_BANKS } from "@/lib/nigeria";
+import { NIGERIAN_BANKS, bankNameFromCode } from "@/lib/nigeria";
 import type { CurrentSeller } from "@/hooks/useCurrentSeller";
 
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
@@ -422,20 +422,19 @@ function BankPanel({
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [bankName, setBankName] = useState(seller?.bankName ?? "");
+  const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState(seller?.bankAccount ?? "");
   const [accountName, setAccountName] = useState(seller?.bankHolder ?? "");
   const hasBank = !!seller?.bankName && !!seller?.bankAccount;
 
+  // Backend `PUT /api/sellers` needs a NIBSS bankCode + a 9–10 digit account;
+  // it derives the account holder name via the Nomba lookup.
   const bankValid =
-    bankName.trim().length > 1 &&
-    /^\d{10}$/.test(accountNumber.trim()) &&
-    accountName.trim().length > 1;
-  // Backend requires a bank payout method.
+    bankCode.trim().length >= 3 && /^\d{9,10}$/.test(accountNumber.trim());
   const valid = bankValid;
 
   const openDialog = () => {
-    setBankName(seller?.bankName ?? "");
+    setBankCode("");
     setAccountNumber(seller?.bankAccount ?? "");
     setAccountName(seller?.bankHolder ?? "");
     setOpen(true);
@@ -445,26 +444,15 @@ function BankPanel({
     if (!valid || !seller) return;
     setSaving(true);
     try {
-      await apiClient.updatePayout(seller.id, {
-        ...(bankValid
-          ? {
-              bankName: bankName.trim(),
-              bankAccount: accountNumber.trim(),
-              bankHolder: accountName.trim(),
-            }
-          : {}),
-        
+      await apiClient.updatePayout({
+        bankCode: bankCode.trim(),
+        bankAccountNumber: accountNumber.trim(),
       });
       onSave({
         ...seller,
-        ...(bankValid
-          ? {
-              bankName: bankName.trim(),
-              bankAccount: accountNumber.trim(),
-              bankHolder: accountName.trim(),
-            }
-          : {}),
-        
+        bankName: bankNameFromCode(bankCode.trim()),
+        bankAccount: accountNumber.trim(),
+        bankHolder: accountName.trim() || seller.bankHolder,
       });
       setOpen(false);
       toast({
@@ -557,14 +545,14 @@ function BankPanel({
           <div className="space-y-4">
             <div>
               <Label>Bank</Label>
-              <Select value={bankName} onValueChange={setBankName}>
+              <Select value={bankCode} onValueChange={setBankCode}>
                 <SelectTrigger className="mt-1.5 h-11">
                   <SelectValue placeholder="Select your bank" />
                 </SelectTrigger>
                 <SelectContent>
                   {NIGERIAN_BANKS.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      {b}
+                    <SelectItem key={b.code} value={b.code}>
+                      {b.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -580,9 +568,9 @@ function BankPanel({
                 placeholder="0123456789"
                 className="mt-1.5 h-11 tabular-nums"
               />
-              {accountNumber.length > 0 && accountNumber.length < 10 && (
+              {accountNumber.length > 0 && accountNumber.length < 9 && (
                 <p className="mt-1 text-[11px] text-amber-700">
-                  Account number is 10 digits.
+                  Account number is 9–10 digits.
                 </p>
               )}
             </div>

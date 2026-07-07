@@ -432,10 +432,10 @@ export interface CreateSellerResponse {
  * a Nomba Name Enquiry, which needs a valid `bankCode`.
  */
 export interface UpdatePayoutRequest {
-  bankName?: string;
+  /** NIBSS bank code (e.g. "058"). Matches the backend `PUT /api/sellers`. */
   bankCode?: string;
-  bankAccount?: string;
-  bankHolder?: string;
+  /** 9–10 digit account number. */
+  bankAccountNumber?: string;
 }
 
 /* -------------------------- listing endpoints ------------------------- */
