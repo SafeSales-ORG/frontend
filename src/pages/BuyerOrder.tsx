@@ -789,8 +789,8 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
         border: "border-rose-200/60",
         iconBg: "bg-rose-600",
         Icon: Undo2,
-        headline: "Refund issued",
-        subline: `${amount} has been returned to your bank account. Allow 1–2 business days.`,
+        headline: "Dispute resolved in your favour",
+        subline: `Your ${amount} refund has been approved. Our team will process it to you shortly.`,
       };
     default:
       // Defensive fallback — never crash the page on an unexpected status.
