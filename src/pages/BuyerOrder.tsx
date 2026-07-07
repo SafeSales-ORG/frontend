@@ -792,6 +792,16 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
         headline: "Refund issued",
         subline: `${amount} has been returned to your bank account. Allow 1–2 business days.`,
       };
+    default:
+      // Defensive fallback — never crash the page on an unexpected status.
+      return {
+        bg: "bg-brand-soft",
+        border: "border-brand-soft/40",
+        iconBg: "bg-brand",
+        Icon: ShieldCheck,
+        headline: "Your order is being processed",
+        subline: "We're updating this order. Refresh in a moment for the latest status.",
+      };
   }
 }
 

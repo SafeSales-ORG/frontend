@@ -131,6 +131,25 @@ interface BackendAdminDispute extends ApiDispute {
   order: ApiOrder & { listing: ApiListing; seller: ApiSeller };
 }
 
+/**
+ * The backend's escrow enum uses `funded`/`released`; the frontend's canonical
+ * enum (used across ~65 call-sites, switches, timelines) uses `paid`/`completed`.
+ * Map at the API boundary so every component works unchanged. No-op in demo mode
+ * (the mock already emits paid/completed).
+ */
+const STATUS_MAP: Record<string, string> = {
+  funded: "paid",
+  released: "completed",
+};
+function mapOrderStatus<T extends { status?: string } | null | undefined>(
+  order: T,
+): T {
+  if (order && order.status && STATUS_MAP[order.status]) {
+    return { ...order, status: STATUS_MAP[order.status] };
+  }
+  return order;
+}
+
 export const httpApi = {
   register(req: RegisterRequest): Promise<AuthResponse> {
     return request<AuthResponse>("POST", "/api/auth/register", req);
@@ -178,11 +197,12 @@ export const httpApi = {
       throw err;
     }
   },
-  getSellerOrders(npub: string): Promise<GetSellerOrdersResponse> {
-    return request<GetSellerOrdersResponse>(
+  async getSellerOrders(npub: string): Promise<GetSellerOrdersResponse> {
+    const res = await request<GetSellerOrdersResponse>(
       "GET",
       `/api/orders/seller/${encodeURIComponent(npub)}`,
     );
+    return { ...res, orders: res.orders.map(mapOrderStatus) };
   },
   async createOrder(req: CreateOrderRequest): Promise<CreateOrderResponse> {
     // The real backend's `CreateOrderSchema` differs from the FE's request
@@ -250,61 +270,67 @@ export const httpApi = {
       "GET",
       `/api/orders/${encodeURIComponent(token)}`,
     );
-    return { order };
+    return { order: mapOrderStatus(order) };
   },
-  getOrder(token: string): Promise<GetOrderResponse> {
+  async getOrder(token: string): Promise<GetOrderResponse> {
     // Backend returns the flat { order, listing, seller, dispute } shape
-    // (normalized server-side) — matches GetOrderResponse directly.
-    return request<GetOrderResponse>(
+    // (normalized server-side). Map the escrow status to the FE enum.
+    const res = await request<GetOrderResponse>(
       "GET",
       `/api/orders/${encodeURIComponent(token)}`,
     );
+    return { ...res, order: mapOrderStatus(res.order) };
   },
-  deliverOrder(token: string): Promise<ShipOrderResponse> {
-    return request<ShipOrderResponse>(
+  async deliverOrder(token: string): Promise<ShipOrderResponse> {
+    const res = await request<ShipOrderResponse>(
       "POST",
       `/api/orders/${encodeURIComponent(token)}/deliver`,
     );
+    return { ...res, order: mapOrderStatus(res.order) };
   },
-  releaseOrder(token: string): Promise<ReleaseOrderResponse> {
+  async releaseOrder(token: string): Promise<ReleaseOrderResponse> {
     // No body — possession of the orderToken in the URL is the buyer's
     // authority. The backend triggers the Nomba payout to the seller.
-    return request<ReleaseOrderResponse>(
+    const res = await request<ReleaseOrderResponse>(
       "POST",
       `/api/orders/${encodeURIComponent(token)}/release`,
     );
+    return { ...res, order: mapOrderStatus(res.order) };
   },
-  openDispute(
+  async openDispute(
     token: string,
     req: OpenDisputeRequest,
   ): Promise<OpenDisputeResponse> {
     // Backend exposes this at the FE's original path and returns { order, dispute }.
-    return request<OpenDisputeResponse>(
+    const res = await request<OpenDisputeResponse>(
       "POST",
       `/api/orders/${encodeURIComponent(token)}/dispute`,
       req,
     );
+    return { ...res, order: mapOrderStatus(res.order) };
   },
-  shipOrder(
+  async shipOrder(
     token: string,
     req: ShipOrderRequest,
   ): Promise<ShipOrderResponse> {
-    return request<ShipOrderResponse>(
+    const res = await request<ShipOrderResponse>(
       "POST",
       `/api/orders/${encodeURIComponent(token)}/ship`,
       req,
     );
+    return { ...res, order: mapOrderStatus(res.order) };
   },
-  respondToDispute(
+  async respondToDispute(
     disputeId: string,
     req: RespondToDisputeRequest,
   ): Promise<RespondToDisputeResponse> {
     // Backend exposes this at the FE's original path and returns { order, dispute }.
-    return request<RespondToDisputeResponse>(
+    const res = await request<RespondToDisputeResponse>(
       "POST",
       `/api/disputes/${encodeURIComponent(disputeId)}/respond`,
       req,
     );
+    return { ...res, order: mapOrderStatus(res.order) };
   },
   async getDisputes(): Promise<GetDisputesResponse> {
     const { disputes } = await request<{ disputes: BackendAdminDispute[] }>(
@@ -319,17 +345,18 @@ export const httpApi = {
     });
     return { disputes: rows };
   },
-  resolveDispute(
+  async resolveDispute(
     disputeId: string,
     req: ResolveDisputeRequest,
   ): Promise<ResolveDisputeResponse> {
     // Backend expects `buyerPercent`; the frontend form uses `splitPct`.
     const { splitPct, ...rest } = req;
     const body = splitPct === undefined ? rest : { ...rest, buyerPercent: splitPct };
-    return request<ResolveDisputeResponse>(
+    const res = await request<ResolveDisputeResponse>(
       "POST",
       `/api/admin/disputes/${encodeURIComponent(disputeId)}/resolve`,
       body,
     );
+    return { ...res, order: mapOrderStatus(res.order) };
   },
 };
