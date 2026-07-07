@@ -88,7 +88,7 @@ import {
 import { XIcon } from "@/components/safesale/BrandIcons";
 
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useAuth } from "@/hooks/useAuth";
 import { type MyListing } from "@/hooks/useMyListings";
 import { useSellerListingsLive } from "@/hooks/useMarket";
 import { useNostrPublish } from "@/hooks/useNostrPublish";
@@ -149,12 +149,11 @@ const FILTERS: { key: StockFilter; label: string }[] = [
 export default function ListingsPage() {
   useSeoMeta({ title: "Listings — SafeSale" });
 
-  const { user } = useCurrentUser();
+  const { isAuthed } = useAuth();
   const [seller] = useCurrentSeller();
-  // Whether this person can manage a shop. In demo mode the Nostr login
-  // (`user`) churns during onboarding, so we trust the persisted seller
-  // record — matching SellerGate. Real mode still requires the Nostr login.
-  const canSell = DEMO_MODE ? !!seller : !!user;
+  // Whether this person can manage a shop: a signed-in JWT session plus a
+  // seller record — same check as SellerGate, in both demo and real mode.
+  const canSell = isAuthed && !!seller;
   // Live from the market store — the source of truth in demo mode. New
   // listings (and edits / stock toggles) reflect here instantly.
   const liveListings = useSellerListingsLive();
@@ -673,11 +672,11 @@ function SignedOutState() {
           <ShieldCheck className="h-6 w-6" />
         </span>
         <p className="mt-4 text-base font-semibold text-ink">
-          Sign in to manage your listings
+          Open your shop to manage listings
         </p>
         <p className="mt-1 text-sm text-ink-soft">
-          Your Nostr key signs every listing — no central account, no platform
-          gatekeeping.
+          Create your SafeSale shop to post items, track orders, and get paid
+          straight to your bank.
         </p>
         <Button
           asChild
@@ -933,7 +932,7 @@ function CreateListingSheet({
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useCurrentUser();
+  const { isAuthed } = useAuth();
   const [currentSeller] = useCurrentSeller();
   const { mutateAsync: publish, isPending: isPublishing } = useNostrPublish();
   const { mutateAsync: uploadFile } = useUploadFile();
@@ -973,9 +972,8 @@ function CreateListingSheet({
     [photos],
   );
   const stillUploading = photos.some((p) => p.status === "uploading");
-  // Demo mode publishes through the store and needs only a seller record;
-  // real mode requires the Nostr login to sign the kind-30018 event.
-  const canSell = DEMO_MODE ? !!currentSeller : !!user;
+  // A signed-in seller can publish (matches SellerGate / the page gate).
+  const canSell = isAuthed && !!currentSeller;
   const canPublish =
     canSell &&
     title.trim().length > 1 &&
@@ -1083,7 +1081,7 @@ function CreateListingSheet({
       marketStore.upsertSeller({
         id: currentSeller.id,
         npub: currentSeller.npub,
-        pubkey: user?.pubkey ?? currentSeller.npub,
+        pubkey: currentSeller.npub,
         handle: currentSeller.handle,
         name: currentSeller.name,
         location: "",
@@ -1184,7 +1182,7 @@ function CreateListingSheet({
       });
 
       queryClient.invalidateQueries({
-        queryKey: ["safesale", "my-listings", user?.pubkey],
+        queryKey: ["safesale", "my-listings", currentSeller.npub],
       });
 
       onClose();
