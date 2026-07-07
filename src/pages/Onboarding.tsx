@@ -82,6 +82,13 @@ const NIGERIAN_BANKS: { code: string; name: string }[] = [
 const ACCOUNT_NUMBER_MIN = 9;
 const ACCOUNT_NUMBER_MAX = 10;
 
+/**
+ * Google sign-in is hidden until the OAuth client's Authorized JavaScript
+ * origins are configured in Google Cloud Console (otherwise the popup silently
+ * fails). Flip `VITE_GOOGLE_ENABLED=true` once that's set — no code change.
+ */
+const GOOGLE_ENABLED = import.meta.env.VITE_GOOGLE_ENABLED === "true";
+
 /* -------------------------------------------------------------------------- */
 /*                               Page root                                    */
 /* -------------------------------------------------------------------------- */
@@ -261,38 +268,42 @@ function AuthFlow() {
         </p>
       </header>
 
-      {/* Continue with Google */}
-      <button
-        id="google-signin-btn"
-        type="button"
-        disabled={busy !== null}
-        onClick={() => {
-          if (busy !== null) return;
-          setError(null);
-          googleLogin();
-        }}
-        className={cn(
-          "relative flex w-full items-center justify-center gap-3 rounded-xl border border-border/80 bg-white px-4 py-3 text-sm font-medium text-ink shadow-sm transition-all",
-          "hover:bg-surface hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-          "disabled:cursor-not-allowed disabled:opacity-60",
-        )}
-      >
-        {busy === "google" ? (
-          <Loader2 className="h-5 w-5 animate-spin text-ink-soft" />
-        ) : (
-          <GoogleLogoSvg />
-        )}
-        <span>{busy === "google" ? "Signing in…" : "Continue with Google"}</span>
-      </button>
+      {GOOGLE_ENABLED && (
+        <>
+          {/* Continue with Google */}
+          <button
+            id="google-signin-btn"
+            type="button"
+            disabled={busy !== null}
+            onClick={() => {
+              if (busy !== null) return;
+              setError(null);
+              googleLogin();
+            }}
+            className={cn(
+              "relative flex w-full items-center justify-center gap-3 rounded-xl border border-border/80 bg-white px-4 py-3 text-sm font-medium text-ink shadow-sm transition-all",
+              "hover:bg-surface hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+              "disabled:cursor-not-allowed disabled:opacity-60",
+            )}
+          >
+            {busy === "google" ? (
+              <Loader2 className="h-5 w-5 animate-spin text-ink-soft" />
+            ) : (
+              <GoogleLogoSvg />
+            )}
+            <span>{busy === "google" ? "Signing in…" : "Continue with Google"}</span>
+          </button>
 
-      {/* Divider */}
-      <div className="relative flex items-center">
-        <span className="h-px flex-1 bg-border/70" />
-        <span className="px-3 text-[11px] font-medium uppercase tracking-wide text-ink-soft">
-          or
-        </span>
-        <span className="h-px flex-1 bg-border/70" />
-      </div>
+          {/* Divider */}
+          <div className="relative flex items-center">
+            <span className="h-px flex-1 bg-border/70" />
+            <span className="px-3 text-[11px] font-medium uppercase tracking-wide text-ink-soft">
+              or
+            </span>
+            <span className="h-px flex-1 bg-border/70" />
+          </div>
+        </>
+      )}
 
       {/* Email + password */}
       <form
