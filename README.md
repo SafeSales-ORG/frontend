@@ -1,6 +1,6 @@
 # SafeSale — Frontend
 
-> **Trustless escrow for social-commerce sellers — works wherever you can paste a link.**
+> **Secure Naira escrow for social-commerce sellers — works wherever you can paste a link.**
 
 Instagram, WhatsApp, TikTok, X, Telegram, Threads, Linktree — anywhere a Nigerian
 seller can share a URL, SafeSale lets buyers pay safely. The buyer's Naira is held
@@ -24,9 +24,12 @@ know each other. Buyers fear "pay-before-delivery" scams; sellers fear
 4. **Dispute?** A mediator reviews both sides' evidence and resolves
    (refund buyer / release seller / split).
 
-Seller identity is a **Nostr keypair** generated in the browser; listings are
-published as Nostr events (see [`NIP.md`](./NIP.md)). The buyer needs no account —
-the order-link URL itself is their credential.
+Sellers sign up with **email/password or Google** — a normal account, no wallet
+or keys to manage. The buyer needs no account at all: the order-link URL itself
+is their credential. (Internally the backend mints a messaging keypair per seller
+that users never see or handle.)
+
+Built for the **DevCareer × Nomba** hackathon.
 
 ---
 
@@ -35,7 +38,9 @@ the order-link URL itself is their credential.
 - **React + TypeScript** (Vite)
 - **Tailwind CSS 4** + **shadcn/ui** components, **lucide-react** icons
 - **TanStack Query** for server state
-- **Nostrify** for Nostr (listing publish/read, identity)
+- **JWT auth** (email/password + Google) via `useAuth` — see `src/lib/auth/`
+- Listing images are downscaled/compressed to `data:` URLs client-side (no
+  external image host)
 - All backend access goes through a single API seam in
   [`src/lib/api/`](./src/lib/api/) (`client.ts` → `http.ts` real / `mocks.ts` demo).
 
@@ -68,9 +73,9 @@ Copy `.env.example` to `.env`. Key variables:
 |---|---|
 | `VITE_API_URL` | Backend base URL (e.g. the deployed backend, or `http://localhost:3000`). |
 | `VITE_DEMO_MODE` | `true` runs the whole app on an in-memory mock (no backend) and unlocks `/admin` — useful for UI work and demos. `false` uses the real backend. |
-| `VITE_MEDIATOR_NPUB` | The mediator's Nostr npub; only this key can access `/admin`. |
-| `VITE_NOSTR_RELAYS` | Comma-separated relay list. |
-| `VITE_BLOSSOM_SERVERS` | Image-host servers (comma-separated). |
+| `VITE_GOOGLE_CLIENT_ID` | Google OAuth client ID (for "Continue with Google"). |
+| `VITE_GOOGLE_ENABLED` | `true` shows the Google sign-in button. Leave unset/`false` to hide it (until the OAuth origins are configured). |
+| `VITE_MEDIATOR_EMAIL` | The mediator account's email; only this account can access `/admin`. |
 | `VITE_APP_URL` | Public app URL, used in shared links. |
 | `VITE_SUPPORT_EMAIL` / `VITE_SUPPORT_WHATSAPP` | Shown in the Help dialog (optional). |
 
@@ -99,9 +104,10 @@ src/
   hooks/             data hooks (useSellerOrders, useListing, useUploadFile, …)
   lib/
     api/             the backend seam: client.ts, http.ts, mocks.ts, types.ts
+    auth/            JWT session store (session.ts)
     store/           local demo store (marketStore)
   pages/             routes — buyer flow (Checkout, BuyerOrder), Onboarding, Admin
     app/             seller dashboard (DashboardHome, ListingsPage, Orders, Earnings, Dispute)
-NIP.md               Nostr event spec (kinds 30018 listings, 33889 resolutions, etc.)
+NIP.md               internal messaging-event spec (legacy; users never touch it)
 BACKEND_TODO.md      what the backend still needs to implement
 ```
