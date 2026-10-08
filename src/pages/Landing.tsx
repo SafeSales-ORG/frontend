@@ -62,44 +62,59 @@ function Hero() {
             Buying from a seller who uses SafeSale? Open the link they sent you.
           </p>
         </div>
-        <OrderPreview />
+        <HeroVisual />
       </div>
     </section>
   );
 }
 
+/** Seller photo with an example order card (built from real components) overlapping it. */
+function HeroVisual() {
+  return (
+    <div className="relative mx-auto w-full max-w-xl pb-60 sm:pb-28">
+      <img
+        src="/hero-seller.png"
+        alt="A seller packing an order at her desk"
+        width={1402}
+        height={1122}
+        className="aspect-[5/4] w-full rounded-xl object-cover"
+      />
+      <OrderPreview className="absolute right-3 bottom-0 left-3 sm:right-auto sm:left-[-24px] sm:w-[320px]" />
+    </div>
+  );
+}
+
 /** A static example of the buyer's order page, built from the real status components. */
-function OrderPreview() {
+function OrderPreview({ className }: { className?: string }) {
   const steps = [
-    { label: "Payment received", meta: "Mon, 10:42", state: "done" },
-    { label: "Held in escrow", meta: "Mon, 10:42", state: "done" },
-    { label: "Shipped with GIG Logistics", meta: "Tue, 15:10", state: "current" },
-    { label: "Paid out to seller", meta: "After you confirm", state: "upcoming" },
+    { label: "Held in escrow", state: "done" },
+    { label: "Shipped with GIG Logistics", state: "current" },
+    { label: "Paid out to seller", state: "upcoming" },
   ] as const;
 
   return (
-    <figure className="mx-auto w-full max-w-md">
-      <div className="rounded-xl bg-canvas p-5 shadow-[var(--shadow-float)] sm:p-6">
-        <div className="flex items-start gap-4">
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-brand-pale text-brand">
-            <Shirt className="h-6 w-6" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm text-mute">Order SS-7KQ2MD</p>
-            <p className="font-semibold text-ink">Ankara two-piece set</p>
-          </div>
+    <figure className={className}>
+      <div className="rounded-xl bg-canvas p-5 shadow-[var(--shadow-float)]">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-mute">Order SS-7KQ2MD</p>
           <EscrowStatusPill status="shipped" />
         </div>
+        <div className="mt-3 flex items-center gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-brand-pale text-brand">
+            <Shirt className="h-5 w-5" aria-hidden />
+          </div>
+          <p className="font-semibold text-ink">Ankara two-piece set</p>
+        </div>
 
-        <div className="mt-5 flex items-center gap-3 rounded-lg bg-brand-pale p-4 text-brand-ink">
-          <Lock className="h-5 w-5 shrink-0" aria-hidden />
+        <div className="mt-4 flex items-center gap-3 rounded-lg bg-brand-pale px-4 py-3 text-brand-ink">
+          <Lock className="h-4 w-4 shrink-0" aria-hidden />
           <p className="text-sm">
-            <span className="font-semibold tabular-nums">₦28,500</span> is held by SafeSale until you
-            confirm delivery.
+            <span className="font-semibold tabular-nums">₦28,500</span> held until the buyer confirms
+            delivery.
           </p>
         </div>
 
-        <ol className="mt-6 space-y-4">
+        <ol className="mt-4 space-y-2.5">
           {steps.map((s, i) => (
             <li key={s.label} className="relative flex gap-3 pl-0">
               {i < steps.length - 1 && (
@@ -119,24 +134,13 @@ function OrderPreview() {
                 <p className={cn("text-sm font-medium", s.state === "upcoming" ? "text-mute" : "text-ink")}>
                   {s.label}
                 </p>
-                <p className="text-xs text-mute">{s.meta}</p>
               </div>
             </li>
           ))}
         </ol>
 
-        <div className="mt-6 grid grid-cols-2 gap-2">
-          <span className="inline-flex h-10 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-foreground">
-            I received it
-          </span>
-          <span className="inline-flex h-10 items-center justify-center rounded-full border border-line-strong text-sm font-semibold text-ink">
-            Report a problem
-          </span>
-        </div>
       </div>
-      <figcaption className="mt-3 text-center text-xs text-mute">
-        Example of what the buyer sees after paying
-      </figcaption>
+      <figcaption className="sr-only">Example of what the buyer sees after paying</figcaption>
     </figure>
   );
 }
