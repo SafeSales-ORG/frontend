@@ -15,15 +15,7 @@ import { formatNGN, formatRelative } from "@/lib/format";
 import { cn, sanitizeUrl } from "@/lib/utils";
 import { hashStr } from "@/lib/seeded";
 
-import {
-  BadgeCheck,
-  ChevronLeft,
-  Lock,
-  Scale,
-  Share2,
-  ShieldCheck,
-  Truck,
-} from "lucide-react";
+import { BadgeCheck, ChevronLeft, Lock, Share2, ShieldCheck } from "lucide-react";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Page                                      */
@@ -74,12 +66,12 @@ function PublicListingView({ listing }: { listing: ListingDetails }) {
   return (
     <div className="min-h-screen bg-surface text-ink">
       {/* Sticky header */}
-      <header className="fixed inset-x-0 top-0 z-40 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/75">
+      <header className="fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link
             to="/"
             aria-label="Back home"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-background text-ink-soft shadow-sm transition-colors hover:bg-secondary hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-canvas text-body transition-colors hover:bg-canvas-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <ChevronLeft className="h-4 w-4" />
           </Link>
@@ -87,7 +79,7 @@ function PublicListingView({ listing }: { listing: ListingDetails }) {
           <button
             type="button"
             aria-label="Share listing"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-background text-ink-soft shadow-sm transition-colors hover:bg-secondary hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-canvas text-body transition-colors hover:bg-canvas-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             onClick={() => {
               const url = window.location.href;
               if (navigator.share) {
@@ -102,8 +94,8 @@ function PublicListingView({ listing }: { listing: ListingDetails }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-32 pt-16 sm:px-6 md:pt-20 lg:pb-12">
-        <div className="grid gap-6 lg:grid-cols-[1.1fr,1fr] lg:gap-12">
+      <main className="mx-auto max-w-6xl px-4 pt-20 pb-32 sm:px-6 md:pt-24 lg:pb-16">
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:gap-12">
           {/* ------------------------ Gallery + body ------------------------ */}
           <div className="space-y-8">
             <Gallery
@@ -116,19 +108,19 @@ function PublicListingView({ listing }: { listing: ListingDetails }) {
             {/* Description + specs — desktop only (mobile shows compact version inline below) */}
             <div className="hidden space-y-8 md:block">
               <section>
-                <h2 className="text-xl font-semibold tracking-tight text-ink">
+                <h2 className="text-h2 text-ink">
                   About this item
                 </h2>
-                <p className="mt-3 whitespace-pre-line text-base leading-relaxed text-ink-soft">
+                <p className="mt-3 whitespace-pre-line text-body">
                   {listing.description}
                 </p>
               </section>
 
               <section>
-                <h2 className="text-xl font-semibold tracking-tight text-ink">
+                <h2 className="text-h2 text-ink">
                   Details
                 </h2>
-                <dl className="mt-3 overflow-hidden rounded-xl border border-border bg-background">
+                <dl className="mt-3 overflow-hidden rounded-lg border border-line bg-canvas">
                   <SpecRow
                     k="In stock"
                     v={
@@ -153,125 +145,74 @@ function PublicListingView({ listing }: { listing: ListingDetails }) {
 
           {/* ----------------------------- Info rail ------------------------- */}
           <aside className="space-y-6 lg:sticky lg:top-20 lg:h-min lg:self-start">
-            {/* Title + price */}
-            <section className="space-y-4 rounded-2xl border border-border bg-background p-6 shadow-sm sm:p-8">
-              <div>
-                {listing.category && (
-                  <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-                    {capitalize(listing.category)}
-                  </p>
-                )}
-                <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-                  {listing.title}
-                </h1>
-                {listing.summary && (
-                  <p className="mt-2 text-sm text-ink-soft">{listing.summary}</p>
-                )}
-              </div>
-              <p className="text-3xl font-semibold tabular-nums tracking-tight text-ink sm:text-4xl">
-                {formatNGN(listing.priceNGN)}
-              </p>
+            <section className="rounded-lg bg-canvas p-6 sm:p-8">
+              {listing.category && (
+                <p className="text-sm font-medium text-mute">{capitalize(listing.category)}</p>
+              )}
+              <h1 className="mt-1 text-h1 text-ink">{listing.title}</h1>
+              {listing.summary && <p className="mt-2 text-body">{listing.summary}</p>}
 
-              {/* Cost breakdown — buyer knows the full price before paying */}
-              <div className="rounded-xl border border-border bg-surface/40 p-3 text-sm">
+              <dl className="mt-6 space-y-2 border-t border-line pt-5">
                 <CostRow label="Item" value={formatNGN(listing.priceNGN)} />
                 <CostRow
                   label="Delivery"
-                  value={
-                    listing.deliveryFee && listing.deliveryFee > 0
-                      ? formatNGN(listing.deliveryFee)
-                      : "Free"
-                  }
+                  value={listing.deliveryFee && listing.deliveryFee > 0 ? formatNGN(listing.deliveryFee) : "Free"}
                 />
-                <CostRow label="Buyer protection" value="Free" muted />
-                <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
-                    Total to pay
-                  </span>
-                  <span className="text-lg font-semibold tabular-nums text-ink">
-                    {formatNGN(listing.priceNGN + (listing.deliveryFee ?? 0))}
-                  </span>
+                <div className="flex items-baseline justify-between border-t border-line pt-3">
+                  <dt className="font-semibold text-ink">Total</dt>
+                  <dd className="text-h2 text-ink tabular-nums">{formatNGN(listing.priceNGN + (listing.deliveryFee ?? 0))}</dd>
                 </div>
-              </div>
+              </dl>
 
-              {/* Seller mini-card */}
-              <div className="border-t border-border/60 pt-4">
-                <div className="flex items-center gap-3">
-                  {sellerAvatarUrl ? (
-                    <img
-                      src={sellerAvatarUrl}
-                      alt=""
-                      className="h-12 w-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <Avatar
-                      seed={listing.sellerPubkey}
-                      name={sellerName}
-                      size={48}
-                    />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-ink">
-                        {sellerName}
-                      </p>
-                      {sellerVerified && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-soft-foreground">
-                          <BadgeCheck className="h-3 w-3" /> Verified
-                        </span>
-                      )}
-                    </div>
-                    {sellerRating !== undefined && (
-                      <div className="mt-1 flex items-center gap-1.5 text-xs text-ink-soft">
-                        <StarRating rating={sellerRating} size={11} />
-                        <span className="tabular-nums">
-                          {sellerRating.toFixed(1)}
-                          {sellerReviewCount !== undefined && (
-                            <> · {sellerReviewCount} reviews</>
-                          )}
-                        </span>
-                        {sellerCompletedOrders !== undefined && (
-                          <>
-                            <span>·</span>
-                            <span>{sellerCompletedOrders} orders</span>
-                          </>
-                        )}
-                      </div>
+              {outOfStock ? (
+                <Button size="lg" disabled className="mt-6 hidden w-full md:inline-flex">
+                  Out of stock
+                </Button>
+              ) : (
+                <Button asChild size="lg" className="mt-6 hidden w-full md:inline-flex">
+                  <Link to={`/checkout/${listing.id}`}>
+                    <Lock />
+                    Buy with SafeSale
+                  </Link>
+                </Button>
+              )}
+
+              <div className="mt-6 flex items-center gap-3 border-t border-line pt-5">
+                {sellerAvatarUrl ? (
+                  <img src={sellerAvatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
+                ) : (
+                  <Avatar seed={listing.sellerPubkey} name={sellerName} size={40} />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-mute">Sold by</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate font-medium text-ink">{sellerName}</p>
+                    {sellerVerified && (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-brand">
+                        <BadgeCheck className="h-3.5 w-3.5" aria-hidden /> Verified
+                      </span>
                     )}
                   </div>
+                  {sellerRating !== undefined && (
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-mute">
+                      <StarRating rating={sellerRating} size={11} />
+                      <span className="tabular-nums">
+                        {sellerRating.toFixed(1)}
+                        {sellerReviewCount !== undefined && <> · {sellerReviewCount} reviews</>}
+                        {sellerCompletedOrders !== undefined && <> · {sellerCompletedOrders} orders</>}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
 
-            {/* Escrow trust panel — hero element */}
-            <EscrowTrustPanel />
-
-            {/* CTA — desktop */}
-            {outOfStock ? (
-              <Button
-                size="lg"
-                disabled
-                className="hidden h-14 w-full rounded-xl bg-secondary text-base font-semibold text-ink-soft md:inline-flex"
-              >
-                Out of stock
-              </Button>
-            ) : (
-              <Button
-                asChild
-                size="lg"
-                className="hidden h-14 w-full rounded-xl bg-brand text-base font-semibold text-brand-foreground shadow-[0_12px_24px_-12px_color-mix(in_oklab,var(--brand)_60%,transparent)] hover:bg-brand/90 md:inline-flex"
-              >
-                <Link to={`/checkout/${listing.id}`}>
-                  <Lock className="mr-2 h-5 w-5" />
-                  Buy safely
-                </Link>
-              </Button>
-            )}
+            <EscrowTrustPanel total={formatNGN(listing.priceNGN + (listing.deliveryFee ?? 0))} />
 
             {/* Mobile-only inline description (the desktop one lives in the left column) */}
-            <section className="rounded-2xl border border-border bg-background p-5 md:hidden">
-              <h2 className="text-base font-semibold text-ink">About this item</h2>
-              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink-soft">
+            <section className="rounded-lg bg-canvas p-5 md:hidden">
+              <h2 className="text-h3 text-ink">About this item</h2>
+              <p className="mt-2 whitespace-pre-line text-body">
                 {listing.description}
               </p>
             </section>
@@ -280,31 +221,25 @@ function PublicListingView({ listing }: { listing: ListingDetails }) {
       </main>
 
       {/* Sticky mobile bottom CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas shadow-[var(--shadow-float)] md:hidden">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 pb-safe pt-3">
           <div className="flex flex-col">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-ink-soft">
-              Total {listing.deliveryFee ? "(incl. delivery)" : ""}
+            <span className="text-xs text-mute">
+              Total{listing.deliveryFee ? " incl. delivery" : ""}
             </span>
-            <span className="text-base font-semibold tabular-nums text-ink">
+            <span className="text-h3 text-ink tabular-nums">
               {formatNGN(listing.priceNGN + (listing.deliveryFee ?? 0))}
             </span>
           </div>
           {outOfStock ? (
-            <Button
-              disabled
-              className="h-12 flex-1 rounded-xl bg-secondary text-base font-semibold text-ink-soft"
-            >
+            <Button disabled className="flex-1">
               Out of stock
             </Button>
           ) : (
-            <Button
-              asChild
-              className="h-12 flex-1 rounded-xl bg-brand text-base font-semibold text-brand-foreground shadow-[0_12px_24px_-12px_color-mix(in_oklab,var(--brand)_60%,transparent)] hover:bg-brand/90"
-            >
+            <Button asChild className="flex-1">
               <Link to={`/checkout/${listing.id}`}>
-                <Lock className="mr-2 h-4 w-4" />
-                Buy safely
+                <Lock />
+                Buy with SafeSale
               </Link>
             </Button>
           )}
@@ -333,13 +268,8 @@ function Gallery({
     <div>
       {/* Capped on mobile so price + buy peek into view with minimal scroll;
           full ratio on desktop where it sits beside the details rail. */}
-      <div className="relative overflow-hidden rounded-2xl bg-background shadow-sm aspect-[4/5] max-h-[44vh] sm:max-h-[58vh] lg:max-h-none lg:aspect-[4/5]">
+      <div className="relative aspect-[4/5] max-h-[44vh] overflow-hidden rounded-lg bg-canvas sm:max-h-[58vh] lg:max-h-none">
         <ListingImage src={hero} alt={listing.title} className="h-full w-full" />
-        {listing.category && (
-          <span className="absolute left-4 top-4 rounded-full bg-brand px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-foreground shadow-sm">
-            {capitalize(listing.category)}
-          </span>
-        )}
       </div>
 
       {listing.images.length > 1 && (
@@ -354,7 +284,7 @@ function Gallery({
                 aria-label={`Show image ${i + 1}`}
                 aria-pressed={isActive}
                 className={cn(
-                  "h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                  "h-20 w-20 shrink-0 overflow-hidden rounded-md border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                   isActive
                     ? "border-brand"
                     : "border-transparent opacity-70 hover:opacity-100",
@@ -429,50 +359,24 @@ function ListingImage({
 /*                              Trust panel                                   */
 /* -------------------------------------------------------------------------- */
 
-function EscrowTrustPanel() {
+function EscrowTrustPanel({ total }: { total: string }) {
   return (
-    <section className="rounded-2xl border border-brand/15 bg-brand-soft/40 p-6 shadow-sm sm:p-8">
-      <div className="flex items-start gap-4">
-        <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-sm">
-          <ShieldCheck className="h-6 w-6" />
-        </span>
+    <section className="rounded-lg bg-brand-pale p-5 text-brand-ink sm:p-6">
+      <div className="flex gap-3">
+        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
         <div>
-          <h3 className="text-base font-semibold text-ink">
-            Protected by SafeSale
-          </h3>
-          <p className="mt-1 text-sm leading-relaxed text-ink-soft">
-            Your money is held safely until you confirm you've received your
-            order. Full refund if anything goes wrong.
+          <h2 className="font-semibold">Your payment is protected</h2>
+          <p className="mt-1 text-sm">
+            You pay SafeSale, not the seller. Your <span className="font-semibold tabular-nums">{total}</span>{" "}
+            is only released when you confirm the item arrived. If there's a problem, report it first and a
+            mediator reviews it before any money moves.
           </p>
+          <Link to="/how-it-works" className="mt-3 inline-block text-sm font-semibold underline-offset-4 hover:underline">
+            How SafeSale works
+          </Link>
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Pillar icon={Lock} label="Held in escrow" />
-        <Pillar icon={Truck} label="Tracked delivery" />
-        <Pillar icon={Scale} label="Fair dispute" />
-      </div>
-      <Link
-        to="/how-it-works"
-        className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-      >
-        How SafeSale escrow works →
-      </Link>
     </section>
-  );
-}
-
-function Pillar({
-  icon: Icon,
-  label,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-}) {
-  return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-brand/10 bg-background/80 px-3 py-4 text-center">
-      <Icon className="h-5 w-5 text-brand" />
-      <span className="text-xs font-semibold text-ink">{label}</span>
-    </div>
   );
 }
 
@@ -480,34 +384,19 @@ function Pillar({
 /*                                Spec row                                    */
 /* -------------------------------------------------------------------------- */
 
-function CostRow({
-  label,
-  value,
-  muted,
-}: {
-  label: string;
-  value: string;
-  muted?: boolean;
-}) {
+function CostRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between py-0.5">
-      <span className="text-sm text-ink-soft">{label}</span>
-      <span
-        className={cn(
-          "tabular-nums",
-          muted ? "text-xs text-ink-soft" : "text-sm font-medium text-ink",
-        )}
-      >
-        {value}
-      </span>
+    <div className="flex items-baseline justify-between">
+      <dt className="text-body">{label}</dt>
+      <dd className="text-ink tabular-nums">{value}</dd>
     </div>
   );
 }
 
 function SpecRow({ k, v }: { k: string; v: string }) {
   return (
-    <div className="grid grid-cols-[140px,1fr] border-b border-border last:border-b-0">
-      <dt className="bg-surface/60 px-4 py-3 text-sm font-medium text-ink-soft">
+    <div className="grid grid-cols-[140px_1fr] border-b border-line last:border-b-0">
+      <dt className="bg-canvas-soft px-4 py-3 text-sm text-mute">
         {k}
       </dt>
       <dd className="px-4 py-3 text-sm text-ink">{v}</dd>
@@ -522,7 +411,7 @@ function SpecRow({ k, v }: { k: string; v: string }) {
 function PublicListingSkeleton() {
   return (
     <div className="min-h-screen bg-surface">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 pt-20 sm:px-6 md:pt-24 lg:grid-cols-[1.1fr,1fr] lg:gap-12">
+      <div className="mx-auto grid max-w-6xl gap-8 px-4 pt-20 sm:px-6 md:pt-24 lg:grid-cols-[1.1fr_1fr] lg:gap-12">
         <Skeleton className="aspect-square w-full rounded-2xl lg:aspect-[4/5]" />
         <div className="space-y-6">
           <div className="space-y-4 rounded-2xl border border-border bg-background p-6 sm:p-8">
@@ -550,16 +439,13 @@ function ListingNotFound({ id }: { id: string }) {
     <div className="grid min-h-screen place-items-center bg-surface px-6 text-center">
       <div className="max-w-md">
         <Logo />
-        <p className="mt-8 text-xl font-semibold tracking-tight text-ink">
+        <p className="mt-8 text-h2 text-ink">
           We couldn't find that listing
         </p>
-        <p className="mt-2 text-sm text-ink-soft">
+        <p className="mt-2 text-body">
           {id ? "It may have been removed or the link is incorrect." : "No listing was specified."}
         </p>
-        <Button
-          asChild
-          className="mt-6 bg-brand text-brand-foreground hover:bg-brand/90"
-        >
+        <Button asChild className="mt-6">
           <Link to="/">Back home</Link>
         </Button>
       </div>

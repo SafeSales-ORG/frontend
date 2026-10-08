@@ -400,7 +400,7 @@ export default function Checkout() {
       <main className="container max-w-2xl pb-12 pt-6">
         <StepBar step={step} />
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr,320px]">
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
           <div className="space-y-5">
             {step === "details" && (
               <DetailsForm
@@ -666,7 +666,7 @@ function DetailsForm(props: {
           />
         )}
 
-        <div className="grid gap-4 sm:grid-cols-[1fr,1.5fr]">
+        <div className="grid gap-4 sm:grid-cols-[1fr_1.5fr]">
           <div className="space-y-1.5">
             <Label htmlFor="checkout-city" className="flex items-center gap-2">
               <MapPin className="h-3.5 w-3.5" /> City (State)
@@ -1138,7 +1138,7 @@ function CheckoutSkeleton() {
       </header>
       <main className="container max-w-2xl pb-12 pt-6">
         <Skeleton className="h-6 w-1/2" />
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr,320px]">
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
           <div className="space-y-5">
             <Skeleton className="h-64 w-full rounded-2xl" />
             <Skeleton className="h-12 w-full rounded-lg" />

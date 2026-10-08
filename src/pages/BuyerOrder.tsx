@@ -1203,7 +1203,7 @@ function DecisionCard({
           receive an email and an in-page update.
         </p>
       )}
-      <div className="mt-4 grid gap-3 sm:grid-cols-[1.4fr,1fr]">
+      <div className="mt-4 grid gap-3 sm:grid-cols-[1.4fr_1fr]">
         <Button
           onClick={onRelease}
           disabled={locked}
@@ -1383,7 +1383,7 @@ function DisputeSummaryCard({ dispute }: { dispute: ApiDispute | null }) {
           {statusLabel[dispute.status]}
         </span>
       </div>
-      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-[120px,1fr]">
+      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-[120px_1fr]">
         <dt className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
           Reason
         </dt>
