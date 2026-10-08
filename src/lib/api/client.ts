@@ -16,6 +16,7 @@ import { httpApi } from "./http";
 import { mockApi } from "./mocks";
 import type {
   ApiListing,
+  ApiSeller,
   CreateListingRequest,
   CreateListingResponse,
   CreateOrderRequest,
@@ -68,7 +69,7 @@ export interface ApiClient {
     patch: Partial<ApiListing>,
   ): Promise<CreateListingResponse>;
   /** GET /api/listings/:id — read a single listing. */
-  getListing(id: string): Promise<{ listing: ApiListing } | null>;
+  getListing(id: string): Promise<{ listing: ApiListing; seller?: ApiSeller | null } | null>;
   /** GET /api/orders/seller/:npub — seller dashboard orders feed. */
   getSellerOrders(npub: string): Promise<GetSellerOrdersResponse>;
   /** POST /api/orders — buyer initiates a purchase. */

@@ -200,7 +200,7 @@ function AuthFlow() {
       setError(null);
       setBusy("google");
       try {
-        // Exchange the access token for the user's verified email + stable id.
+        // Read the profile for display; the backend verifies the token itself.
         const info = (await fetch(
           "https://www.googleapis.com/oauth2/v3/userinfo",
           { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } },
@@ -214,7 +214,7 @@ function AuthFlow() {
         if (!info.email || !info.sub) {
           throw new Error("Google did not return an email. Try another method.");
         }
-        await loginWithGoogle(info.email, info.sub);
+        await loginWithGoogle(tokenResponse.access_token, info.email, info.sub);
         await routeAfterAuth(info.name ?? info.email.split("@")[0], info.picture);
       } catch (err) {
         setError(

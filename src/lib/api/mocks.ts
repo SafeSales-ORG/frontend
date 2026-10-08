@@ -370,7 +370,7 @@ export const mockApi = {
       deliveryFee: listing.deliveryFee ?? 0,
       amountNGN: totalNGN,
       status: "pending_payment",
-      nombaPaymentRef: null,
+      paymentRef: null,
       trackingNumber: null,
       carrier: null,
       shippedAt: null,

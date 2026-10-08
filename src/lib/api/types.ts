@@ -121,7 +121,8 @@ export interface ApiOrder {
   status: ApiOrderStatus;
 
   /** Nomba transaction reference, set once the pay-in webhook confirms. */
-  nombaPaymentRef?: string | null;
+  /** Payment provider reference for the buyer's pay-in. */
+  paymentRef?: string | null;
 
   trackingNumber?: string | null;
   carrier?: string | null;
@@ -520,6 +521,9 @@ export interface LoginRequest {
  * Google Identity SDK) and returns a JWT session.
  */
 export interface GoogleAuthRequest {
+  /** Google OAuth access token — the backend verifies it with Google. */
+  accessToken: string;
+  /** Used only by the demo-mode mock to key a stable session. */
   email: string;
   googleId: string;
 }

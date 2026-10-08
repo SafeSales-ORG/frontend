@@ -15,7 +15,6 @@ import { getSeller as getFixtureSeller } from "@/lib/mock";
 import {
   apiClient,
   ApiError,
-  DEMO_MODE,
   type ApiOrder,
   type GetOrderResponse,
 } from "@/lib/api";
@@ -302,20 +301,11 @@ export default function Checkout() {
   //  Confirm transfer sent — moves to the "waiting" step, then locks the
   //  payment in escrow.
   //
-  //  Two modes:
-  //   - Mock mode (no VITE_API_URL): the mock client transitions the
-  //     order to paid ~5s after createOrder on its own, so we
-  //     just show "waiting" and let the polling effect advance the UI.
-  //   - Real backend (VITE_API_URL set): in production the Nomba pay-in
-  //     webhook flips the order to paid. For demos the bank rail isn't
-  //     wired, so we trigger the transition ourselves via the demo-only
-  //     POST /api/orders/:token/simulate-payment (apiClient.confirmPayment).
-  //     WITHOUT this the order sits in pending_payment and the buyer's
-  //     "I've sent the transfer" spinner never resolves.
-  //
-  //  simulate-payment is idempotent (a second hit returns the existing
-  //  paid order), so we retry a few times with backoff to ride out a
-  //  transient backend hiccup.
+  //  In production the payment provider's webhook marks the order paid;
+  //  apiClient.confirmPayment just re-reads it (or, on a staging backend
+  //  with simulation on, marks it paid). Either way the polling effect
+  //  advances waiting → detected → secured once status leaves
+  //  pending_payment. Retries ride out transient network errors.
   // ------------------------------------------------------------------
 
   const handleConfirmTransferSent = async () => {
@@ -335,19 +325,12 @@ export default function Checkout() {
     const backoffMs = [1500, 3000, 5000];
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        await apiClient.confirmPayment(createdOrder.orderToken);
+        const { order } = await apiClient.confirmPayment(createdOrder.orderToken);
         await queryClient.invalidateQueries({
           queryKey: ["safesale", "order", createdOrder.orderToken],
         });
-        toast({ title: "Payment confirmed ✓" });
-        // Demo-only: surface the email the backend would send at this exact
-        // point (payment confirmed → Resend "order secured" + tracking link).
-        // No real email is sent in demo mode; this just makes the step visible.
-        if (DEMO_MODE && email.trim()) {
-          toast({
-            title: "📧 Order email sent",
-            description: `Tracking link sent to ${email.trim()} (simulated in demo).`,
-          });
+        if (order.status !== "pending_payment") {
+          toast({ title: "Payment received. Your money is held in escrow." });
         }
         return;
       } catch (err) {

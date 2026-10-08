@@ -10,12 +10,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api";
 import { marketStore } from "@/lib/store/marketStore";
-import type { ApiListing } from "@/lib/api/types";
+import type { ApiListing, ApiSeller } from "@/lib/api/types";
 
 export interface ListingDetails {
   /** The UUID from the `d` tag — same as the URL slug. */
   id: string;
-  /** Hex pubkey of the seller (event author). */
+  /** Seller's public id (or the seller id when unknown). */
   sellerPubkey: string;
   title: string;
   summary?: string;
@@ -36,13 +36,6 @@ export interface ListingDetails {
   deliveryFee?: number;
   /** Unix seconds — `published_at` tag or `created_at` of the event. */
   publishedAt: number;
-  /**
-   * @deprecated Always `false` now. Kept on the type so consumers don't
-   * have to change shape; the fixture-fallback path was removed in the
-   * 4-day demo bug-fix sprint. Remove this field in the post-submission
-   * refactor pass.
-   */
-  fromFixture: boolean;
   /** Seller display info, populated when resolved from the market store. */
   sellerName?: string;
   sellerHandle?: string;
@@ -57,7 +50,7 @@ export interface ListingDetails {
  * buyer pages render. Seed-based images become the `safesale://` placeholder
  * that `PublicListing` already knows how to draw; URL images pass through.
  */
-function toListingDetails(listing: ApiListing): ListingDetails {
+function toListingDetails(listing: ApiListing, apiSeller?: ApiSeller | null): ListingDetails {
   const images = listing.images
     .map((img) =>
       img.url
@@ -67,7 +60,8 @@ function toListingDetails(listing: ApiListing): ListingDetails {
           : "",
     )
     .filter(Boolean);
-  const seller = marketStore.getSellerById(listing.sellerId);
+  // Real backend sends the seller; demo mode resolves it from the store.
+  const seller = apiSeller ?? marketStore.getSellerById(listing.sellerId);
   return {
     id: listing.id,
     sellerPubkey: seller?.pubkey ?? listing.sellerId,
@@ -82,7 +76,6 @@ function toListingDetails(listing: ApiListing): ListingDetails {
     delivery: listing.delivery ?? undefined,
     deliveryFee: listing.deliveryFee ?? 0,
     publishedAt: Math.floor(new Date(listing.createdAt).getTime() / 1000),
-    fromFixture: false,
     sellerName: seller?.name,
     sellerHandle: seller?.handle,
     sellerVerified: seller?.verified,
@@ -101,7 +94,7 @@ export function useListing(id: string | undefined) {
 
       try {
         const res = await apiClient.getListing(id);
-        return res?.listing ? toListingDetails(res.listing) : null;
+        return res?.listing ? toListingDetails(res.listing, res.seller) : null;
       } catch {
         return null;
       }
