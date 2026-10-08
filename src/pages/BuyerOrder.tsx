@@ -94,6 +94,7 @@ import { useUploadFile } from "@/hooks/useUploadFile";
 import {
   apiClient,
   ApiError,
+  DEMO_MODE,
   type ApiDispute,
   type ApiListing,
   type ApiOrder,
@@ -236,7 +237,7 @@ export default function BuyerOrder() {
       setDisputeSubmitted(true);
       toast({
         title: "Dispute submitted",
-        description: "The seller and SafeSale mediation team have been notified.",
+        description: "The payout is frozen while a SafeSale mediator reviews it.",
       });
     },
     onError: (err: unknown) => {
@@ -310,10 +311,9 @@ export default function BuyerOrder() {
 
         <SellerMiniCard seller={seller} />
 
-        {/* Chat unlocks only after payment is locked — keeps deals on-platform
-            and protects escrow. Before payment the buyer relies on the
-            seller's profile + reputation above. */}
-        {status === "pending_payment" ? (
+        {/* Order chat is stored in this browser only (no backend yet), so it
+            only appears in demo mode. */}
+        {!DEMO_MODE ? null : status === "pending_payment" ? (
           <section className="rounded-2xl border border-dashed border-border bg-surface/40 p-4 text-center">
             <MessageCircle className="mx-auto h-5 w-5 text-ink-soft" />
             <p className="mt-2 text-sm font-medium text-ink">
@@ -422,7 +422,7 @@ export default function BuyerOrder() {
                 Dispute submitted successfully
               </h2>
               <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
-                The seller and the SafeSale mediation team have been notified.
+                The payout is frozen while a SafeSale mediator reviews it.
                 Your funds stay locked in escrow until it's resolved — usually
                 within 48 hours. You can keep talking to the seller in the order
                 chat.
@@ -731,7 +731,7 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
         iconBg: "bg-brand",
         Icon: ShieldCheck,
         headline: "Your payment is locked in escrow",
-        subline: `${amount} is held safely. The seller has been notified and will ship soon.`,
+        subline: `${amount} is held by SafeSale. The seller can now see your payment and ship your order.`,
       };
     case "shipped":
       return {
@@ -877,20 +877,20 @@ function getTimelineState(status: ApiOrderStatus): TimelineStep[] {
   // 4 canonical steps. Disputed/refunded use the same skeleton but the
   // "Released" step stays pending (it never happened).
   const base: Omit<TimelineStep, "state">[] = [
-    { key: "paid", label: "Paid", Icon: Wallet },
-    { key: "locked", label: "Locked", Icon: Lock },
+    { key: "held", label: "Payment held", Icon: Lock },
     { key: "shipped", label: "Shipped", Icon: Truck },
-    { key: "released", label: "Released", Icon: CheckCircle2 },
+    { key: "delivered", label: "Delivered", Icon: PackageCheck },
+    { key: "released", label: "Paid out", Icon: CheckCircle2 },
   ];
   // Map each status to which step is "active" / what is "done"
   const stateByStep: Record<ApiOrderStatus, TimelineStepState[]> = {
     pending_payment: ["active", "pending", "pending", "pending"],
     paid: ["done", "active", "pending", "pending"],
     shipped: ["done", "done", "active", "pending"],
-    delivered: ["done", "done", "active", "pending"],
+    delivered: ["done", "done", "done", "active"],
     completed: ["done", "done", "done", "done"],
-    disputed: ["done", "done", "done", "pending"],
-    refunded: ["done", "done", "pending", "pending"],
+    disputed: ["done", "pending", "pending", "pending"],
+    refunded: ["done", "pending", "pending", "pending"],
   };
   const states = stateByStep[status];
   return base.map((b, i) => ({ ...b, state: states[i] }));
@@ -1198,30 +1198,19 @@ function DecisionCard({
         Your decision
       </p>
       {locked && (
-        <p className="mt-2 text-sm text-ink-soft">
-          These activate once the seller marks your order as shipped. You'll
-          receive an email and an in-page update.
+        <p className="mt-2 text-body">
+          Release payment once your order arrives. If the seller doesn't ship, you can report a
+          problem now.
         </p>
       )}
       <div className="mt-4 grid gap-3 sm:grid-cols-[1.4fr_1fr]">
-        <Button
-          onClick={onRelease}
-          disabled={locked}
-          size="lg"
-          className="h-12 w-full rounded-lg bg-brand text-base font-semibold text-brand-foreground shadow-sm hover:bg-brand/90 disabled:opacity-50"
-        >
-          <ShieldCheck className="mr-2 h-4 w-4" />
+        <Button onClick={onRelease} disabled={locked} size="lg" className="w-full">
+          <ShieldCheck />
           Release payment
         </Button>
-        <Button
-          onClick={onDispute}
-          disabled={locked}
-          variant="outline"
-          size="lg"
-          className="h-12 w-full rounded-lg border-border text-ink hover:border-negative/25 hover:text-negative disabled:opacity-50"
-        >
-          <AlertTriangle className="mr-2 h-4 w-4" />
-          Open dispute
+        <Button onClick={onDispute} variant="outline" size="lg" className="w-full">
+          <AlertTriangle />
+          Report a problem
         </Button>
       </div>
       {!locked && countdownIso && (
@@ -1231,7 +1220,7 @@ function DecisionCard({
             <span className="font-semibold tabular-nums text-ink">
               {formatCountdownLong(countdownIso)}
             </span>{" "}
-            (3 days after shipping) if you take no action. Before then you may:
+            if you don't release it or report a problem. Before then you can:
           </p>
           <ul className="mt-1.5 space-y-0.5">
             <li className="flex items-center gap-1.5">
@@ -1399,8 +1388,8 @@ function DisputeSummaryCard({ dispute }: { dispute: ApiDispute | null }) {
       </dl>
       <p className="mt-4 text-xs leading-relaxed text-ink-soft">
         {isResolved
-          ? "Check your email for the mediator's full reasoning."
-          : "A mediator will respond within 48 hours. You'll be notified by email and on this page."}
+          ? "This dispute is closed. The outcome is shown above."
+          : "A SafeSale mediator is reviewing what you and the seller sent. Check this page for the outcome."}
       </p>
     </section>
   );
@@ -1422,21 +1411,12 @@ function MobileActionBar({
       aria-label="Order actions"
     >
       <div className="container mx-auto max-w-3xl space-y-2">
-        <Button
-          onClick={onRelease}
-          size="lg"
-          className="h-12 w-full rounded-lg bg-brand text-base font-semibold text-brand-foreground shadow-sm hover:bg-brand/90"
-        >
-          <ShieldCheck className="mr-2 h-4 w-4" />
+        <Button onClick={onRelease} size="lg" className="w-full">
+          <ShieldCheck />
           Release payment
         </Button>
-        <Button
-          onClick={onDispute}
-          variant="outline"
-          size="lg"
-          className="h-11 w-full rounded-lg border-border text-ink hover:border-negative/25 hover:text-negative"
-        >
-          Open dispute
+        <Button onClick={onDispute} variant="outline" className="w-full">
+          Report a problem
         </Button>
       </div>
     </div>
@@ -1471,8 +1451,8 @@ function EscrowTrustFooter() {
     <div className="flex items-center justify-center gap-2 px-4 py-6 text-center">
       <ShieldCheck className="h-4 w-4 shrink-0 text-brand" />
       <p className="text-xs leading-relaxed text-ink-soft">
-        Your payment is held by SafeSale's escrow — neither party can withdraw
-        without the other's consent or a mediator's decision.{" "}
+        Your payment is held by SafeSale. It's released when you confirm delivery,
+        automatically 7 days after shipping if no problem is reported, or by a mediator's decision.{" "}
         <a
           href="#how-escrow-works"
           className="font-medium text-brand hover:underline"
