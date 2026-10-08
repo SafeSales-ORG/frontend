@@ -56,7 +56,7 @@ export interface ApiClient {
    * and receive a JWT session. No Nostr keys are surfaced to the user.
    */
   googleAuth(req: GoogleAuthRequest): Promise<GoogleAuthResponse>;
-  /** POST /api/sellers — register a new seller from their Nostr identity. */
+  /** POST /api/sellers — register a seller profile for the signed-in user. */
   createSeller(req: CreateSellerRequest): Promise<CreateSellerResponse>;
   /** PUT /api/sellers — update the caller's own payout details. */
   updatePayout(req: UpdatePayoutRequest): Promise<void>;

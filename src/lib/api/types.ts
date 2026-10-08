@@ -102,11 +102,6 @@ export interface ApiOrder {
   listingId: string;
   sellerId: string;
 
-  /** Bech32 of the buyer's one-time Nostr key (order identity / DM target). */
-  buyerNpub: string;
-  /** Hex form of the same key. */
-  buyerPubkey: string;
-
   buyerName: string;
   buyerPhone: string;
   buyerEmail?: string | null;
@@ -221,8 +216,6 @@ export interface MockListingHint {
 export interface CreateOrderRequest {
   /** cuid from `GET /api/listings/:id`. */
   listingId: string;
-  /** Bech32 of the buyer's one-time Nostr key (generated in browser). */
-  buyerNpub: string;
   buyerName: string;
   buyerPhone: string;
   buyerEmail?: string;

@@ -2,27 +2,8 @@
  * Seller Listings — `/app/listings`.
  *
  * Where a seller adds a new product, copies the buyer link for an
- * existing one, or sees what's live vs. sold out. Design ported from
- * `.stitch-designs/03-seller-listings.html` — Stitch shipped the right
- * layout (snapshot strip → search/filters → 3-col card grid → create
- * sheet → share dialog → mobile FAB) but in Material Design tokens
- * with a violet primary, custom sidebar, Material Symbols, and a
- * glassmorphism layer. All of those are stripped here; the page uses
- * the SafeSale tokens + lucide-react + the existing AppShell, the
- * same way #2 Seller Dashboard was ported.
- *
- * Reads exclusively from Nostr via `useMyListings()` (kind 30018
- * addressable events authored by the logged-in seller). Create-flow
- * is wired against the live Railway backend via `apiClient.createListing`
- * (added in Phase 8 step B) — backend cuid round-trips back as the
- * Nostr `d` tag so /buy/:id and POST /api/orders agree on the id.
- *
- * Edit + Mark-out-of-stock per-card actions are wired through
- * `apiClient.updateListing(id, …)` (PATCH /api/listings/:id). In demo
- * mode they update the in-memory mock; against the real backend they
- * hit the PATCH route, which must also keep the Nostr kind-30018 event
- * (same `d` tag) in sync so /buy/:id and POST /api/orders validate
- * against the current title/price/stock.
+ * existing one, or sees what's live vs. sold out. Create / edit /
+ * mark-out-of-stock go through `apiClient` (POST/PATCH /api/listings).
  */
 
 import { useSeoMeta } from "@unhead/react";
@@ -89,7 +70,7 @@ import { XIcon } from "@/components/safesale/BrandIcons";
 
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
 import { useAuth } from "@/hooks/useAuth";
-import { type MyListing } from "@/hooks/useMyListings";
+import { type MyListing } from "@/lib/types";
 import { useSellerListingsLive } from "@/hooks/useMarket";
 import { useToast } from "@/hooks/useToast";
 import { useUploadFile } from "@/hooks/useUploadFile";
@@ -914,7 +895,7 @@ interface PendingPhoto {
   file: File;
   /** Data URL for preview while it uploads. */
   previewUrl: string;
-  /** Final Blossom URL after a successful upload, else null. */
+  /** Final image URL after a successful upload, else null. */
   uploadedUrl: string | null;
   status: "uploading" | "ready" | "error";
   errorMessage?: string;
@@ -998,7 +979,7 @@ function CreateListingSheet({
 
     setPhotos((prev) => [...prev, ...newPending]);
 
-    // Upload sequentially so we don't hammer the Blossom server.
+    // Process images one at a time to keep memory use low.
     for (const photo of newPending) {
       try {
         const tags = await uploadFile(photo.file);
@@ -1138,9 +1119,8 @@ function CreateListingSheet({
       publishedAt: now,
     };
 
-    // The SafeSale backend (created above) is the source of truth. Nostr is an
-    // internal-only detail the user never manages, so there's nothing else to
-    // broadcast — show success and jump to the share step.
+    // The backend (created above) is the source of truth — show success
+    // and jump to the share step.
     toast({
       title: "Listing published",
       description: "It's live — share the link to start selling.",

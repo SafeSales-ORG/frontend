@@ -1,6 +1,6 @@
 /**
  * `ListingThumb` — square image for product cards in order/payout rows,
- * detail-page hero cards, and anywhere else a Blossom-URL listing
+ * detail-page hero cards, and anywhere else a listing
  * image needs to render.
  *
  * Why this exists alongside `ProductImage`:
@@ -10,7 +10,7 @@
  *     label }` object. No URLs. Built for the marketing/landing
  *     mockups where there's no real product yet.
  *
- *   - Real backend listings carry actual HTTPS image URLs from Blossom
+ *   - Real backend listings carry image URLs (data: or https)
  *     uploads (see `useUploadFile` + the listings create flow). When
  *     present, we render the URL directly via `<img>` with proper
  *     sanitisation. When absent (cold demo / fixture / failed upload),

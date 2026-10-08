@@ -11,7 +11,6 @@ import { Avatar } from "@/components/safesale/Avatar";
 import { EscrowShield } from "@/components/safesale/EscrowShield";
 import { Countdown } from "@/components/safesale/Countdown";
 import { useListing } from "@/hooks/useListing";
-import { useAuthor } from "@/hooks/useAuthor";
 import { getSeller as getFixtureSeller } from "@/lib/mock";
 import {
   apiClient,
@@ -21,9 +20,7 @@ import {
   type GetOrderResponse,
 } from "@/lib/api";
 import { formatNGN } from "@/lib/format";
-import { genUserName } from "@/lib/genUserName";
 import { useToast } from "@/hooks/useToast";
-import { generateBuyerKey, persistBuyerKey } from "@/lib/buyerKey";
 import {
   ShieldCheck,
   ChevronLeft,
@@ -55,12 +52,8 @@ export default function Checkout() {
   const { id = "" } = useParams<{ id: string }>();
   const { data: listing, isLoading: listingLoading } = useListing(id);
   const sellerPubkey = listing?.sellerPubkey;
-  const author = useAuthor(sellerPubkey);
   const fixtureSeller = sellerPubkey ? getFixtureSeller(sellerPubkey) : undefined;
-  const sellerName =
-    author.data?.metadata?.name ??
-    fixtureSeller?.name ??
-    (sellerPubkey ? genUserName(sellerPubkey) : "Seller");
+  const sellerName = listing?.sellerName ?? fixtureSeller?.name ?? "Seller";
   const sellerAvatarSeed = fixtureSeller?.avatarSeed ?? sellerPubkey ?? "seller";
   const sellerRating = fixtureSeller?.rating;
   const sellerReviews = fixtureSeller?.reviews;
@@ -234,22 +227,9 @@ export default function Checkout() {
   //  Order creation — fires when the user taps "Continue to payment"
   //  on the instructions screen.
   //
-  //  1. Generate a one-time Nostr keypair in the browser for the buyer.
-  //     The nsec is persisted to `localStorage` under
-  //     `safesale:buyer:<orderToken>`; the npub identifies the buyer's
-  //     order for backend notifications.
-  //  2. Send the corresponding npub to the backend along with the
-  //     buyer's name / phone / city / address (the real backend
-  //     requires these fields — see `routes/orders.ts::CreateOrderSchema`).
-  //  3. Store the `CreateOrderResponse` (orderToken + Nomba pay-in
-  //     bank details) so the Instructions step can render them.
-  //
-  //  KEY ORDER MATTERS: we generate-and-persist the keypair BEFORE
-  //  awaiting createOrder so that if the user refreshes mid-call (or
-  //  the network drops) we don't end up with a token on the backend
-  //  pointing at an npub whose nsec was never written to disk.
-  //  Worst case: an orphan key under a token that doesn't exist. Best
-  //  case: success. Either way the release flow is never blocked.
+  //  Sends the buyer's name / phone / city / address to the backend
+  //  (see backend `routes/orders.ts::CreateOrderSchema`) and stores the
+  //  returned orderToken + pay-in bank details for the Instructions step.
   // ------------------------------------------------------------------
 
   const handleIssueAccount = async () => {
@@ -257,15 +237,8 @@ export default function Checkout() {
     setCreating(true);
     setCreateError(null);
     try {
-      // Step 1: pre-generate a tentative token-less key? No — we don't
-      // have the token yet. The backend generates it. So we generate
-      // the key first, then create the order with the resulting npub,
-      // then persist the nsec under the returned token in a single
-      // tick once we have it.
-      const tentativeKey = generateBuyerKey("__pending__");
       const res = await apiClient.createOrder({
         listingId: listing.id,
-        buyerNpub: tentativeKey.npub,
         buyerName: name.trim(),
         buyerPhone: phone.trim(),
         buyerEmail: email.trim() || undefined,
@@ -275,7 +248,6 @@ export default function Checkout() {
         variant: listing.tags?.[0],
         // Bridge: hand the mock client the listing data so it can
         // accept orders for listings it didn't ship with as fixtures
-        // (e.g. anything the seller just published to Nostr).
         // The real backend silently ignores this — its DB already
         // has the listing from the seller's POST /api/listings.
         _listingHint: {
@@ -298,20 +270,6 @@ export default function Checkout() {
           },
         },
       });
-
-      // Re-persist the keypair under the real orderToken, then drop
-      // the tentative entry. This atomic-feeling swap guarantees that
-      // `getBuyerKey(orderToken)` works the moment the buyer arrives
-      // at /order/:token.
-      persistBuyerKey(res.orderToken, {
-        nsec: tentativeKey.nsec,
-        npub: tentativeKey.npub,
-      });
-      try {
-        localStorage.removeItem("safesale:buyer:__pending__");
-      } catch {
-        // best-effort cleanup
-      }
 
       setCreatedOrder({
         orderToken: res.orderToken,

@@ -58,7 +58,7 @@ import { Avatar } from "@/components/safesale/Avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
-import { type MyListing } from "@/hooks/useMyListings";
+import { type MyListing } from "@/lib/types";
 import { useSellerListingsLive, useSellerReviewsLive } from "@/hooks/useMarket";
 import { useSellerOrders } from "@/hooks/useSellerOrders";
 import { useToast } from "@/hooks/useToast";

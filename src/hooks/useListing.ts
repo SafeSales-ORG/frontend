@@ -1,49 +1,18 @@
 /**
- * `useListing(id)` — fetch a SafeSale product listing by its UUID.
+ * `useListing(id)` — fetch a SafeSale product listing by id via the API
+ * client (real backend, or the in-memory mock in demo mode).
  *
- * Per NIP.md kind 30018 is NIP-15 marketplace listing. The `d` tag
- * holds the listing UUID and is what we use as the URL slug at
- * `safesale.app/buy/<id>`.
- *
- * Returns:
- *   - data: a parsed `NostrListing` with seller pubkey + structured tags,
- *           OR `null` when no event was found on the relay pool. The
- *           consuming UI (`PublicListing.tsx`) handles `null` as a
- *           "listing not loaded yet — refresh in a moment" empty state.
- *   - isLoading, error: from TanStack Query
- *
- * Behaviour:
- *
- *   1. Queries `{ kinds: [30018], '#d': [id], limit: 1 }` against the
- *      relay pool (1.5s timeout, mirroring useAuthor).
- *
- *   2. Validates the event has the tags the UI depends on (`d`, `title`,
- *      at least one `image`, a `price`). Events failing validation are
- *      treated the same as no event.
- *
- *   3. If no valid event comes back, returns `null`. We intentionally
- *      do NOT fall back to `src/lib/mock.ts` fixtures — that was the
- *      pre-launch demo safety net, and it was actively misleading
- *      during real seller flows: clicking "View as buyer" on a real
- *      listing would silently show Amaka's jacket whenever relays
- *      lagged. Better to render an honest "not loaded" state and
- *      retry than to lie about what the buyer is buying.
- *
- * Trust model: listings are public UGC (per nostr-security guidance,
- * no author filtering required). The seller's identity is published
- * via the event's `pubkey` field — consumers use that with
- * `useAuthor()` to render seller name + verification.
+ * Returns `null` when the listing doesn't exist; `PublicListing.tsx`
+ * renders that as an honest "listing not found" state.
  */
 
-import type { NostrEvent } from "@nostrify/nostrify";
-import { useNostr } from "@nostrify/react";
 import { useQuery } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api";
 import { marketStore } from "@/lib/store/marketStore";
 import type { ApiListing } from "@/lib/api/types";
 
-export interface NostrListing {
+export interface ListingDetails {
   /** The UUID from the `d` tag — same as the URL slug. */
   id: string;
   /** Hex pubkey of the seller (event author). */
@@ -74,8 +43,6 @@ export interface NostrListing {
    * refactor pass.
    */
   fromFixture: boolean;
-  /** The raw event. Present when the listing came from a Nostr event. */
-  event?: NostrEvent;
   /** Seller display info, populated when resolved from the market store. */
   sellerName?: string;
   sellerHandle?: string;
@@ -86,11 +53,11 @@ export interface NostrListing {
 }
 
 /**
- * Convert a market-store `ApiListing` into the `NostrListing` shape the
+ * Convert a market-store `ApiListing` into the `ListingDetails` shape the
  * buyer pages render. Seed-based images become the `safesale://` placeholder
  * that `PublicListing` already knows how to draw; URL images pass through.
  */
-function apiListingToNostr(listing: ApiListing): NostrListing {
+function toListingDetails(listing: ApiListing): ListingDetails {
   const images = listing.images
     .map((img) =>
       img.url
@@ -124,104 +91,20 @@ function apiListingToNostr(listing: ApiListing): NostrListing {
   };
 }
 
-/* ------------------------------ parsing ------------------------------- */
-
-function getTag(event: NostrEvent, name: string): string | undefined {
-  const t = event.tags.find(([n]) => n === name);
-  return t?.[1];
-}
-
-function getTagValues(event: NostrEvent, name: string): string[] {
-  return event.tags.filter(([n]) => n === name).map(([, v]) => v).filter(Boolean);
-}
-
-function parseStock(raw: string | undefined): number {
-  if (!raw) return 1;
-  if (raw === "out") return 0;
-  const n = Number.parseInt(raw, 10);
-  return Number.isFinite(n) && n >= 0 ? n : 1;
-}
-
-function parseListingEvent(event: NostrEvent): NostrListing | null {
-  const id = getTag(event, "d");
-  const title = getTag(event, "title");
-  const images = getTagValues(event, "image");
-  const priceTag = event.tags.find(([n]) => n === "price");
-
-  if (!id || !title || images.length === 0 || !priceTag) return null;
-
-  const priceRaw = priceTag[1];
-  const priceNGN = Number.parseInt(priceRaw, 10);
-  if (!Number.isFinite(priceNGN) || priceNGN <= 0) return null;
-
-  const publishedAtRaw = getTag(event, "published_at");
-  const publishedAt = publishedAtRaw
-    ? Number.parseInt(publishedAtRaw, 10)
-    : event.created_at;
-
-  const deliveryTag = event.tags.find(([n]) => n === "delivery");
-  const delivery = deliveryTag
-    ? deliveryTag.slice(1).filter(Boolean).join(" · ")
-    : undefined;
-
-  return {
-    id,
-    sellerPubkey: event.pubkey,
-    title,
-    summary: getTag(event, "summary"),
-    description: event.content,
-    images,
-    priceNGN,
-    inStock: parseStock(getTag(event, "stock")),
-    category: getTag(event, "category"),
-    tags: getTagValues(event, "t"),
-    delivery,
-    publishedAt,
-    fromFixture: false,
-    event,
-  };
-}
-
 /* --------------------------------- hook -------------------------------- */
 
 export function useListing(id: string | undefined) {
-  const { nostr } = useNostr();
-
-  return useQuery<NostrListing | null>({
+  return useQuery<ListingDetails | null>({
     queryKey: ["safesale", "listing", id ?? ""],
     queryFn: async () => {
       if (!id) return null;
 
-      // Store / backend FIRST. This is the source of truth in demo mode and
-      // carries the real seller identity (shop name, avatar, rating) +
-      // delivery fee — so a seller-created listing never shows a generated
-      // placeholder name. (In real mode this hits the backend listing.)
       try {
         const res = await apiClient.getListing(id);
-        if (res?.listing) return apiListingToNostr(res.listing);
+        return res?.listing ? toListingDetails(res.listing) : null;
       } catch {
-        /* fall through to Nostr */
+        return null;
       }
-
-      // Fall back to a Nostr event (e.g. a listing published to a relay that
-      // isn't in our store/backend).
-      try {
-        const events = await nostr.query(
-          [{ kinds: [30018], "#d": [id], limit: 1 }],
-          { signal: AbortSignal.timeout(1500) },
-        );
-        const event = events[0];
-        if (event) {
-          const parsed = parseListingEvent(event);
-          if (parsed) return parsed;
-        }
-      } catch {
-        // Relay errors fall through to a null result; UI shows a
-        // "couldn't load listing, retry" state. Better than lying.
-      }
-
-      // Nothing found anywhere — render an honest "not loaded" state.
-      return null;
     },
     staleTime: 60 * 1000,
     retry: 1,

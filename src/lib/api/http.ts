@@ -207,7 +207,7 @@ export const httpApi = {
     // shape, so adapt both directions here (Checkout stays backend-agnostic):
     //  - it REQUIRES a single `deliveryAddress` (min 5) — the FE collects a
     //    city + optional street, so we join them.
-    //  - `_listingHint`/`buyerNpub`/`buyerName`/`contactMethod` are mock-only
+    //  - `_listingHint`/`buyerName`/`contactMethod` are mock-only
     //    or backend-ignored; we drop them (backend hardcodes buyerName).
     const deliveryAddress =
       [req.buyerAddress, req.buyerCity].filter(Boolean).join(", ").trim() ||

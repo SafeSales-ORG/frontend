@@ -87,7 +87,7 @@ export function AppShell({ children, title, subtitle, action }: Props) {
 
   // Signed-in identity comes from the JWT session (`useAuth`) plus the
   // SafeSale seller profile (`useCurrentSeller`, set by Onboarding after
-  // POST /api/sellers). No Nostr keys are surfaced to the user.
+  // POST /api/sellers).
   const { user: authUser, isAuthed, logout } = useAuth();
   const [seller] = useCurrentSeller();
 

@@ -101,10 +101,6 @@ import {
   type ApiSeller,
   type GetOrderResponse,
 } from "@/lib/api";
-import {
-  clearBuyerKey,
-  getBuyerKey,
-} from "@/lib/buyerKey";
 import { marketStore } from "@/lib/store/marketStore";
 import { useReviewForOrderLive } from "@/hooks/useMarket";
 import { formatCountdownLong, formatDate, formatNGN } from "@/lib/format";
@@ -193,9 +189,6 @@ export default function BuyerOrder() {
       return apiClient.releaseOrder(token);
     },
     onSuccess: (res) => {
-      // The key has no further use post-release; clear it so we don't
-      // leave secrets lingering in localStorage.
-      clearBuyerKey(token);
       qc.setQueryData<GetOrderResponse>(
         ["safesale", "order", token],
         (prev) => (prev ? { ...prev, order: res.order } : prev),
@@ -501,7 +494,7 @@ export default function BuyerOrder() {
               />
             </div>
 
-            {/* Evidence photos — real uploads to Blossom. The mediator and
+            {/* Evidence photos. The mediator and
                 seller both see these on their dashboards. */}
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-ink">
@@ -1518,7 +1511,6 @@ function BuyerOrderSkeleton() {
 }
 
 function InvalidOrderToken({ token }: { token: string }) {
-  const hasKey = token ? !!getBuyerKey(token) : false;
   return (
     <div className="grid min-h-screen place-items-center bg-surface px-6 text-center">
       <div className="max-w-md">
@@ -1533,13 +1525,6 @@ function InvalidOrderToken({ token }: { token: string }) {
             : "No order token was provided."}{" "}
           Order links are private and only valid for the buyer they were sent to.
         </p>
-        {hasKey && (
-          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
-            We do still have your release key for this token in this browser —
-            so the URL is partly familiar to us. Double-check the spelling, or
-            try the link in the SMS / email we sent you.
-          </p>
-        )}
         <Button
           asChild
           className="mt-5 bg-brand text-brand-foreground hover:bg-brand/90"

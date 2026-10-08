@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 
 /**
  * Turn a chosen image file into a small, self-contained `data:` URL the app
- * can store and render directly — no external Blossom host, no Nostr signer.
+ * can store and render directly — no external image host.
  *
  * The backend has NO `/api/upload` route yet (see PROGRESS.md), and its listing
  * `images[].url` field accepts any valid URL — including `data:` URLs. So in

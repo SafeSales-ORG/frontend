@@ -357,8 +357,6 @@ export const mockApi = {
       orderToken: token,
       listingId: listing.id,
       sellerId: listing.sellerId,
-      buyerNpub: req.buyerNpub,
-      buyerPubkey: `buyer-pk-${token.slice(0, 8)}`,
       buyerName: req.buyerName,
       buyerPhone: req.buyerPhone,
       buyerEmail: req.buyerEmail ?? null,

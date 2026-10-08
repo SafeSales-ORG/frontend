@@ -9,10 +9,8 @@ import { ProductImage } from "@/components/safesale/ProductImage";
 import { StarRating } from "@/components/safesale/StarRating";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { useListing, type NostrListing } from "@/hooks/useListing";
-import { useAuthor } from "@/hooks/useAuthor";
+import { useListing, type ListingDetails } from "@/hooks/useListing";
 import { useSellerReputationLive } from "@/hooks/useMarket";
-import { genUserName } from "@/lib/genUserName";
 import { formatNGN, formatRelative } from "@/lib/format";
 import { cn, sanitizeUrl } from "@/lib/utils";
 import { hashStr } from "@/lib/seeded";
@@ -57,26 +55,12 @@ export default function PublicListing() {
 /*                              View (loaded)                                 */
 /* -------------------------------------------------------------------------- */
 
-function PublicListingView({ listing }: { listing: NostrListing }) {
+function PublicListingView({ listing }: { listing: ListingDetails }) {
   const [activeImage, setActiveImage] = useState(0);
 
-  // Seller display: read kind-0 metadata for name + picture; fall back
-  // to a deterministic generated handle so the buyer never sees a raw
-  // hex pubkey. Reputation fields (rating / reviewCount / completedOrders)
-  // are intentionally undefined for now — they'll surface once the
-  // backend publishes kind 1985 reviews on release (PRD delta #4).
-  const author = useAuthor(listing.sellerPubkey);
-  const sellerName =
-    listing.sellerName ??
-    author.data?.metadata?.name ??
-    author.data?.metadata?.display_name ??
-    genUserName(listing.sellerPubkey);
-  const sellerAvatarUrl =
-    sanitizeUrl(listing.sellerAvatarUrl ?? author.data?.metadata?.picture);
+  const sellerName = listing.sellerName ?? "Seller";
+  const sellerAvatarUrl = sanitizeUrl(listing.sellerAvatarUrl);
   const outOfStock = listing.inStock === 0;
-  // Reputation fields wait on backend kind-1985 publishing (PRD delta #4);
-  // hidden behind opt-in nullables so the JSX conditionals re-light when
-  // we wire them.
   const sellerVerified: boolean = listing.sellerVerified ?? false;
   const reputation = useSellerReputationLive(listing.sellerStoreId);
   const sellerRating = reputation.reviewCount > 0 ? reputation.rating : undefined;
@@ -340,7 +324,7 @@ function Gallery({
   onSelect,
   hero,
 }: {
-  listing: NostrListing;
+  listing: ListingDetails;
   activeIndex: number;
   onSelect: (index: number) => void;
   hero: string;

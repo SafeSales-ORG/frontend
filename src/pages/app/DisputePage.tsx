@@ -384,7 +384,7 @@ function DisputeDetailView({
                 This dispute has been resolved
               </h2>
               <p className="mt-2 text-sm text-ink-soft">
-                The outcome is final and audit-recorded on the Nostr network.
+                The outcome is final. Any payout or refund is processed automatically.
               </p>
             </section>
           )}

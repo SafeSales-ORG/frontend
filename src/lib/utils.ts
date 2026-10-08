@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Sanitize a URL from an untrusted source (Nostr event tag, user input,
+ * Sanitize a URL from an untrusted source (user input,
  * etc.) before using it as an `href`, `src`, iframe `src`, or CSS
  * `url()`. Returns `null` for anything that isn't safe to render.
  *
@@ -14,9 +14,8 @@ export function cn(...inputs: ClassValue[]) {
  * (`data:image/*` except SVG, used by demo-mode uploads that have no
  * backend to host files). Everything else (javascript:, blob:, file:,
  * vbscript:, data:image/svg+xml, schemeless inputs, malformed URLs) is
- * rejected. See `.agents/skills/nostr-security/SKILL.md` for the full
- * threat model — nsec keys live in localStorage and a single XSS
- * permanently compromises every Nostr client the user has ever used.
+ * rejected — the session token lives in localStorage, so a single XSS
+ * via an untrusted URL would compromise the account.
  */
 export function sanitizeUrl(input: unknown): string | null {
   if (typeof input !== "string" || input.length === 0) return null;
