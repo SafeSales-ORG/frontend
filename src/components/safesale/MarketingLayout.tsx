@@ -160,7 +160,7 @@ export function MarketingLayout({ children }: Props) {
 
 function SiteFooter() {
   return (
-    <footer className="bg-ink text-canvas-sunken">
+    <footer className="bg-forest text-canvas-sunken">
       <div className="container py-14">
         <div className="grid gap-10 md:grid-cols-[2fr_1fr_1fr]">
           <div>

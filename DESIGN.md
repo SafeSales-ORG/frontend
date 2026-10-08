@@ -1,13 +1,19 @@
 ---
 version: 1
 name: SafeSale
-description: Naira escrow for social-commerce. Calm, precise, trustworthy — a money product first, a marketing site second. One emerald accent on sage-tinted neutrals, heavy Inter headlines, tabular money figures, surface contrast instead of shadows.
+description: Naira escrow for social-commerce. Wise-inspired — high-contrast forest green and mint, heavy display headlines, tabular money figures, flat surfaces — with purposeful motion that shows money moving through escrow.
 references:
   - ../design-refs/wise.DESIGN.md — structure: single accent, tinted canvas, heavy display type, generous radius, surface-contrast elevation
   - ../design-refs/stripe.DESIGN.md — money typography (tabular figures), checkout + dashboard density, hairline tables
 
 colors:
-  # Brand — the ONLY accent. Primary actions, links, focus, "funds secured" moments.
+  # Wise-style pairing in SafeSale's emerald family (Wise uses #163300 / #9fe870;
+  # we keep our own hues so SafeSale doesn't read as a Wise clone).
+  forest: "#0B3A2A"           # primary buttons, headings on mint, dark bands, footer
+  forest-hover: "#0F4A36"
+  mint: "#9DF2C0"             # hero field, text on forest buttons, highlights
+  mint-soft: "#C9F7DC"        # soft mint cards
+  # Emerald — links, icons, status, "funds secured" panels.
   brand: "#0E6B4E"
   brand-hover: "#0B5A41"
   brand-active: "#08472F"
@@ -58,8 +64,10 @@ colors-dark:
   negative-pale: "#341716"
 
 typography:
-  family: Inter (variable, Google Fonts), system-ui fallback. One family only.
+  display: Manrope 700–800 for h1/h2 (stand-in for Wise Sans — chunky, geometric).
+  family: Inter (Google Fonts) for everything else.
   features: '"cv11", "ss01"' globally; '"tnum"' on every money/number.
+  display-2xl: { size: 72px, line: 72px, weight: 800, tracking: -0.04em }   # landing hero at xl widths
   display-xl: { size: 56px, line: 60px, weight: 800, tracking: -0.035em }   # landing hero only
   display-lg: { size: 44px, line: 48px, weight: 800, tracking: -0.03em }    # landing section heads
   h1:         { size: 32px, line: 38px, weight: 700, tracking: -0.02em }    # page titles
@@ -98,9 +106,10 @@ elevation:
   2: "0 1px 2px rgb(17 22 19 / 0.06), 0 8px 24px rgb(17 22 19 / 0.08)" — ONLY floating layers: dialogs, popovers, dropdowns, toasts, sticky mobile pay bar.
 
 motion:
-  duration: 150ms (hover/press), 200ms (popovers), 250ms (dialogs/sheets)
+  library: motion (motion/react). MotionConfig reducedMotion="user" wraps the app.
+  duration: 150ms (press), 200–250ms (popovers, accordions, step swaps), 450ms (scroll reveal)
   easing: cubic-bezier(0.2, 0, 0, 1)
-  rule: motion confirms an action; it never decorates. No entrance animations on page load, no infinite pulses (except a single spinner while waiting for payment). Respect prefers-reduced-motion.
+  rule: motion explains the product — money moving into escrow and out to the seller — or confirms an action. It never decorates.
 ---
 
 # SafeSale design system
@@ -165,7 +174,8 @@ foreground colour. No icons-plus-dots, no gradients.
 
 **Buttons** — height 44px (default), 36px (sm), 52px (lg, checkout pay
 button only). `pill` radius. Label `label` (14px/550), lg uses 16px.
-- *Primary*: `brand` bg, `on-brand` text; hover `brand-hover`. Max one per view region.
+- *Primary*: `forest` bg, `mint` text; hover `forest-hover`. Max one per view region.
+- *Mint*: `mint` bg, `forest` text — only on `forest` surfaces.
 - *Secondary*: `canvas` bg, 1px `line-strong` border, `ink` text; hover `canvas-soft`.
 - *Ghost*: transparent, `body` text; hover `canvas-sunken`.
 - *Destructive*: `negative` text on `canvas` with `line-strong` border; filled `negative` only inside a confirm dialog.
@@ -205,15 +215,33 @@ one secondary button. No illustrations, no emoji.
 **Icons** — lucide, 1.75 stroke, 16px inline / 20px in buttons and nav.
 Icons support text; they never stand alone without an `aria-label`.
 
+## Motion
+
+Use motion only where it explains something or confirms an action:
+
+- **Live order card** (landing hero): an example order plays through Awaiting
+  payment → Held → Shipped → Paid out. Pauses on hover; one still frame
+  under reduced motion.
+- **How it works stepper**: steps auto-advance with a progress bar, a click
+  stops autoplay, and the preview swipes left/right on touch.
+- **Scroll reveal**: sections fade up 16px once, the first time they enter
+  the viewport (`<Reveal>`). Never on transactional pages.
+- **Accordions and step changes**: height/opacity, 250ms.
+- **Buttons**: press scale 0.97. **Success moments** (payment received,
+  paid out): one spring on the check icon.
+- Never: parallax, infinite pulses, animated gradients, motion on page load
+  of checkout/order pages beyond a simple fade.
+
 ## Page patterns
 
 **Marketing (Landing, How it works, For sellers)** — sticky white nav
-(64px, hairline bottom). Hero on `canvas-soft`: `display-xl` headline (≤ 8
+(64px, hairline bottom). Hero on a full-width `mint` field with `forest`
+headline and a `forest` pill CTA (mint text), Wise-style. Hero on the landing page: `display-xl` headline (≤ 8
 words, says what it is), `body-lg` subline, one primary + one secondary
 button, and a real product visual on the right (the checkout card or order
 status card rendered with real components — not a stock image). Sections
 alternate `canvas-soft` / `canvas`. Section head: `display-lg` + `body-lg`.
-Footer on `ink` with `canvas-soft` text. No gradient blobs, marquees,
+Closing CTA band and footer on `forest`. No gradient blobs, marquees,
 sparkle pills, floating badges or scroll animations.
 
 **Checkout & buyer order page** — single column, `reading-max` 640px.

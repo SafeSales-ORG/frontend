@@ -3,6 +3,7 @@ import { createHead, UnheadProvider } from '@unhead/react/client';
 import { InferSeoMetaPlugin } from 'unhead/plugins';
 import { Suspense } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { MotionConfig } from 'motion/react';
 import { MarketSync } from '@/components/MarketSync';
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -35,19 +36,22 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
 export function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <UnheadProvider head={head}>
-        <QueryClientProvider client={queryClient}>
-          <MarketSync />
-          <TooltipProvider>
-            <Toaster />
-            <ErrorBoundary>
-              <Suspense>
-                <AppRouter />
-              </Suspense>
-            </ErrorBoundary>
-          </TooltipProvider>
-        </QueryClientProvider>
-      </UnheadProvider>
+      {/* Animations are skipped for people who ask their OS to reduce motion. */}
+      <MotionConfig reducedMotion="user">
+        <UnheadProvider head={head}>
+          <QueryClientProvider client={queryClient}>
+            <MarketSync />
+            <TooltipProvider>
+              <Toaster />
+              <ErrorBoundary>
+                <Suspense>
+                  <AppRouter />
+                </Suspense>
+              </ErrorBoundary>
+            </TooltipProvider>
+          </QueryClientProvider>
+        </UnheadProvider>
+      </MotionConfig>
     </GoogleOAuthProvider>
   );
 }
