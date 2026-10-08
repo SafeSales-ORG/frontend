@@ -1,180 +1,131 @@
 import { useSeoMeta } from "@unhead/react";
-import { Link } from "react-router-dom";
+
 import { MarketingLayout } from "@/components/safesale/MarketingLayout";
-import { Button } from "@/components/ui/button";
+import { ClosingCta, PageHero, SectionHeading } from "@/components/safesale/Marketing";
 import { EscrowStatusPill } from "@/components/safesale/EscrowStatus";
-import { Timeline } from "@/components/safesale/Timeline";
-import {
-  ShieldCheck,
-  Lock,
-  Truck,
-  CheckCircle2,
-  Scale,
-  ArrowRight,
-  Sparkles,
-} from "lucide-react";
+import type { EscrowStatus } from "@/lib/types";
 
 export default function HowItWorks() {
   useSeoMeta({
     title: "How SafeSale works",
-    description:
-      "How SafeSale escrow protects buyers and sellers, end to end.",
+    description: "Where the buyer's money is at every step, who acts next, and what happens if something goes wrong.",
   });
+
   return (
     <MarketingLayout>
-      <section className="container max-w-3xl py-16 sm:py-24">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          How it works
-        </p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-          The mechanics of trust.
-        </h1>
-        <p className="mt-4 max-w-2xl text-lg text-ink-soft">
-          SafeSale holds money safely between the moment a buyer pays and the
-          moment they confirm their order arrived. Everything else flows from
-          that one idea.
-        </p>
-
-        <div id="protection" className="mt-12 grid gap-4 sm:grid-cols-2">
-          {[
-            { i: Lock, t: "Funds are sealed", b: "The seller never touches your money. SafeSale holds it until release conditions are met." },
-            { i: Truck, t: "Tracked shipment", b: "Sellers add real tracking numbers. Buyers see live updates from major carriers." },
-            { i: CheckCircle2, t: "Confirm to release", b: "One tap releases the seller's payment. Auto-releases 3 days after shipping if you take no action." },
-            { i: Scale, t: "Fair mediation", b: "If something goes wrong, trained mediators review evidence and decide within 24 hours." },
-          ].map((p) => (
-            <div key={p.t} className="rounded-2xl border border-border bg-white p-5">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand-soft text-brand-soft-foreground">
-                <p.i className="h-5 w-5" />
-              </span>
-              <p className="mt-4 text-sm font-semibold text-ink">{p.t}</p>
-              <p className="mt-1 text-sm text-ink-soft">{p.b}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="dispute" className="bg-surface-2/40 py-16">
-        <div className="container max-w-3xl">
-          <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-            What happens during a dispute?
-          </h2>
-          <p className="mt-3 max-w-xl text-base text-ink-soft">
-            About 1 in 60 orders enters a dispute. Most are resolved with a
-            quick chat. The rest go through a structured, calm process.
-          </p>
-
-          <div className="mt-8 rounded-2xl border border-border bg-white p-6">
-            <Timeline
-              steps={[
-                {
-                  key: "open",
-                  title: "Either side opens the dispute",
-                  description:
-                    "Funds freeze. A SafeSale mediator joins the chat.",
-                  state: "done",
-                },
-                {
-                  key: "evidence",
-                  title: "Both sides share evidence",
-                  description:
-                    "Photos, screenshots, tracking proof — usually within 24 hours.",
-                  state: "done",
-                },
-                {
-                  key: "review",
-                  title: "Mediator reviews privately",
-                  description: "Checks logs, photos, chat tone, history.",
-                  state: "active",
-                },
-                {
-                  key: "decision",
-                  title: "Decision and release",
-                  description: "Funds release accordingly: full, refund or split.",
-                  state: "pending",
-                },
-              ]}
-            />
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-ink-soft">
-            <span className="text-xs font-medium uppercase tracking-wider text-ink-soft">
-              Possible outcomes
-            </span>
-            <EscrowStatusPill status="completed" size="sm" />
-            <EscrowStatusPill status="refunded" size="sm" />
-            <EscrowStatusPill status="disputed" size="sm" />
-          </div>
-        </div>
-      </section>
-
-      <section id="fees" className="container max-w-3xl py-16">
-        <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-          Fees
-        </h2>
-        <p className="mt-3 text-base text-ink-soft">
-          We only get paid when sellers get paid.
-        </p>
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          <FeeCard label="Per-order fee" value="1.5%" sub="paid by the seller" highlight />
-          <FeeCard label="Setup fee" value="₦0" sub="no onboarding cost" />
-          <FeeCard label="Withdrawal fee" value="₦0" sub="bank payouts are free" />
-        </div>
-      </section>
-
-      <section className="container max-w-3xl pb-20">
-        <div className="rounded-3xl border border-emerald-200/60 bg-gradient-to-br from-brand to-emerald-700 p-10 text-center text-white">
-          <Sparkles className="mx-auto h-8 w-8" />
-          <h2 className="mt-4 text-3xl font-semibold tracking-tight">
-            Ready to sell with trust?
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-base text-emerald-50/90">
-            Two minutes to set up. Free until you're paid.
-          </p>
-          <Button
-            asChild
-            size="lg"
-            className="mt-6 h-12 rounded-lg bg-white px-6 text-base font-semibold text-brand hover:bg-emerald-50"
-          >
-            <Link to="/onboarding">
-              Get started <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-      </section>
+      <PageHero
+        title="Where the money is, at every step."
+        lead="SafeSale holds the buyer's payment between the moment they pay and the moment they confirm their order arrived. Here is exactly what happens in between."
+      />
+      <MoneyJourney />
+      <Disputes />
+      <ClosingCta title="Ready to take your first safe order?" lead="It takes about two minutes to set up a shop." />
     </MarketingLayout>
   );
 }
 
-function FeeCard({
-  label,
-  value,
-  sub,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  highlight?: boolean;
-}) {
+const JOURNEY: { status: EscrowStatus; title: string; who: string; body: string }[] = [
+  {
+    status: "pending_payment",
+    title: "The buyer checks out",
+    who: "Buyer",
+    body: "They enter delivery details and get bank details for this order only. No account needed.",
+  },
+  {
+    status: "paid",
+    title: "SafeSale receives the payment",
+    who: "SafeSale",
+    body: "We confirm the transfer and hold the money. The seller is told to ship; nobody can move the money yet.",
+  },
+  {
+    status: "shipped",
+    title: "The seller ships",
+    who: "Seller",
+    body: "They mark the order shipped, with a tracking number if they have one. A 7-day clock starts.",
+  },
+  {
+    status: "delivered",
+    title: "The buyer checks the item",
+    who: "Buyer",
+    body: "From their order link they confirm it arrived as described, or report a problem.",
+  },
+  {
+    status: "released",
+    title: "The seller is paid",
+    who: "SafeSale",
+    body: "When the buyer releases — or 7 days after shipping with no problem reported — we pay the seller's bank account.",
+  },
+];
+
+function MoneyJourney() {
   return (
-    <div
-      className={
-        "rounded-2xl border bg-white p-5 " +
-        (highlight ? "border-emerald-200/70 bg-brand-soft/50" : "border-border")
-      }
-    >
-      <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
-        {label}
-      </p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight text-ink">
-        {value}
-      </p>
-      <p className="mt-1 text-xs text-ink-soft">{sub}</p>
-      {highlight && (
-        <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-medium text-brand-soft-foreground">
-          <ShieldCheck className="h-3 w-3" /> Includes mediation & protection
-        </span>
-      )}
-    </div>
+    <section id="protection" className="scroll-mt-20 bg-canvas">
+      <div className="container py-16 md:py-24">
+        <SectionHeading title="One order, start to finish" />
+        <ol className="mt-12 divide-y divide-line rounded-lg border border-line">
+          {JOURNEY.map((step, i) => (
+            <li key={step.status} className="grid gap-3 p-5 sm:grid-cols-[48px_1fr_auto] sm:items-start sm:gap-6 sm:p-6">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-pale text-sm font-semibold text-brand-ink tabular-nums">
+                {i + 1}
+              </span>
+              <div>
+                <h3 className="text-h3 text-ink">{step.title}</h3>
+                <p className="mt-1 max-w-2xl text-body">{step.body}</p>
+                <p className="mt-2 text-sm text-mute">Done by: {step.who}</p>
+              </div>
+              <EscrowStatusPill status={step.status} className="justify-self-start" />
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+function Disputes() {
+  const steps = [
+    {
+      title: "Someone reports a problem",
+      body: "The buyer uses “Report a problem” on their order page before releasing payment. The 7-day clock stops and the money is frozen.",
+    },
+    {
+      title: "Both sides explain",
+      body: "The buyer describes what's wrong and adds photos. The seller replies with their side and their own evidence.",
+    },
+    {
+      title: "A mediator decides",
+      body: "A SafeSale mediator reviews everything and chooses one outcome: refund the buyer, pay the seller, or split the amount.",
+    },
+    {
+      title: "The money moves",
+      body: "The seller's share is paid out automatically. A buyer refund is sent to the account the buyer gives the mediator.",
+    },
+  ];
+
+  return (
+    <section id="dispute" className="scroll-mt-20 bg-canvas-soft">
+      <div className="container grid gap-12 py-16 md:py-24 lg:grid-cols-[1fr_1.4fr]">
+        <div>
+          <SectionHeading
+            title="If something goes wrong"
+            lead="Wrong item, damaged, or never arrived. Disputes follow the same four steps every time."
+          />
+          <div className="mt-8 flex flex-wrap items-center gap-2">
+            <span className="text-sm text-mute">Possible outcomes:</span>
+            <EscrowStatusPill status="refunded" />
+            <EscrowStatusPill status="released" />
+          </div>
+        </div>
+        <ol className="space-y-3">
+          {steps.map((s, i) => (
+            <li key={s.title} className="rounded-lg bg-canvas p-5 sm:p-6">
+              <p className="text-sm font-medium text-brand tabular-nums">Step {i + 1}</p>
+              <h3 className="mt-1 text-h3 text-ink">{s.title}</h3>
+              <p className="mt-2 text-body">{s.body}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
   );
 }

@@ -5,8 +5,8 @@ import { ArrowRight, Check, ChevronDown, Lock, Shirt } from "lucide-react";
 import { MarketingLayout } from "@/components/safesale/MarketingLayout";
 import { EscrowStatusPill } from "@/components/safesale/EscrowStatus";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
-import { useCurrentSeller } from "@/hooks/useCurrentSeller";
+import { ClosingCta, SectionHeading } from "@/components/safesale/Marketing";
+import { useSellerCta } from "@/hooks/useSellerCta";
 import { cn } from "@/lib/utils";
 
 export default function Landing() {
@@ -23,18 +23,12 @@ export default function Landing() {
       <Protection />
       <WhenThingsGoWrong />
       <Faq />
-      <ClosingCta />
+      <ClosingCta
+        title="Let buyers pay you without the fear."
+        lead="Set up your shop and share your first link today."
+      />
     </MarketingLayout>
   );
-}
-
-/** Where "Start selling" goes for the current session. */
-function useSellerCta(): { to: string; label: string } {
-  const { isAuthed } = useAuth();
-  const [seller] = useCurrentSeller();
-  if (seller) return { to: "/app", label: "Go to your dashboard" };
-  if (isAuthed) return { to: "/onboarding", label: "Finish setting up" };
-  return { to: "/onboarding", label: "Start selling" };
 }
 
 /* ---------------------------------- Hero ---------------------------------- */
@@ -328,46 +322,5 @@ function Faq() {
         </div>
       </div>
     </section>
-  );
-}
-
-/* ------------------------------- Closing CTA ------------------------------ */
-
-function ClosingCta() {
-  const cta = useSellerCta();
-  return (
-    <section className="bg-canvas">
-      <div className="container py-16 md:py-24">
-        <div className="flex flex-col items-start justify-between gap-8 rounded-xl bg-ink p-8 sm:p-12 md:flex-row md:items-center">
-          <div className="max-w-xl">
-            <h2 className="text-h1 text-canvas">
-              Let buyers pay you without the fear.
-            </h2>
-            <p className="mt-3 text-lg text-canvas-sunken/80">
-              Set up your shop and share your first link today.
-            </p>
-          </div>
-          <Button asChild size="lg" className="shrink-0">
-            <Link to={cta.to}>
-              {cta.label}
-              <ArrowRight />
-            </Link>
-          </Button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* --------------------------------- Shared --------------------------------- */
-
-function SectionHeading({ title, lead }: { title: string; lead?: string }) {
-  return (
-    <div className="max-w-2xl">
-      <h2 className="text-h1 text-ink sm:text-display-lg">
-        {title}
-      </h2>
-      {lead && <p className="mt-4 text-lg text-body">{lead}</p>}
-    </div>
   );
 }
