@@ -78,7 +78,7 @@ export function OrderChat({
               return (
                 <p
                   key={m.id}
-                  className="mx-auto w-fit rounded-full bg-surface px-3 py-1 text-center text-[11px] text-ink-soft"
+                  className="mx-auto w-fit rounded-full bg-surface px-3 py-1 text-center text-xs text-ink-soft"
                 >
                   {m.text}
                 </p>
@@ -99,7 +99,7 @@ export function OrderChat({
                 >
                   {m.text}
                 </div>
-                <span className="mt-0.5 px-1 text-[10px] text-ink-soft">
+                <span className="mt-0.5 px-1 text-xs text-ink-soft">
                   {mine ? "You" : m.from === other ? other : m.from} ·{" "}
                   {formatTime(m.at)}
                 </span>

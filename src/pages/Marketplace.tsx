@@ -102,7 +102,7 @@ export default function Marketplace() {
                   "inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-xs font-medium capitalize transition-colors",
                   category === c
                     ? "border-brand bg-brand-soft text-brand-soft-foreground"
-                    : "border-border bg-white text-ink-soft hover:text-ink",
+                    : "border-border bg-canvas text-ink-soft hover:text-ink",
                 )}
               >
                 {c === "all" ? "All categories" : c}
@@ -112,7 +112,7 @@ export default function Marketplace() {
         </div>
 
         {filtered.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-16 text-center">
+          <div className="rounded-2xl border border-dashed border-border bg-canvas px-6 py-16 text-center">
             <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-surface text-ink-soft">
               <Store className="h-7 w-7" />
             </span>
@@ -151,17 +151,17 @@ function MarketCard({ listing }: { listing: ApiListing }) {
   return (
     <Link
       to={`/buy/${listing.id}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-white transition-all hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-canvas transition-all hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md"
     >
       <div className="relative aspect-square overflow-hidden bg-surface">
         <CardImage image={listing.images[0]} alt={listing.title} />
         {isOut && (
-          <span className="absolute left-0 top-3 rounded-r-md bg-amber-100/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-900 shadow-sm">
+          <span className="absolute left-0 top-3 rounded-r-md bg-warning-pale px-2 py-1 text-xs font-bold uppercase tracking-wide text-warning shadow-sm">
             Out of stock
           </span>
         )}
         {listing.category && (
-          <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold capitalize text-white">
+          <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-xs font-semibold capitalize text-white">
             {listing.category}
           </span>
         )}

@@ -279,7 +279,7 @@ function SnapshotStrip({
   loading: boolean;
 }) {
   return (
-    <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-white p-4 sm:p-5">
+    <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-canvas p-4 sm:p-5">
       <SnapshotStat
         label="Total listings"
         value={stats.total}
@@ -315,13 +315,13 @@ function SnapshotStat({
 }) {
   return (
     <div className="flex-1 min-w-[110px]">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
         {label}
       </p>
       <p
         className={cn(
           "mt-1 text-lg font-semibold leading-none tabular-nums",
-          emphasize ? "text-amber-700" : "text-ink",
+          emphasize ? "text-warning" : "text-ink",
         )}
       >
         {loading ? <Skeleton className="h-5 w-10" /> : value}
@@ -357,7 +357,7 @@ function SearchAndFilters({
     k === "all" ? stats.total : k === "available" ? stats.available : stats.outOfStock;
 
   return (
-    <section className="rounded-2xl border border-border bg-white p-4">
+    <section className="rounded-2xl border border-border bg-canvas p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search
@@ -385,14 +385,14 @@ function SearchAndFilters({
                   "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                   isActive
                     ? "border-brand bg-brand-soft text-brand-soft-foreground"
-                    : "border-border bg-white text-ink-soft hover:text-ink",
+                    : "border-border bg-canvas text-ink-soft hover:text-ink",
                 )}
               >
                 {f.label}
                 <span
                   className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
-                    isActive ? "bg-white text-brand" : "bg-surface text-ink-soft",
+                    "rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums",
+                    isActive ? "bg-canvas text-brand" : "bg-surface text-ink-soft",
                   )}
                 >
                   {countFor(f.key)}
@@ -498,7 +498,7 @@ function ListingCard({
   return (
     <div
       className={cn(
-        "group flex flex-col overflow-hidden rounded-2xl border bg-white transition-all duration-300 animate-slide-up hover:scale-[1.01] hover:-translate-y-0.5 hover:shadow-md",
+        "group flex flex-col overflow-hidden rounded-2xl border bg-canvas transition-all duration-300  hover:scale-[1.01] hover:-translate-y-0.5 hover:shadow-md",
         "border-border focus-within:border-brand hover:border-brand/35",
       )}
     >
@@ -519,14 +519,14 @@ function ListingCard({
 
         {/* "+N" chip — extra images count */}
         {extraImages > 0 && (
-          <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-tight text-white">
+          <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-xs font-semibold uppercase tracking-tight text-white">
             +{extraImages}
           </span>
         )}
 
         {/* Out-of-stock ribbon */}
         {isOut && (
-          <span className="absolute left-0 top-3 rounded-r-md bg-amber-100/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-900 shadow-sm">
+          <span className="absolute left-0 top-3 rounded-r-md bg-warning-pale px-2 py-1 text-xs font-bold uppercase tracking-wide text-warning shadow-sm">
             Out of stock
           </span>
         )}
@@ -647,7 +647,7 @@ function FooterAction({
 function SignedOutState() {
   return (
     <div className="grid place-items-center py-16">
-      <div className="max-w-sm rounded-2xl border border-dashed border-border bg-white p-8 text-center">
+      <div className="max-w-sm rounded-2xl border border-dashed border-border bg-canvas p-8 text-center">
         <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-soft text-brand">
           <ShieldCheck className="h-6 w-6" />
         </span>
@@ -671,7 +671,7 @@ function SignedOutState() {
 
 function EmptyListingsState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center sm:px-10 sm:py-14">
+    <div className="rounded-2xl border border-dashed border-border bg-canvas px-6 py-12 text-center sm:px-10 sm:py-14">
       <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-surface text-ink-soft">
         <ImagePlus className="h-7 w-7" />
       </span>
@@ -701,7 +701,7 @@ function FilteredEmptyState({
   onClearSearch: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-10 text-center">
+    <div className="rounded-2xl border border-dashed border-border bg-canvas px-6 py-10 text-center">
       <p className="text-sm font-medium text-ink">
         {query
           ? `No listings match "${query}".`
@@ -726,7 +726,7 @@ function ListingsGridSkeleton() {
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="overflow-hidden rounded-2xl border border-border bg-white"
+          className="overflow-hidden rounded-2xl border border-border bg-canvas"
         >
           <Skeleton className="aspect-square w-full" />
           <div className="space-y-2 p-4">
@@ -742,7 +742,7 @@ function ListingsGridSkeleton() {
 
 function ErrorState({ message }: { message: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-10 text-center">
+    <div className="rounded-2xl border border-dashed border-border bg-canvas px-6 py-10 text-center">
       <p className="text-sm font-medium text-ink">Couldn't load listings</p>
       <p className="mt-1 text-xs text-ink-soft">{message}</p>
     </div>
@@ -853,9 +853,9 @@ function ShareDialog({
           </div>
 
           {/* QR */}
-          <div className="rounded-xl border border-border bg-white p-3 text-center">
+          <div className="rounded-xl border border-border bg-canvas p-3 text-center">
             <QRCodeCanvas value={shareLink} size={120} className="mx-auto" />
-            <p className="mt-2 text-[11px] text-ink-soft">Or share the QR</p>
+            <p className="mt-2 text-xs text-ink-soft">Or share the QR</p>
           </div>
         </div>
       </DialogContent>
@@ -876,7 +876,7 @@ function ShareTarget({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-white px-3 text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-canvas px-3 text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
     >
       <Icon className="h-4 w-4 text-ink-soft" />
       {label}
@@ -1184,7 +1184,7 @@ function CreateListingSheet({
                     {p.status === "error" && (
                       <span
                         title={p.errorMessage}
-                        className="absolute inset-0 grid place-items-center bg-rose-700/30 text-[10px] font-semibold text-white"
+                        className="absolute inset-0 grid place-items-center bg-negative text-xs font-semibold text-white"
                       >
                         Failed
                       </span>
@@ -1193,7 +1193,7 @@ function CreateListingSheet({
                       type="button"
                       onClick={() => removePhoto(p.key)}
                       aria-label="Remove photo"
-                      className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-white/85 text-ink-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-canvas/85 text-ink-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -1206,7 +1206,7 @@ function CreateListingSheet({
                     className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border bg-surface text-ink-soft hover:border-brand hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
                     <Upload className="h-5 w-5" />
-                    <span className="text-[11px] font-medium">Add photo</span>
+                    <span className="text-xs font-medium">Add photo</span>
                   </button>
                 )}
               </div>
@@ -1280,7 +1280,7 @@ function CreateListingSheet({
                 </div>
               </div>
             </div>
-            <p className="-mt-2 text-[11px] text-ink-soft">
+            <p className="-mt-2 text-xs text-ink-soft">
               Buyers see the delivery fee added to the total before they pay —
               no surprises after payment.
             </p>
@@ -1298,14 +1298,14 @@ function CreateListingSheet({
                 className="mt-1.5 min-h-[140px]"
               />
               {description.length > 1500 && (
-                <p className="mt-1 text-right text-[10px] text-ink-soft tabular-nums">
+                <p className="mt-1 text-right text-xs text-ink-soft tabular-nums">
                   {description.length}/2000
                 </p>
               )}
             </div>
 
             {error && (
-              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+              <div className="rounded-lg border border-negative/25 bg-negative-pale p-3 text-sm text-negative">
                 {error}
               </div>
             )}
@@ -1313,7 +1313,7 @@ function CreateListingSheet({
         </div>
 
         {/* Sticky footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-border bg-white px-5 py-4">
+        <div className="flex items-center justify-end gap-2 border-t border-border bg-canvas px-5 py-4">
           <Button
             variant="outline"
             onClick={onClose}
@@ -1545,7 +1545,7 @@ function EditListingSheet({
                       type="button"
                       onClick={() => removePhoto(p.key)}
                       aria-label="Remove photo"
-                      className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-white/85 text-ink-soft hover:text-ink"
+                      className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-canvas/85 text-ink-soft hover:text-ink"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -1558,7 +1558,7 @@ function EditListingSheet({
                     className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border bg-surface text-ink-soft hover:border-brand hover:text-ink"
                   >
                     <Upload className="h-5 w-5" />
-                    <span className="text-[11px] font-medium">Add photo</span>
+                    <span className="text-xs font-medium">Add photo</span>
                   </button>
                 )}
               </div>
@@ -1671,14 +1671,14 @@ function EditListingSheet({
             </div>
 
             {error && (
-              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+              <div className="rounded-lg border border-negative/25 bg-negative-pale p-3 text-sm text-negative">
                 {error}
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-border bg-white px-5 py-4">
+        <div className="flex items-center justify-end gap-2 border-t border-border bg-canvas px-5 py-4">
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>

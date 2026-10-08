@@ -102,7 +102,7 @@ export default function Onboarding() {
         <Logo />
       </Link>
 
-      <main className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border/60 bg-white p-6 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.06),0_4px_6px_-4px_rgba(0,0,0,0.05)] sm:p-8">
+      <main className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border/60 bg-canvas p-6 sm:p-8">
         <AuthFlow />
       </main>
     </div>
@@ -281,7 +281,7 @@ function AuthFlow() {
               googleLogin();
             }}
             className={cn(
-              "relative flex w-full items-center justify-center gap-3 rounded-xl border border-border/80 bg-white px-4 py-3 text-sm font-medium text-ink shadow-sm transition-all",
+              "relative flex w-full items-center justify-center gap-3 rounded-xl border border-border/80 bg-canvas px-4 py-3 text-sm font-medium text-ink shadow-sm transition-all",
               "hover:bg-surface hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
               "disabled:cursor-not-allowed disabled:opacity-60",
             )}
@@ -297,7 +297,7 @@ function AuthFlow() {
           {/* Divider */}
           <div className="relative flex items-center">
             <span className="h-px flex-1 bg-border/70" />
-            <span className="px-3 text-[11px] font-medium uppercase tracking-wide text-ink-soft">
+            <span className="px-3 text-xs font-medium uppercase tracking-wide text-ink-soft">
               or
             </span>
             <span className="h-px flex-1 bg-border/70" />
@@ -354,14 +354,14 @@ function AuthFlow() {
             </button>
           </div>
           {mode === "signup" && password.length > 0 && !passwordValid && (
-            <p className="mt-1.5 text-[11px] text-rose-600">
+            <p className="mt-1.5 text-xs text-negative">
               Password must be at least {PASSWORD_MIN} characters.
             </p>
           )}
         </div>
 
         {error && (
-          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <p className="rounded-lg border border-negative/25 bg-negative-pale px-3 py-2 text-xs text-negative">
             {error}
           </p>
         )}
@@ -568,7 +568,7 @@ function HandleField({
             aria-hidden
             className={cn(
               "pointer-events-none absolute right-3 transition-opacity",
-              valid ? "text-brand" : "text-rose-500",
+              valid ? "text-brand" : "text-negative",
             )}
           >
             {valid ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
@@ -643,14 +643,14 @@ function AccountNumberField({
             aria-hidden
             className={cn(
               "pointer-events-none absolute right-3 transition-opacity",
-              complete ? "text-brand" : "text-rose-500",
+              complete ? "text-brand" : "text-negative",
             )}
           >
             {complete ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
           </span>
         )}
       </div>
-      <p className="mt-1.5 text-[11px] text-ink-soft">
+      <p className="mt-1.5 text-xs text-ink-soft">
         Your bank account number. Escrow payouts for completed orders go straight here.
       </p>
     </div>

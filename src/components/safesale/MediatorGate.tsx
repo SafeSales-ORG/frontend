@@ -71,7 +71,7 @@ function AccessDenied({
 
   return (
     <div className="min-h-screen bg-surface px-4 py-16">
-      <div className="mx-auto max-w-md rounded-2xl border border-border bg-white p-10 text-center shadow-sm">
+      <div className="mx-auto max-w-md rounded-2xl border border-border bg-canvas p-10 text-center shadow-sm">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-surface text-ink-soft">
           <Lock className="h-6 w-6" aria-hidden />
         </div>
@@ -82,7 +82,7 @@ function AccessDenied({
             <Link to="/">Back to home</Link>
           </Button>
         </div>
-        <p className="mt-6 text-[11px] text-ink-soft">
+        <p className="mt-6 text-xs text-ink-soft">
           Public surface — buyers and sellers don't need this page.
         </p>
       </div>

@@ -139,8 +139,8 @@ export default function EarningsPage() {
         {/* 1. Hero — available balance + working cash-out, locked alongside */}
         <section className="grid gap-4 sm:grid-cols-2">
           {/* Available to withdraw */}
-          <div className="overflow-hidden rounded-2xl border border-brand/20 bg-gradient-to-br from-brand-soft/60 to-white p-5 sm:p-6">
-            <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-brand-soft-foreground">
+          <div className="overflow-hidden rounded-2xl border border-brand/20 bg-brand-soft/60 p-5 sm:p-6">
+            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-brand-soft-foreground">
               <Wallet className="h-3.5 w-3.5" aria-hidden /> Available to cash out
             </p>
             <div className="mt-1 flex flex-wrap items-baseline gap-2">
@@ -166,23 +166,23 @@ export default function EarningsPage() {
               {!canCashOut ? "Nothing to cash out yet" : "Cash out to Naira"}
             </Button>
             {earnings.paidOutNGN > 0 && (
-              <p className="mt-2 text-[11px] text-ink-soft tabular-nums">
+              <p className="mt-2 text-xs text-ink-soft tabular-nums">
                 {formatNGN(earnings.paidOutNGN)} cashed out so far
               </p>
             )}
           </div>
 
           {/* Locked in escrow */}
-          <div className="overflow-hidden rounded-2xl border border-border bg-white p-5 sm:p-6">
-            <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-ink-soft">
-              <ShieldCheck className="h-3.5 w-3.5 text-amber-600" aria-hidden /> Locked in escrow
+          <div className="overflow-hidden rounded-2xl border border-border bg-canvas p-5 sm:p-6">
+            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-ink-soft">
+              <ShieldCheck className="h-3.5 w-3.5 text-warning" aria-hidden /> Locked in escrow
             </p>
             <div className="mt-1 flex flex-wrap items-baseline gap-2">
               {isLoading ? (
                 <Skeleton className="h-9 w-40" />
               ) : (
                 <>
-                  <p className="text-3xl font-semibold tracking-tight text-amber-700 tabular-nums sm:text-4xl">
+                  <p className="text-3xl font-semibold tracking-tight text-warning tabular-nums sm:text-4xl">
                     {formatNGN(earnings.lockedNGN)}
                   </p>
                 </>
@@ -238,10 +238,10 @@ export default function EarningsPage() {
         <BankPanel seller={seller} onSave={setSeller} />
 
         {/* 4. Payout history (=completed orders) */}
-        <section className="overflow-hidden rounded-2xl border border-border bg-white">
+        <section className="overflow-hidden rounded-2xl border border-border bg-canvas">
           <header className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+              <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
                 Payout history
               </p>
               <p className="mt-0.5 text-xs text-ink-soft">
@@ -267,7 +267,7 @@ export default function EarningsPage() {
               {/* Desktop table */}
               <div className="hidden overflow-x-auto sm:block">
                 <table className="w-full text-left text-sm">
-                  <thead className="border-b border-border bg-white text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+                  <thead className="border-b border-border bg-canvas text-xs font-medium uppercase tracking-wider text-ink-soft">
                     <tr>
                       <th className="px-4 py-3">Order</th>
                       <th className="px-4 py-3">Buyer</th>
@@ -294,7 +294,7 @@ export default function EarningsPage() {
         </section>
 
         {/* 5. Footnote — how released funds are held */}
-        <p className="px-1 text-[11px] italic leading-relaxed text-ink-soft">
+        <p className="px-1 text-xs italic leading-relaxed text-ink-soft">
           Released funds are yours — paid out in Naira to your Nigerian bank
           account whenever you like.
         </p>
@@ -375,9 +375,9 @@ function StatCard({
   footnoteTone?: "warn" | "ok";
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-white p-5">
+    <div className="rounded-2xl border border-border bg-canvas p-5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+        <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
           {label}
         </p>
         <Icon className="h-4 w-4 text-ink-soft" aria-hidden />
@@ -393,14 +393,14 @@ function StatCard({
         {sub === null ? (
           <Skeleton className="h-3 w-20" />
         ) : (
-          <p className="text-[11px] tabular-nums text-ink-soft">{sub}</p>
+          <p className="text-xs tabular-nums text-ink-soft">{sub}</p>
         )}
       </div>
       <p
         className={
-          "mt-3 border-t border-border pt-3 text-[11px] " +
+          "mt-3 border-t border-border pt-3 text-xs " +
           (footnoteTone === "warn"
-            ? "text-amber-800"
+            ? "text-warning"
             : footnoteTone === "ok"
               ? "text-brand-soft-foreground"
               : "text-ink-soft")
@@ -478,7 +478,7 @@ function BankPanel({
   return (
     <section
       className={cn(
-        "rounded-2xl border bg-white p-5 sm:p-6",
+        "rounded-2xl border bg-canvas p-5 sm:p-6",
         hasAny ? "border-border" : "border-dashed border-border",
       )}
     >
@@ -569,7 +569,7 @@ function BankPanel({
                 className="mt-1.5 h-11 tabular-nums"
               />
               {accountNumber.length > 0 && accountNumber.length < 9 && (
-                <p className="mt-1 text-[11px] text-amber-700">
+                <p className="mt-1 text-xs text-warning">
                   Account number is 9–10 digits.
                 </p>
               )}
@@ -619,7 +619,7 @@ function PayoutRow({ order }: { order: SellerOrderRow }) {
             <p className="truncate text-sm font-medium text-ink">
               {order.listing.title}
             </p>
-            <p className="mt-0.5 font-mono text-[11px] tabular-nums text-ink-soft">
+            <p className="mt-0.5 font-mono text-xs tabular-nums text-ink-soft">
               {order.shortId}
             </p>
           </div>
@@ -639,7 +639,7 @@ function PayoutRow({ order }: { order: SellerOrderRow }) {
       <td className="px-4 py-3 align-middle">
         <div className="flex items-center gap-2">
           <EscrowStatusPill status={order.status} size="sm" />
-          <span className="text-[11px] text-ink-soft">
+          <span className="text-xs text-ink-soft">
             {formatRelative(order.releasedAt ?? order.updatedAt)}
           </span>
         </div>
@@ -661,7 +661,7 @@ function PayoutMobile({ order }: { order: SellerOrderRow }) {
           <p className="truncate text-sm font-medium text-ink">
             {order.listing.title}
           </p>
-          <p className="mt-0.5 font-mono text-[11px] tabular-nums text-ink-soft">
+          <p className="mt-0.5 font-mono text-xs tabular-nums text-ink-soft">
             {order.shortId}
           </p>
         </div>
@@ -675,7 +675,7 @@ function PayoutMobile({ order }: { order: SellerOrderRow }) {
         <p className="text-xs text-ink-soft">
           {order.buyerName}, {order.buyerCity}
         </p>
-        <span className="text-[11px] text-ink-soft">
+        <span className="text-xs text-ink-soft">
           {formatRelative(order.releasedAt ?? order.updatedAt)}
         </span>
       </div>
@@ -746,7 +746,7 @@ function EmptyNoPayouts({ toShipCount }: { toShipCount: number }) {
       </p>
       <Link
         to="/app/orders"
-        className="mt-5 inline-flex h-11 items-center rounded-lg border border-border bg-white px-4 text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+        className="mt-5 inline-flex h-11 items-center rounded-lg border border-border bg-canvas px-4 text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
       >
         Go to orders
       </Link>

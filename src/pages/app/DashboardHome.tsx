@@ -263,7 +263,7 @@ function WelcomeBanner({
   })();
 
   return (
-    <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
+    <section className="rounded-2xl border border-border bg-canvas p-5 sm:p-6">
       <p className="text-sm text-ink-soft">{greeting},</p>
       <h2 className="mt-1 text-2xl font-semibold leading-tight text-ink sm:text-3xl">
         {firstName} <span aria-hidden>👋</span>
@@ -420,10 +420,10 @@ function KpiTile({
 }) {
   return (
     <div 
-      className="rounded-2xl border border-border bg-white p-5 animate-slide-up transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 hover:shadow-md cursor-pointer hover:border-brand/20"
+      className="rounded-2xl border border-border bg-canvas p-5 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5 hover:shadow-md cursor-pointer hover:border-brand/20"
       style={{ animationDelay: `${delayMs}ms` }}
     >
-      <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-ink-soft">
         <Icon className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
         {label}
       </div>
@@ -433,7 +433,7 @@ function KpiTile({
       <div
         className={cn(
           "mt-2 text-xs",
-          emphasizeSub ? "text-amber-700 font-medium" : "text-ink-soft",
+          emphasizeSub ? "text-warning font-medium" : "text-ink-soft",
         )}
       >
         {loading ? <Skeleton className="h-3 w-32" /> : sub}
@@ -455,7 +455,7 @@ function NeedsAttentionCard({
 }) {
   if (loading) {
     return (
-      <section className="rounded-2xl border border-border bg-white p-5">
+      <section className="rounded-2xl border border-border bg-canvas p-5">
         <div className="space-y-3">
           <Skeleton className="h-4 w-48" />
           <Skeleton className="h-14 w-full" />
@@ -466,11 +466,11 @@ function NeedsAttentionCard({
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-white">
+    <section className="overflow-hidden rounded-2xl border border-border bg-canvas">
       <header className="flex items-center justify-between px-5 py-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
           {rows.length > 0 && (
-            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertCircle className="h-4 w-4 text-warning" />
           )}
           Needs your attention
         </h3>
@@ -525,7 +525,7 @@ function AttentionRow({ row }: { row: SellerOrderRow }) {
         className={cn(
           "h-9 px-3 text-xs font-semibold",
           isShip && "bg-brand text-brand-foreground hover:bg-brand/90",
-          isDispute && "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100",
+          isDispute && "border-warning/25 bg-warning-pale text-warning hover:bg-warning-pale",
         )}
       >
         <Link to={`/app/orders/${row.orderToken}`}>
@@ -548,7 +548,7 @@ function RecentOrdersCard({
   loading: boolean;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-white">
+    <section className="overflow-hidden rounded-2xl border border-border bg-canvas">
       <header className="flex items-center justify-between px-5 py-4">
         <h3 className="text-sm font-semibold text-ink">Recent orders</h3>
         <Link
@@ -634,18 +634,18 @@ function StatusPill({ status }: { status: ApiOrderStatus }) {
       label: "DELIVERED",
     },
     completed: {
-      bg: "bg-emerald-100",
-      text: "text-emerald-800",
+      bg: "bg-brand-pale",
+      text: "text-brand-ink",
       label: "COMPLETED",
     },
     disputed: {
-      bg: "bg-amber-100",
-      text: "text-amber-800",
+      bg: "bg-warning-pale",
+      text: "text-warning",
       label: "DISPUTED",
     },
     refunded: {
-      bg: "bg-rose-100",
-      text: "text-rose-800",
+      bg: "bg-negative-pale",
+      text: "text-negative",
       label: "REFUNDED",
     },
   };
@@ -653,7 +653,7 @@ function StatusPill({ status }: { status: ApiOrderStatus }) {
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-tight",
+        "rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-tight",
         s.bg,
         s.text,
       )}
@@ -675,7 +675,7 @@ function ListingsPreviewCard({
   loading: boolean;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-white">
+    <section className="overflow-hidden rounded-2xl border border-border bg-canvas">
       <header className="flex items-center justify-between px-5 py-4">
         <h3 className="text-sm font-semibold text-ink">Your listings</h3>
         <Link
@@ -728,7 +728,7 @@ function ListingTile({ listing }: { listing: MyListing }) {
   return (
     <Link
       to={`/buy/${listing.id}`}
-      className="group block overflow-hidden rounded-xl border border-border bg-white transition-colors hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      className="group block overflow-hidden rounded-xl border border-border bg-canvas transition-colors hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
     >
       {url ? (
         <img
@@ -788,7 +788,7 @@ function ReputationStrip() {
   if (count === 0) {
     return (
       <section className="rounded-2xl border border-border bg-brand-soft/40 p-5 sm:p-6">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-soft-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wider text-brand-soft-foreground">
           Your reputation
         </p>
         <div className="mt-3 flex items-start gap-3">
@@ -809,7 +809,7 @@ function ReputationStrip() {
   return (
     <section className="rounded-2xl border border-border bg-brand-soft/40 p-5 sm:p-6">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-soft-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wider text-brand-soft-foreground">
           Your reputation
         </p>
         <div className="flex items-center gap-1.5">
@@ -819,7 +819,7 @@ function ReputationStrip() {
                 key={s}
                 className={cn(
                   "h-4 w-4",
-                  s <= Math.round(avg) ? "fill-amber-400 text-amber-400" : "text-border",
+                  s <= Math.round(avg) ? "fill-warning text-warning" : "text-border",
                 )}
               />
             ))}
@@ -834,7 +834,7 @@ function ReputationStrip() {
       </div>
       <ul className="mt-3 space-y-2">
         {reviews.slice(0, 3).map((r) => (
-          <li key={r.id} className="rounded-xl border border-border bg-white p-3">
+          <li key={r.id} className="rounded-xl border border-border bg-canvas p-3">
             <div className="flex items-center gap-2">
               <Avatar seed={r.buyerName} name={r.buyerName} size={24} />
               <span className="text-xs font-medium text-ink">{r.buyerName}</span>
@@ -844,7 +844,7 @@ function ReputationStrip() {
                     key={s}
                     className={cn(
                       "h-3 w-3",
-                      s <= r.rating ? "fill-amber-400 text-amber-400" : "text-border",
+                      s <= r.rating ? "fill-warning text-warning" : "text-border",
                     )}
                   />
                 ))}

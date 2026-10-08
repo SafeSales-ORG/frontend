@@ -197,7 +197,7 @@ export default function OrderDetailPage() {
       query.error.code === "ORDER_NOT_FOUND";
     return (
       <AppShell title="Order not found">
-        <div className="rounded-2xl border border-dashed border-border bg-white p-10 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-canvas p-10 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-surface text-ink-soft">
             <AlertTriangle className="h-6 w-6" aria-hidden />
           </div>
@@ -317,7 +317,7 @@ export default function OrderDetailPage() {
       {/* Mobile sticky action bar — only when paid */}
       {isPaymentLocked && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-30 flex items-center gap-3 border-t border-border bg-white px-4 py-3 shadow-[0_-1px_3px_rgba(0,0,0,0.04)] sm:hidden"
+          className="fixed bottom-0 left-0 right-0 z-30 flex items-center gap-3 border-t border-border bg-canvas px-4 py-3 sm:hidden"
           role="region"
           aria-label="Quick ship action"
         >
@@ -420,7 +420,7 @@ function HeroCard({
             </div>
           </div>
           {shipError && (
-            <p className="mt-3 text-xs text-rose-700">{shipError}</p>
+            <p className="mt-3 text-xs text-negative">{shipError}</p>
           )}
           <Button
             type="button"
@@ -529,7 +529,7 @@ function HeroCard({
                 {formatNGN(order.amountNGN)} is on its way to your bank.
               </p>
             </div>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-brand-soft px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-soft-foreground">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-brand-soft px-2 py-1 text-xs font-semibold uppercase tracking-wide text-brand-soft-foreground">
               <CheckCircle2 className="h-3 w-3" aria-hidden /> Completed
             </span>
           </div>
@@ -544,7 +544,7 @@ function HeroCard({
               <AlertTriangle className="h-5 w-5" aria-hidden />
             </IconCircle>
             <div className="flex-1">
-              <h2 className="text-base font-semibold text-rose-800">
+              <h2 className="text-base font-semibold text-negative">
                 This order is in dispute
               </h2>
               <p className="mt-1 text-sm text-ink-soft">
@@ -554,15 +554,15 @@ function HeroCard({
             </div>
           </div>
           {dispute && (
-            <div className="mt-4 space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-800">
+            <div className="mt-4 space-y-2 rounded-xl border border-negative/25 bg-negative-pale p-4 text-sm">
+              <p className="text-xs font-semibold uppercase tracking-wider text-negative">
                 Dispute reason
               </p>
-              <p className="text-rose-900">{dispute.reason}</p>
+              <p className="text-negative">{dispute.reason}</p>
               {dispute.summary && (
-                <p className="text-xs text-rose-800">{dispute.summary}</p>
+                <p className="text-xs text-negative">{dispute.summary}</p>
               )}
-              <p className="text-[11px] text-rose-700">
+              <p className="text-xs text-negative">
                 Opened by {dispute.openedBy} ·{" "}
                 {formatRelative(dispute.createdAt)} · priority:{" "}
                 {dispute.priority}
@@ -670,21 +670,21 @@ function SellerDisputePanel({
   return (
     <Card>
       <div className="flex items-center gap-2">
-        <AlertTriangle className="h-4 w-4 text-rose-600" />
-        <h2 className="text-base font-semibold text-rose-800">Respond to this dispute</h2>
+        <AlertTriangle className="h-4 w-4 text-negative" />
+        <h2 className="text-base font-semibold text-negative">Respond to this dispute</h2>
       </div>
       <p className="mt-1 text-sm text-ink-soft">
         Reason: <span className="font-medium text-ink">{dispute.reason}</span>
       </p>
       {dispute.summary && (
-        <p className="mt-1 rounded-lg bg-rose-50 p-3 text-sm text-rose-900">
+        <p className="mt-1 rounded-lg bg-negative-pale p-3 text-sm text-negative">
           “{dispute.summary}”
         </p>
       )}
 
       {/* Buyer's evidence */}
       <div className="mt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
           Buyer's evidence
         </p>
         {buyerEvidence.length === 0 ? (
@@ -708,7 +708,7 @@ function SellerDisputePanel({
 
       {/* Seller counter-evidence */}
       <div className="mt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
           Your evidence
         </p>
         <div className="mt-2 grid grid-cols-4 gap-2">
@@ -725,7 +725,7 @@ function SellerDisputePanel({
               className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border bg-surface text-ink-soft hover:border-brand hover:text-ink disabled:opacity-60"
             >
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
-              <span className="text-[10px]">Add proof</span>
+              <span className="text-xs">Add proof</span>
             </button>
           )}
         </div>
@@ -734,7 +734,7 @@ function SellerDisputePanel({
 
       {/* Written response */}
       <div className="mt-4">
-        <Label htmlFor="seller-response" className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+        <Label htmlFor="seller-response" className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
           Your response
         </Label>
         <Input
@@ -752,7 +752,7 @@ function SellerDisputePanel({
         >
           <Send className="mr-2 h-4 w-4" /> Submit response
         </Button>
-        <p className="mt-2 text-[11px] text-ink-soft">
+        <p className="mt-2 text-xs text-ink-soft">
           A SafeSale mediator reviews both sides and issues a decision. Funds
           stay locked until then.
         </p>
@@ -797,7 +797,7 @@ function ShipToCard({ order }: { order: ApiOrder }) {
   const { toast } = useToast();
   return (
     <Card>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
         Ship to
       </p>
       <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-1">
@@ -883,7 +883,7 @@ function SummaryCard({
 }) {
   return (
     <Card>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
         Order summary
       </p>
 
@@ -893,7 +893,7 @@ function SummaryCard({
           <p className="truncate text-sm font-medium text-ink">
             {listing.title}
           </p>
-          <p className="mt-0.5 truncate font-mono text-[11px] tabular-nums text-ink-soft">
+          <p className="mt-0.5 truncate font-mono text-xs tabular-nums text-ink-soft">
             {listing.id}
           </p>
         </div>
@@ -917,7 +917,7 @@ function SummaryCard({
         </SummaryRow>
       </dl>
 
-      <p className="mt-4 text-[11px] italic text-ink-soft">
+      <p className="mt-4 text-xs italic text-ink-soft">
         Buyer paid in Naira via Nomba; funds are held in escrow until the
         buyer confirms delivery.
       </p>
@@ -945,7 +945,7 @@ function TimelineCard({
   const steps = buildTimelineSteps(order, dispute);
   return (
     <Card>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
         Activity
       </p>
       <ol className="mt-4 space-y-0">
@@ -972,9 +972,9 @@ function TimelineRow({
     step.state === "past"
       ? "bg-brand-soft text-brand-soft-foreground"
       : step.state === "current"
-        ? "bg-amber-100 text-amber-800"
+        ? "bg-warning-pale text-warning"
         : step.state === "alert"
-          ? "bg-rose-100 text-rose-800"
+          ? "bg-negative-pale text-negative"
           : "border border-border bg-surface text-ink-soft opacity-60";
 
   let Icon = CheckCircle2;
@@ -1005,7 +1005,7 @@ function TimelineRow({
         <p className="text-sm font-medium text-ink">{step.title}</p>
         <p className="mt-0.5 text-xs text-ink-soft">{step.at ?? "—"}</p>
         {step.detail && (
-          <p className="mt-1 font-mono text-[11px] tabular-nums text-ink-soft">
+          <p className="mt-1 font-mono text-xs tabular-nums text-ink-soft">
             {step.detail}
           </p>
         )}
@@ -1112,7 +1112,7 @@ function buildTimelineSteps(
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
+    <section className="rounded-2xl border border-border bg-canvas p-5 sm:p-6">
       {children}
     </section>
   );
@@ -1130,7 +1130,7 @@ function AccentStrip({
   // single tone for now; keeps prop API ready for future variants
   const cls =
     tone === "amber"
-      ? "border-amber-200 bg-amber-50 text-amber-900"
+      ? "border-warning/25 bg-warning-pale text-warning"
       : "border-border bg-surface text-ink";
   return (
     <div
@@ -1154,9 +1154,9 @@ function IconCircle({
 }) {
   const cls =
     tone === "sky"
-      ? "bg-sky-50 text-sky-800"
+      ? "bg-info-pale text-info"
       : tone === "rose"
-        ? "bg-rose-50 text-rose-800"
+        ? "bg-negative-pale text-negative"
         : "bg-surface text-ink-soft";
   return (
     <div
@@ -1180,7 +1180,7 @@ function Field({
 }) {
   return (
     <div>
-      <dt className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <dt className="text-xs font-medium uppercase tracking-wider text-ink-soft">
         {label}
       </dt>
       <dd className="mt-1">{children}</dd>
@@ -1197,7 +1197,7 @@ function DataPair({
 }) {
   return (
     <div>
-      <dt className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <dt className="text-xs font-medium uppercase tracking-wider text-ink-soft">
         {label}
       </dt>
       <dd className="mt-1 flex items-center justify-between gap-2">
@@ -1257,7 +1257,7 @@ function OrderSkeleton() {
       </div>
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <div className="rounded-2xl border border-border bg-white p-6">
+          <div className="rounded-2xl border border-border bg-canvas p-6">
             <Skeleton className="h-5 w-1/2" />
             <div className="mt-3 space-y-2">
               <Skeleton className="h-4 w-full" />
@@ -1265,7 +1265,7 @@ function OrderSkeleton() {
               <Skeleton className="h-4 w-3/5" />
             </div>
           </div>
-          <div className="rounded-2xl border border-border bg-white p-6">
+          <div className="rounded-2xl border border-border bg-canvas p-6">
             <Skeleton className="h-4 w-32" />
             <div className="mt-3 space-y-2">
               <Skeleton className="h-4 w-full" />
@@ -1274,7 +1274,7 @@ function OrderSkeleton() {
           </div>
         </div>
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-white p-6">
+          <div className="rounded-2xl border border-border bg-canvas p-6">
             <Skeleton className="h-4 w-24" />
             <div className="mt-3 space-y-2">
               <Skeleton className="h-4 w-full" />
@@ -1282,7 +1282,7 @@ function OrderSkeleton() {
               <Skeleton className="h-4 w-2/3" />
             </div>
           </div>
-          <div className="rounded-2xl border border-border bg-white p-6">
+          <div className="rounded-2xl border border-border bg-canvas p-6">
             <Skeleton className="h-4 w-24" />
             <div className="mt-3 space-y-2">
               <Skeleton className="h-4 w-full" />

@@ -268,13 +268,13 @@ export default function Admin() {
     >
       <div className="space-y-6">
         {/* Mode banner */}
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
-          <Scale className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden />
+        <div className="flex items-start gap-3 rounded-2xl border border-warning/25 bg-warning-pale p-4 text-warning">
+          <Scale className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden />
           <div className="text-sm">
             {DEMO_MODE ? (
               <>
                 <p className="font-medium">Demo mode — this queue is fully interactive</p>
-                <p className="mt-1 text-xs text-amber-800">
+                <p className="mt-1 text-xs text-warning">
                   Disputes below are live from the in-memory escrow store. Resolving
                   one immediately updates the matching buyer and seller order pages.
                   No backend or live funds involved.
@@ -283,7 +283,7 @@ export default function Admin() {
             ) : (
               <>
                 <p className="font-medium">Admin endpoints aren't wired on the live backend yet</p>
-                <p className="mt-1 text-xs text-amber-800">
+                <p className="mt-1 text-xs text-warning">
                   Run with VITE_DEMO_MODE=true to drive the full mediator flow. On the live
                   backend this page needs GET /api/admin/disputes and
                   POST /api/admin/disputes/:id/resolve.
@@ -346,7 +346,7 @@ function DisputeQueue({
   return (
     <>
       {/* Search + filters */}
-      <section className="space-y-3 rounded-2xl border border-border bg-white p-4">
+      <section className="space-y-3 rounded-2xl border border-border bg-canvas p-4">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
           <Input
@@ -370,15 +370,15 @@ function DisputeQueue({
                   "inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                   isActive
                     ? "border-brand-soft bg-brand-soft text-brand-soft-foreground"
-                    : "border-border bg-white text-ink-soft hover:text-ink",
+                    : "border-border bg-canvas text-ink-soft hover:text-ink",
                   !isActive && count === 0 && "opacity-60",
                 )}
               >
                 {f.label}
                 <span
                   className={cn(
-                    "ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums",
-                    isActive ? "bg-white/50 text-current" : "bg-surface text-ink-soft",
+                    "ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-xs font-semibold tabular-nums",
+                    isActive ? "bg-canvas/50 text-current" : "bg-surface text-ink-soft",
                   )}
                 >
                   {count}
@@ -391,7 +391,7 @@ function DisputeQueue({
 
       {/* Queue */}
       {disputes.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-white p-10 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-canvas p-10 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-surface text-ink-soft">
             <CheckCircle2 className="h-6 w-6" aria-hidden />
           </div>
@@ -405,9 +405,9 @@ function DisputeQueue({
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden overflow-hidden rounded-2xl border border-border bg-white sm:block">
+          <div className="hidden overflow-hidden rounded-2xl border border-border bg-canvas sm:block">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-border bg-surface text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+              <thead className="border-b border-border bg-surface text-xs font-medium uppercase tracking-wider text-ink-soft">
                 <tr>
                   <th className="px-4 py-3">Dispute</th>
                   <th className="px-4 py-3">Order / parties</th>
@@ -461,7 +461,7 @@ function DisputeRow({
           {dispute.buyer.name}{" "}
           <span className="text-ink-soft">vs.</span> @{dispute.seller.handle}
         </p>
-        <p className="mt-0.5 font-mono text-[11px] tabular-nums text-ink-soft">
+        <p className="mt-0.5 font-mono text-xs tabular-nums text-ink-soft">
           {dispute.orderShortId}
         </p>
       </td>
@@ -497,7 +497,7 @@ function DisputeMobileCard({
       <button
         type="button"
         onClick={() => onOpen(dispute.id)}
-        className="block w-full rounded-2xl border border-border bg-white p-4 text-left transition-colors active:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="block w-full rounded-2xl border border-border bg-canvas p-4 text-left transition-colors active:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -515,7 +515,7 @@ function DisputeMobileCard({
             <p className="truncate text-xs text-ink">
               {dispute.buyer.name} vs. @{dispute.seller.handle}
             </p>
-            <p className="mt-0.5 font-mono text-[11px] tabular-nums text-ink-soft">
+            <p className="mt-0.5 font-mono text-xs tabular-nums text-ink-soft">
               {dispute.orderShortId}
             </p>
           </div>
@@ -523,7 +523,7 @@ function DisputeMobileCard({
             <p className="text-sm font-semibold tabular-nums text-ink">
               {formatNGN(dispute.amountNGN)}
             </p>
-            <p className="mt-0.5 text-[11px] text-ink-soft">
+            <p className="mt-0.5 text-xs text-ink-soft">
               {formatRelative(dispute.openedAt)}
             </p>
           </div>
@@ -628,7 +628,7 @@ function DisputeDetail({
 
 
           {/* Resolution form */}
-          <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
+          <section className="rounded-2xl border border-border bg-canvas p-5 sm:p-6">
             <h2 className="text-base font-semibold text-ink">
               Sign a resolution
             </h2>
@@ -639,7 +639,7 @@ function DisputeDetail({
 
             <div className="mt-5 space-y-4">
               <fieldset>
-                <legend className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+                <legend className="text-xs font-medium uppercase tracking-wider text-ink-soft">
                   Outcome
                 </legend>
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -682,7 +682,7 @@ function DisputeDetail({
                       {splitPct}%
                     </span>
                   </div>
-                  <p className="mt-2 text-[11px] text-ink-soft">
+                  <p className="mt-2 text-xs text-ink-soft">
                     Buyer receives {formatNGN(Math.round((dispute.amountNGN * splitPct) / 100))} ·
                     seller receives {formatNGN(dispute.amountNGN - Math.round((dispute.amountNGN * splitPct) / 100))}
                   </p>
@@ -700,7 +700,7 @@ function DisputeDetail({
                   placeholder="Why this outcome — phrased so both parties can read it without escalating."
                   className="mt-1.5 min-h-[100px]"
                 />
-                <p className="mt-1 text-[11px] text-ink-soft">
+                <p className="mt-1 text-xs text-ink-soft">
                   {rationale.length} / 600
                 </p>
               </div>
@@ -720,8 +720,8 @@ function DisputeDetail({
 
         {/* RIGHT — case details + summary */}
         <div className="space-y-6">
-          <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+          <section className="rounded-2xl border border-border bg-canvas p-5 sm:p-6">
+            <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
               Case
             </p>
             <dl className="mt-4 space-y-3 text-sm">
@@ -733,7 +733,7 @@ function DisputeDetail({
                   <p className="font-semibold tabular-nums text-ink">
                     {formatNGN(dispute.amountNGN)}
                   </p>
-                  <p className="mt-0.5 text-[11px] tabular-nums text-ink-soft">
+                  <p className="mt-0.5 text-xs tabular-nums text-ink-soft">
                     held in escrow
                   </p>
                 </div>
@@ -753,8 +753,8 @@ function DisputeDetail({
             </dl>
           </section>
 
-          <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+          <section className="rounded-2xl border border-border bg-canvas p-5 sm:p-6">
+            <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
               Summary
             </p>
             <p className="mt-3 text-sm leading-relaxed text-ink">
@@ -762,7 +762,7 @@ function DisputeDetail({
             </p>
           </section>
 
-          <p className="text-[11px] italic text-ink-soft">
+          <p className="text-xs italic text-ink-soft">
             Evidence and the mediator's signed decision are recorded against
             the order. Both parties see the outcome on their order page.
           </p>
@@ -779,15 +779,15 @@ function DisputeDetail({
 function StatusBadge({ status }: { status: DisputeQueueStatus }) {
   const cfg =
     status === "escalated"
-      ? { label: "Escalated", cls: "bg-rose-50 text-rose-800 border-rose-200", Icon: AlertTriangle }
+      ? { label: "Escalated", cls: "bg-negative-pale text-negative border-negative/25", Icon: AlertTriangle }
       : status === "evidence_requested"
-        ? { label: "Awaiting evidence", cls: "bg-amber-50 text-amber-800 border-amber-200", Icon: Package }
-        : { label: "Mediating", cls: "bg-sky-50 text-sky-800 border-sky-200", Icon: Gavel };
+        ? { label: "Awaiting evidence", cls: "bg-warning-pale text-warning border-warning/25", Icon: Package }
+        : { label: "Mediating", cls: "bg-info-pale text-info border-info/25", Icon: Gavel };
   const Icon = cfg.Icon;
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11px] font-semibold uppercase tracking-wide",
+        "inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs font-semibold uppercase tracking-wide",
         cfg.cls,
       )}
     >
@@ -799,14 +799,14 @@ function StatusBadge({ status }: { status: DisputeQueueStatus }) {
 function PriorityBadge({ priority }: { priority: DisputePriority }) {
   const cls =
     priority === "high"
-      ? "bg-rose-100 text-rose-800"
+      ? "bg-negative-pale text-negative"
       : priority === "medium"
-        ? "bg-amber-100 text-amber-800"
+        ? "bg-warning-pale text-warning"
         : "bg-surface text-ink-soft";
   return (
     <span
       className={cn(
-        "inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+        "inline-block rounded-md px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider",
         cls,
       )}
     >
@@ -833,13 +833,13 @@ function PartyCard({
   opened: boolean;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-white p-5">
+    <section className="rounded-2xl border border-border bg-canvas p-5">
       <header className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+        <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
           {role}
         </p>
         {opened && (
-          <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-800">
+          <span className="inline-flex items-center gap-1 rounded-md bg-negative-pale px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-negative">
             Opened
           </span>
         )}
@@ -869,7 +869,7 @@ function PartyCard({
       </div>
 
       {/* Evidence images */}
-      <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+      <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-ink-soft">
         Evidence ({evidence.length})
       </p>
       {evidence.length === 0 ? (
@@ -898,8 +898,8 @@ function ConversationCard({ orderToken }: { orderToken: string }) {
   const messages = useMessagesLive(orderToken);
   if (messages.length === 0) return null;
   return (
-    <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+    <section className="rounded-2xl border border-border bg-canvas p-5 sm:p-6">
+      <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
         Buyer ↔ seller conversation
       </p>
       <ul className="mt-3 space-y-2">
@@ -942,7 +942,7 @@ function OutcomeOption({
         "rounded-lg border px-3 py-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
         selected
           ? "border-brand bg-brand-soft text-brand-soft-foreground"
-          : "border-border bg-white text-ink hover:bg-surface",
+          : "border-border bg-canvas text-ink hover:bg-surface",
       )}
     >
       {label}
@@ -959,7 +959,7 @@ function Pair({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-border pb-2 last:border-0">
-      <dt className="text-[11px] uppercase tracking-wider text-ink-soft">
+      <dt className="text-xs uppercase tracking-wider text-ink-soft">
         {label}
       </dt>
       <dd className="text-right">{children}</dd>

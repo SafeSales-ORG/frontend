@@ -443,7 +443,7 @@ export default function BuyerOrder() {
           <>
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-warning-pale text-warning">
                 <AlertTriangle className="h-5 w-5" />
               </span>
               <DialogTitle className="leading-tight">Open a dispute</DialogTitle>
@@ -513,7 +513,7 @@ export default function BuyerOrder() {
                         setEvidenceUrls((prev) => prev.filter((u) => u !== url))
                       }
                       aria-label="Remove photo"
-                      className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-ink-soft hover:text-ink"
+                      className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-canvas/90 text-ink-soft hover:text-ink"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -531,7 +531,7 @@ export default function BuyerOrder() {
                     ) : (
                       <>
                         <Upload className="h-5 w-5" />
-                        <span className="text-[10px] font-medium">Add photo</span>
+                        <span className="text-xs font-medium">Add photo</span>
                       </>
                     )}
                   </button>
@@ -562,7 +562,7 @@ export default function BuyerOrder() {
             <Button
               disabled={disputing}
               onClick={() => disputeMutation.mutate()}
-              className="bg-amber-600 text-white hover:bg-amber-700"
+              className="bg-warning text-white hover:bg-warning"
             >
               {disputing ? (
                 <>
@@ -619,7 +619,7 @@ function OrderIdStrip({ order }: { order: ApiOrder }) {
   return (
     <section className="flex items-center justify-between rounded-2xl border border-border/60 bg-background px-4 py-3">
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-soft">
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
           Order ID
         </p>
         <p className="font-mono text-sm font-semibold text-ink">
@@ -766,9 +766,9 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
       };
     case "disputed":
       return {
-        bg: "bg-amber-50",
-        border: "border-amber-200/60",
-        iconBg: "bg-amber-500",
+        bg: "bg-warning-pale",
+        border: "border-warning/25",
+        iconBg: "bg-warning",
         Icon: Scale,
         headline: "Dispute opened — under review",
         subline:
@@ -778,9 +778,9 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
       };
     case "refunded":
       return {
-        bg: "bg-rose-50",
-        border: "border-rose-200/60",
-        iconBg: "bg-rose-600",
+        bg: "bg-negative-pale",
+        border: "border-negative/25",
+        iconBg: "bg-negative",
         Icon: Undo2,
         headline: "Dispute resolved in your favour",
         subline: `Your ${amount} refund has been approved. Our team will process it to you shortly.`,
@@ -854,7 +854,7 @@ function TimelineCard({ order, dispute }: TimelineProps) {
       </div>
 
       {disputedBranch && (
-        <div className="mt-4 flex items-center gap-3 rounded-xl bg-amber-50 px-4 py-3 text-amber-900">
+        <div className="mt-4 flex items-center gap-3 rounded-xl bg-warning-pale px-4 py-3 text-warning">
           <Scale className="h-4 w-4 shrink-0" />
           <p className="text-xs font-medium">
             Branched to dispute on {dispute ? formatDate(dispute.createdAt) : "unknown date"}.
@@ -1039,7 +1039,7 @@ function SellerMiniCard({ seller }: { seller: ApiSeller }) {
               {seller.name}
             </p>
             {seller.verified && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-tight text-brand-soft-foreground">
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-brand-soft px-1.5 py-0.5 text-xs font-medium uppercase tracking-tight text-brand-soft-foreground">
                 <ShieldCheck className="h-2.5 w-2.5" /> Verified
               </span>
             )}
@@ -1163,7 +1163,7 @@ function BankRow({
       )}
     >
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-soft">
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
           {label}
         </p>
         <p className="text-sm font-semibold tabular-nums text-ink">{value}</p>
@@ -1194,7 +1194,7 @@ function DecisionCard({
 }) {
   return (
     <section className="rounded-2xl border border-border bg-background p-5 sm:p-6">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+      <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
         Your decision
       </p>
       {locked && (
@@ -1218,7 +1218,7 @@ function DecisionCard({
           disabled={locked}
           variant="outline"
           size="lg"
-          className="h-12 w-full rounded-lg border-border text-ink hover:border-rose-300 hover:text-rose-700 disabled:opacity-50"
+          className="h-12 w-full rounded-lg border-border text-ink hover:border-negative/25 hover:text-negative disabled:opacity-50"
         >
           <AlertTriangle className="mr-2 h-4 w-4" />
           Open dispute
@@ -1238,7 +1238,7 @@ function DecisionCard({
               <ShieldCheck className="h-3 w-3 text-brand" /> Confirm successful delivery
             </li>
             <li className="flex items-center gap-1.5">
-              <AlertTriangle className="h-3 w-3 text-amber-600" /> Open a dispute
+              <AlertTriangle className="h-3 w-3 text-warning" /> Open a dispute
             </li>
           </ul>
         </div>
@@ -1273,7 +1273,7 @@ function ReviewSection({
               key={s}
               className={cn(
                 "h-4 w-4",
-                s <= existing.rating ? "fill-amber-400 text-amber-400" : "text-border",
+                s <= existing.rating ? "fill-warning text-warning" : "text-border",
               )}
             />
           ))}
@@ -1323,7 +1323,7 @@ function ReviewSection({
               className={cn(
                 "h-7 w-7 transition-colors",
                 s <= (hover || rating)
-                  ? "fill-amber-400 text-amber-400"
+                  ? "fill-warning text-warning"
                   : "text-border",
               )}
             />
@@ -1352,8 +1352,8 @@ function ReviewSection({
 function DisputeSummaryCard({ dispute }: { dispute: ApiDispute | null }) {
   if (!dispute) {
     return (
-      <section className="rounded-2xl border border-amber-200/60 bg-amber-50/40 p-5 sm:p-6">
-        <p className="text-sm text-amber-900">Dispute is being prepared…</p>
+      <section className="rounded-2xl border border-warning/25 bg-warning-pale p-5 sm:p-6">
+        <p className="text-sm text-warning">Dispute is being prepared…</p>
       </section>
     );
   }
@@ -1366,18 +1366,18 @@ function DisputeSummaryCard({ dispute }: { dispute: ApiDispute | null }) {
   };
   const isResolved = dispute.status === "resolved";
   return (
-    <section className="rounded-2xl border border-amber-200/60 bg-amber-50/40 p-5 sm:p-6">
+    <section className="rounded-2xl border border-warning/25 bg-warning-pale p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
-          <Scale className="h-4 w-4 text-amber-700" />
+          <Scale className="h-4 w-4 text-warning" />
           Dispute opened {formatDate(dispute.createdAt)}
         </h3>
         <span
           className={cn(
-            "inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide",
             isResolved
               ? "bg-brand text-brand-foreground"
-              : "bg-amber-500 text-white",
+              : "bg-warning text-white",
           )}
         >
           {statusLabel[dispute.status]}
@@ -1434,7 +1434,7 @@ function MobileActionBar({
           onClick={onDispute}
           variant="outline"
           size="lg"
-          className="h-11 w-full rounded-lg border-border text-ink hover:border-rose-300 hover:text-rose-700"
+          className="h-11 w-full rounded-lg border-border text-ink hover:border-negative/25 hover:text-negative"
         >
           Open dispute
         </Button>
@@ -1515,7 +1515,7 @@ function InvalidOrderToken({ token }: { token: string }) {
     <div className="grid min-h-screen place-items-center bg-surface px-6 text-center">
       <div className="max-w-md">
         <Logo />
-        <ShieldAlert className="mx-auto mt-8 h-10 w-10 text-amber-500" />
+        <ShieldAlert className="mx-auto mt-8 h-10 w-10 text-warning" />
         <p className="mt-4 text-xl font-semibold tracking-tight text-ink">
           We couldn't find that order link
         </p>
@@ -1531,7 +1531,7 @@ function InvalidOrderToken({ token }: { token: string }) {
         >
           <Link to="/">Back home</Link>
         </Button>
-        <p className="mt-4 text-[11px] text-ink-soft">
+        <p className="mt-4 text-xs text-ink-soft">
           Lost your order link? Check the email or SMS we sent you when you paid.
         </p>
       </div>
@@ -1550,7 +1550,7 @@ function ErrorScreen({
     <div className="grid min-h-screen place-items-center bg-surface px-6 text-center">
       <div className="max-w-md">
         <Logo />
-        <XCircle className="mx-auto mt-8 h-10 w-10 text-rose-500" />
+        <XCircle className="mx-auto mt-8 h-10 w-10 text-negative" />
         <p className="mt-4 text-xl font-semibold tracking-tight text-ink">
           {title}
         </p>

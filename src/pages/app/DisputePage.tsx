@@ -133,7 +133,7 @@ function DisputeList() {
 
 function EmptyDisputes() {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center">
+    <div className="rounded-2xl border border-dashed border-border bg-canvas px-6 py-12 text-center">
       <ShieldCheck className="mx-auto h-7 w-7 text-brand" />
       <p className="mt-3 text-sm font-medium text-ink">No active disputes</p>
       <p className="mt-1 text-xs text-ink-soft">
@@ -156,7 +156,7 @@ function Section({
     <section>
       <div className="mb-2 flex items-baseline justify-between">
         <h2 className="text-sm font-semibold text-ink">{title}</h2>
-        <span className="text-[11px] text-ink-soft">{count}</span>
+        <span className="text-xs text-ink-soft">{count}</span>
       </div>
       {children}
     </section>
@@ -173,7 +173,7 @@ function DisputeRow({ order }: { order: SellerOrderRow }) {
     <li>
       <Link
         to={`/app/dispute/${order.orderToken}`}
-        className="block rounded-2xl border border-border bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-16px_rgba(15,42,30,0.18)]"
+        className="block rounded-2xl border border-border bg-canvas p-4 transition-all hover:-translate-y-0.5 hover:"
       >
         <div className="flex items-start gap-3">
           {heroImg ? (
@@ -201,7 +201,7 @@ function DisputeRow({ order }: { order: SellerOrderRow }) {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <DisputeStatusBadge status={dispute.status} />
               {dispute.directResolutionUntil && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200">
+                <span className="inline-flex items-center gap-1 rounded-full bg-warning-pale px-2 py-0.5 text-xs font-medium text-warning ring-1 ring-inset ring-warning/25">
                   <Clock className="h-2.5 w-2.5" />
                   <Countdown
                     targetIso={dispute.directResolutionUntil}
@@ -210,7 +210,7 @@ function DisputeRow({ order }: { order: SellerOrderRow }) {
                 </span>
               )}
               {dispute.evidenceDueAt && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-800 ring-1 ring-inset ring-rose-200">
+                <span className="inline-flex items-center gap-1 rounded-full bg-negative-pale px-2 py-0.5 text-xs font-medium text-negative ring-1 ring-inset ring-negative/25">
                   <AlertCircle className="h-2.5 w-2.5" />
                   <Countdown
                     targetIso={dispute.evidenceDueAt}
@@ -219,7 +219,7 @@ function DisputeRow({ order }: { order: SellerOrderRow }) {
                 </span>
               )}
               {dispute.isReturn && (
-                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700">
+                <span className="rounded-full bg-info-pale px-2 py-0.5 text-xs font-medium text-info">
                   Return in progress
                 </span>
               )}
@@ -255,7 +255,7 @@ function DisputeDetailLoader({ token }: { token: string }) {
   if (error || !data) {
     return (
       <AppShell title="Dispute not found">
-        <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-canvas px-6 py-12 text-center">
           <p className="text-sm font-medium text-ink">
             We couldn't find that order or dispute.
           </p>
@@ -270,7 +270,7 @@ function DisputeDetailLoader({ token }: { token: string }) {
   if (!data.dispute) {
     return (
       <AppShell title="No dispute on this order">
-        <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-12 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-canvas px-6 py-12 text-center">
           <ShieldCheck className="mx-auto h-7 w-7 text-brand" />
           <p className="mt-3 text-sm font-medium text-ink">
             This order doesn't have an active dispute.
@@ -332,7 +332,7 @@ function DisputeDetailView({
 
         <div className="grid gap-5 lg:grid-cols-3">
           {/* Order context */}
-          <section className="rounded-2xl border border-border bg-white p-4 lg:col-span-1">
+          <section className="rounded-2xl border border-border bg-canvas p-4 lg:col-span-1">
             <h2 className="text-sm font-semibold text-ink">
               Order in dispute
             </h2>
@@ -379,7 +379,7 @@ function DisputeDetailView({
           {!isResolved ? (
             <ResponseForm dispute={dispute} orderToken={order.orderToken} />
           ) : (
-            <section className="rounded-2xl border border-border bg-white p-5 lg:col-span-2">
+            <section className="rounded-2xl border border-border bg-canvas p-5 lg:col-span-2">
               <h2 className="text-sm font-semibold text-ink">
                 This dispute has been resolved
               </h2>
@@ -391,7 +391,7 @@ function DisputeDetailView({
         </div>
 
         {/* Timeline of events */}
-        <section className="rounded-2xl border border-border bg-white p-5">
+        <section className="rounded-2xl border border-border bg-canvas p-5">
           <h2 className="text-sm font-semibold text-ink">What happened</h2>
           <Timeline
             className="mt-4"
@@ -400,10 +400,10 @@ function DisputeDetailView({
         </section>
 
         {/* Chat placeholder */}
-        <section className="rounded-2xl border border-border bg-white p-5">
+        <section className="rounded-2xl border border-border bg-canvas p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-ink">Order chat</h2>
-            <span className="text-[11px] font-medium text-ink-soft">
+            <span className="text-xs font-medium text-ink-soft">
               NIP-17 integration coming
             </span>
           </div>
@@ -418,7 +418,7 @@ function DisputeDetailView({
 
         {/* Reassurance */}
         {!isResolved && (
-          <div className="rounded-2xl border border-emerald-200/60 bg-brand-soft/40 p-5">
+          <div className="rounded-2xl border border-brand/25 bg-brand-soft/40 p-5">
             <div className="flex items-start gap-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
               <div className="text-sm text-ink-soft">
@@ -454,9 +454,9 @@ function StatusBanner({
 
   if (status === "direct_resolution") {
     return (
-      <div className="overflow-hidden rounded-2xl border border-amber-200/70 bg-gradient-to-br from-amber-50 to-white p-5">
+      <div className="overflow-hidden rounded-2xl border border-warning/25 bg-warning-pale p-5">
         <div className="flex items-start gap-3">
-          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning-pale text-warning">
             <MessageCircle className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">
@@ -470,7 +470,7 @@ function StatusBanner({
               automatically take the case.
             </p>
             {dispute.directResolutionUntil && (
-              <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-900">
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-warning-pale px-2.5 py-1 text-xs font-medium text-warning">
                 <Clock className="h-3 w-3" />
                 Auto-escalates in{" "}
                 <Countdown targetIso={dispute.directResolutionUntil} />
@@ -484,9 +484,9 @@ function StatusBanner({
 
   if (status === "escalated" || status === "mediating") {
     return (
-      <div className="overflow-hidden rounded-2xl border border-amber-200/60 bg-gradient-to-br from-amber-50 to-white p-5">
+      <div className="overflow-hidden rounded-2xl border border-warning/25 bg-warning-pale p-5">
         <div className="flex items-start gap-3">
-          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning-pale text-warning">
             <Scale className="h-5 w-5" />
           </span>
           <div className="flex-1">
@@ -505,9 +505,9 @@ function StatusBanner({
 
   if (status === "evidence_requested") {
     return (
-      <div className="overflow-hidden rounded-2xl border border-rose-200/70 bg-gradient-to-br from-rose-50 to-white p-5">
+      <div className="overflow-hidden rounded-2xl border border-negative/25 bg-negative-pale p-5">
         <div className="flex items-start gap-3">
-          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-700">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-negative-pale text-negative">
             <AlertCircle className="h-5 w-5" />
           </span>
           <div className="flex-1">
@@ -519,7 +519,7 @@ function StatusBanner({
               weakens your case.
             </p>
             {dispute.evidenceDueAt && (
-              <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-medium text-rose-900">
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-negative-pale px-2.5 py-1 text-xs font-medium text-negative">
                 <Clock className="h-3 w-3" />
                 Evidence due in{" "}
                 <Countdown targetIso={dispute.evidenceDueAt} />
@@ -542,40 +542,40 @@ function DisputeStatusBadge({ status }: { status: ApiDisputeStatus }) {
   > = {
     direct_resolution: {
       label: "Direct resolution",
-      bg: "bg-amber-50",
-      text: "text-amber-800",
-      ring: "ring-amber-200",
+      bg: "bg-warning-pale",
+      text: "text-warning",
+      ring: "ring-warning/25",
     },
     escalated: {
       label: "Escalated",
-      bg: "bg-rose-50",
-      text: "text-rose-800",
-      ring: "ring-rose-200",
+      bg: "bg-negative-pale",
+      text: "text-negative",
+      ring: "ring-negative/25",
     },
     evidence_requested: {
       label: "Evidence requested",
-      bg: "bg-rose-50",
-      text: "text-rose-800",
-      ring: "ring-rose-200",
+      bg: "bg-negative-pale",
+      text: "text-negative",
+      ring: "ring-negative/25",
     },
     mediating: {
       label: "Mediating",
-      bg: "bg-amber-50",
-      text: "text-amber-800",
-      ring: "ring-amber-200",
+      bg: "bg-warning-pale",
+      text: "text-warning",
+      ring: "ring-warning/25",
     },
     resolved: {
       label: "Resolved",
       bg: "bg-brand-soft",
       text: "text-brand-soft-foreground",
-      ring: "ring-emerald-200",
+      ring: "ring-brand/25",
     },
   };
   const s = map[status];
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset",
+        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
         s.bg,
         s.text,
         s.ring,
@@ -648,7 +648,7 @@ function ResponseForm({
   // If the seller has already responded, show it back to them (read-only)
   // with the option to add more.
   return (
-    <section className="rounded-2xl border border-border bg-white p-5 lg:col-span-2">
+    <section className="rounded-2xl border border-border bg-canvas p-5 lg:col-span-2">
       <h2 className="text-sm font-semibold text-ink">Your response</h2>
       {dispute.summary && (
         <p className="mt-1 text-xs text-ink-soft">
@@ -658,7 +658,7 @@ function ResponseForm({
 
       {dispute.sellerResponse && (
         <div className="mt-3 rounded-xl border border-border bg-surface-2/30 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+          <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
             Your last reply
           </p>
           <p className="mt-1 text-sm leading-relaxed text-ink">
@@ -808,7 +808,7 @@ function MiniCard({
 }) {
   return (
     <div className="flex flex-col items-center rounded-xl border border-border bg-surface-2/30 p-3">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-ink-soft">
+      <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
         {sub}
       </p>
       <div className="mt-2 flex flex-col items-center">{children}</div>

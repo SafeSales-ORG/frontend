@@ -100,7 +100,7 @@ export function HelpDialog({
             return (
               <div
                 key={item.q}
-                className="overflow-hidden rounded-xl border border-border bg-white"
+                className="overflow-hidden rounded-xl border border-border bg-canvas"
               >
                 <button
                   type="button"

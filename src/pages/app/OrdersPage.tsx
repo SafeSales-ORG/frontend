@@ -165,9 +165,9 @@ export default function OrdersPage() {
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden overflow-hidden rounded-2xl border border-border bg-white sm:block">
+            <div className="hidden overflow-hidden rounded-2xl border border-border bg-canvas sm:block">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-border bg-surface text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+                <thead className="border-b border-border bg-surface text-xs font-medium uppercase tracking-wider text-ink-soft">
                   <tr>
                     <th className="px-4 py-3">Order</th>
                     <th className="px-4 py-3">Buyer</th>
@@ -220,13 +220,13 @@ function AttentionStrip({
       : `You have ${total} orders that need action.`;
 
   return (
-    <div className="flex flex-col items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:p-5">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800">
+    <div className="flex flex-col items-start gap-3 rounded-2xl border border-warning/25 bg-warning-pale p-4 sm:flex-row sm:items-center sm:p-5">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-pale text-warning">
         <AlertTriangle className="h-5 w-5" aria-hidden />
       </div>
-      <p className="flex-1 text-sm font-medium text-amber-900">{headline}</p>
+      <p className="flex-1 text-sm font-medium text-warning">{headline}</p>
       {breakdown.length > 0 && (
-        <p className="text-xs text-amber-800">{breakdown.join(" · ")}</p>
+        <p className="text-xs text-warning">{breakdown.join(" · ")}</p>
       )}
     </div>
   );
@@ -248,7 +248,7 @@ function SearchAndFilters({
   counts: Record<FilterKey, number>;
 }) {
   return (
-    <div className="space-y-3 rounded-2xl border border-border bg-white p-4">
+    <div className="space-y-3 rounded-2xl border border-border bg-canvas p-4">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
         <Input
@@ -273,15 +273,15 @@ function SearchAndFilters({
                 "inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                 isActive
                   ? "border-brand-soft bg-brand-soft text-brand-soft-foreground"
-                  : "border-border bg-white text-ink-soft hover:text-ink",
+                  : "border-border bg-canvas text-ink-soft hover:text-ink",
                 !isActive && count === 0 && "opacity-60",
               )}
             >
               {f.label}
               <span
                 className={cn(
-                  "ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums",
-                  isActive ? "bg-white/50 text-current" : "bg-surface text-ink-soft",
+                  "ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-xs font-semibold tabular-nums",
+                  isActive ? "bg-canvas/50 text-current" : "bg-surface text-ink-soft",
                 )}
               >
                 {count}
@@ -313,7 +313,7 @@ function OrderTableRow({ order }: { order: SellerOrderRow }) {
             <p className="truncate text-sm font-medium text-ink">
               {order.listing.title}
             </p>
-            <p className="mt-0.5 truncate font-mono text-[11px] tabular-nums text-ink-soft">
+            <p className="mt-0.5 truncate font-mono text-xs tabular-nums text-ink-soft">
               {order.shortId}
               {order.variant ? ` · ${order.variant}` : ""}
             </p>
@@ -351,7 +351,7 @@ function OrderMobileCard({ order }: { order: SellerOrderRow }) {
     <li>
       <Link
         to={`/app/orders/${order.orderToken}`}
-        className="block rounded-2xl border border-border bg-white p-4 transition-colors active:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="block rounded-2xl border border-border bg-canvas p-4 transition-colors active:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <div className="flex items-center gap-3">
           <ListingThumb
@@ -363,7 +363,7 @@ function OrderMobileCard({ order }: { order: SellerOrderRow }) {
             <p className="truncate text-sm font-medium text-ink">
               {order.listing.title}
             </p>
-            <p className="mt-0.5 truncate font-mono text-[11px] tabular-nums text-ink-soft">
+            <p className="mt-0.5 truncate font-mono text-xs tabular-nums text-ink-soft">
               {order.shortId}
               {order.variant ? ` · ${order.variant}` : ""}
             </p>
@@ -382,7 +382,7 @@ function OrderMobileCard({ order }: { order: SellerOrderRow }) {
           </div>
         </div>
 
-        <p className="mt-2 text-[11px] text-ink-soft">
+        <p className="mt-2 text-xs text-ink-soft">
           Updated · {formatRelative(order.updatedAt)}
         </p>
       </Link>
@@ -396,7 +396,7 @@ function ListSkeleton() {
   return (
     <>
       {/* Desktop table skeleton */}
-      <div className="hidden overflow-hidden rounded-2xl border border-border bg-white sm:block">
+      <div className="hidden overflow-hidden rounded-2xl border border-border bg-canvas sm:block">
         <table className="w-full">
           <tbody className="divide-y divide-border">
             {[0, 1, 2, 3, 4].map((i) => (
@@ -436,7 +436,7 @@ function ListSkeleton() {
         {[0, 1, 2].map((i) => (
           <li
             key={i}
-            className="rounded-2xl border border-border bg-white p-4"
+            className="rounded-2xl border border-border bg-canvas p-4"
           >
             <div className="flex items-center gap-3">
               <Skeleton className="h-12 w-12 rounded-xl" />
@@ -459,7 +459,7 @@ function ListSkeleton() {
 
 function NotSignedUpEmpty() {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-white p-10 text-center">
+    <div className="rounded-2xl border border-dashed border-border bg-canvas p-10 text-center">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-surface text-ink-soft">
         <User className="h-7 w-7" aria-hidden />
       </div>
@@ -481,7 +481,7 @@ function NotSignedUpEmpty() {
 
 function NeverHadAnOrderEmpty() {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-white p-10 text-center">
+    <div className="rounded-2xl border border-dashed border-border bg-canvas p-10 text-center">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-surface text-ink-soft">
         <Package className="h-7 w-7" aria-hidden />
       </div>
@@ -492,7 +492,7 @@ function NeverHadAnOrderEmpty() {
       </p>
       <Link
         to="/app/listings"
-        className="mt-5 inline-flex h-11 items-center rounded-lg border border-border bg-white px-4 text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+        className="mt-5 inline-flex h-11 items-center rounded-lg border border-border bg-canvas px-4 text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
       >
         View my listings
       </Link>
@@ -508,7 +508,7 @@ function FilteredEmpty({
   onClear: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-white p-8 text-center">
+    <div className="rounded-2xl border border-dashed border-border bg-canvas p-8 text-center">
       <p className="text-sm font-medium text-ink">
         {query ? `No orders match "${query}".` : "No orders match this filter."}
       </p>

@@ -173,7 +173,7 @@ export function AppShell({ children, title, subtitle, action }: Props) {
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           {sidebarGroups.map((group) => (
             <div key={group.label} className="mb-4">
-              <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+              <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wider text-ink-soft">
                 {group.label}
               </p>
               {group.items.map((t) => (
@@ -193,7 +193,7 @@ export function AppShell({ children, title, subtitle, action }: Props) {
                   <t.icon className="h-4 w-4" />
                   <span className="flex-1">{t.label}</span>
                   {t.badge && (
-                    <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">
+                    <span className="rounded-full bg-negative-pale px-1.5 py-0.5 text-xs font-semibold text-negative">
                       {t.badge}
                     </span>
                   )}
@@ -260,7 +260,7 @@ export function AppShell({ children, title, subtitle, action }: Props) {
               {searchOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setSearchOpen(false)} />
-                  <div className="absolute right-0 mt-2 z-20 w-80 overflow-hidden rounded-2xl border border-border bg-white shadow-xl">
+                  <div className="absolute right-0 mt-2 z-20 w-80 overflow-hidden rounded-2xl border border-border bg-canvas shadow-xl">
                     <div className="border-b border-border p-3">
                       <Input
                         autoFocus
@@ -341,7 +341,7 @@ export function AppShell({ children, title, subtitle, action }: Props) {
                     className="fixed inset-0 z-10"
                     onClick={() => setNotifsOpen(false)}
                   />
-                  <div className="absolute right-0 mt-2 z-20 w-80 overflow-hidden rounded-2xl border border-border bg-white shadow-xl animate-in fade-in zoom-in duration-200">
+                  <div className="absolute right-0 mt-2 z-20 w-80 overflow-hidden rounded-2xl border border-border bg-canvas shadow-xl animate-in fade-in zoom-in duration-200">
                     <div className="border-b border-border p-4">
                       <p className="text-sm font-semibold text-ink">Notifications</p>
                     </div>
@@ -365,11 +365,11 @@ export function AppShell({ children, title, subtitle, action }: Props) {
                                 className={cn(
                                   "mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
                                   n.icon === "dispute"
-                                    ? "bg-rose-50 text-rose-700"
+                                    ? "bg-negative-pale text-negative"
                                     : n.icon === "done"
-                                      ? "bg-emerald-50 text-emerald-700"
+                                      ? "bg-brand-pale text-brand"
                                       : n.icon === "msg"
-                                        ? "bg-sky-50 text-sky-700"
+                                        ? "bg-info-pale text-info"
                                         : "bg-brand-soft text-brand",
                                 )}
                               >
@@ -419,7 +419,7 @@ export function AppShell({ children, title, subtitle, action }: Props) {
                   to={t.to}
                   end={t.end}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-medium",
+                    "flex flex-col items-center justify-center gap-1 px-1 py-2.5 text-xs font-medium",
                     isActive ? "text-brand" : "text-ink-soft"
                   )}
                 >
@@ -439,7 +439,7 @@ export function AppShell({ children, title, subtitle, action }: Props) {
       <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-warning-pale text-warning">
               <ShieldAlert className="h-5 w-5" />
             </div>
             <DialogTitle className="text-center">Log out of your shop?</DialogTitle>
