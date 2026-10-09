@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { Package, Receipt, Search, X } from "lucide-react";
+import { MagnifyingGlass, Package, Receipt, X } from "@phosphor-icons/react";
 
 import { useMyListings } from "@/hooks/useMyListings";
 import { useSellerOrders } from "@/hooks/useSellerOrders";
@@ -125,7 +125,7 @@ export function HeaderSearch() {
     <>
       {/* Desktop: inline field */}
       <div ref={boxRef} className="relative hidden md:block">
-        <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-mute" aria-hidden />
+        <MagnifyingGlass size={18} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-mute" aria-hidden />
         <input
           ref={inputRef}
           type="search"
@@ -168,7 +168,7 @@ export function HeaderSearch() {
         aria-label="Search"
         className="grid h-10 w-10 place-items-center rounded-full text-body hover:bg-canvas-soft md:hidden"
       >
-        <Search className="h-[18px] w-[18px]" />
+        <MagnifyingGlass size={20} />
       </button>
       <AnimatePresence>
         {mobileOpen && (
@@ -180,7 +180,7 @@ export function HeaderSearch() {
             transition={{ duration: 0.2 }}
           >
             <div className="flex items-center gap-2 border-b border-line p-3">
-              <Search className="ml-1 h-5 w-5 text-mute" aria-hidden />
+              <MagnifyingGlass size={20} className="ml-1 text-mute" aria-hidden />
               <input
                 autoFocus
                 type="search"
@@ -200,7 +200,7 @@ export function HeaderSearch() {
                 aria-label="Close search"
                 className="grid h-10 w-10 place-items-center rounded-full hover:bg-canvas-soft"
               >
-                <X className="h-5 w-5" />
+                <X size={20} />
               </button>
             </div>
             {panel}
@@ -253,7 +253,7 @@ function ResultsPanel({
               )}
             >
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-pale text-brand">
-                {r.kind === "order" ? <Receipt className="h-4 w-4" /> : <Package className="h-4 w-4" />}
+                {r.kind === "order" ? <Receipt size={18} weight="duotone" /> : <Package size={18} weight="duotone" />}
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium text-ink">{r.title}</span>

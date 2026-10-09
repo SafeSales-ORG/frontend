@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronsUpDown, Copy, ExternalLink, LifeBuoy, LogOut, Wallet } from "lucide-react";
+import { CaretUpDown, Copy, ArrowSquareOut, Lifebuoy, SignOut, Wallet } from "@phosphor-icons/react";
 
 import { Avatar } from "./Avatar";
 import { cn } from "@/lib/utils";
@@ -60,7 +60,7 @@ export function AccountMenu(props: Props) {
             <p className="truncate text-sm font-semibold text-canvas">{name}</p>
             {handle && <p className="truncate text-xs text-canvas/60">@{handle}</p>}
           </div>
-          <ChevronsUpDown className="h-4 w-4 shrink-0 text-canvas/60" aria-hidden />
+          <CaretUpDown size={16} className="shrink-0 text-canvas/60" aria-hidden />
         </button>
       ) : (
         <button
@@ -97,13 +97,13 @@ export function AccountMenu(props: Props) {
             </div>
             <div className="p-2">
               {props.shopUrl && (
-                <MenuItem icon={<ExternalLink />} as="a" href={props.shopUrl} onSelect={close}>
+                <MenuItem icon={<ArrowSquareOut weight="duotone" />} as="a" href={props.shopUrl} onSelect={close}>
                   View my shop
                 </MenuItem>
               )}
               {props.shopUrl && (
                 <MenuItem
-                  icon={<Copy />}
+                  icon={<Copy weight="duotone" />}
                   onSelect={() => {
                     props.onCopyShopLink();
                     close();
@@ -112,11 +112,11 @@ export function AccountMenu(props: Props) {
                   Copy shop link
                 </MenuItem>
               )}
-              <MenuItem icon={<Wallet />} as="link" to="/app/earnings" onSelect={close}>
+              <MenuItem icon={<Wallet weight="duotone" />} as="link" to="/app/earnings" onSelect={close}>
                 Payout settings
               </MenuItem>
               <MenuItem
-                icon={<LifeBuoy />}
+                icon={<Lifebuoy weight="duotone" />}
                 onSelect={() => {
                   props.onHelp();
                   close();
@@ -127,7 +127,7 @@ export function AccountMenu(props: Props) {
             </div>
             <div className="border-t border-line p-2">
               <MenuItem
-                icon={<LogOut />}
+                icon={<SignOut weight="duotone" />}
                 tone="negative"
                 onSelect={() => {
                   close();
@@ -162,7 +162,7 @@ function MenuItem({
   href?: string;
 }) {
   const cls = cn(
-    "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors [&_svg]:h-4 [&_svg]:w-4",
+    "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors [&_svg]:h-[18px] [&_svg]:w-[18px]",
     tone === "negative" ? "text-negative hover:bg-negative-pale" : "text-ink hover:bg-canvas-soft",
   );
   if (as === "link" && to) {

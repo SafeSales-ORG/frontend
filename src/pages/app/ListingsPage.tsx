@@ -14,11 +14,16 @@ import {
   useState,
   type ChangeEvent,
   type ComponentType,
+  type ReactNode,
 } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/safesale/AppShell";
+import { BrandIcon } from "@/components/safesale/BrandIcon";
+import { AnimatedNumber } from "@/components/safesale/AnimatedNumber";
+import { AnimatePresence, motion } from "motion/react";
+import { ImageSquare, MagnifyingGlass, Package as PackageIcon, RocketLaunch, Storefront, WarningCircle } from "@phosphor-icons/react";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { listingUrl } from "@/lib/links";
 import { Button } from "@/components/ui/button";
@@ -55,12 +60,12 @@ import {
   Eye,
   ImagePlus,
   Loader2,
+  Lock,
   MessageSquare,
   MoreHorizontal,
   PackageX,
   Pencil,
   Plus,
-  Search,
   Send,
   Share2,
   ShieldCheck,
@@ -241,7 +246,7 @@ export default function ListingsPage() {
           type="button"
           onClick={() => setCreateOpen(true)}
           aria-label="New listing"
-          className="fixed bottom-20 right-5 z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-lg transition-transform active:scale-95 sm:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand"
+          className="fixed bottom-24 right-5 z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-forest text-mint shadow-[var(--shadow-float)] transition-transform active:scale-95 sm:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand"
         >
           <Plus className="h-6 w-6" />
         </button>
@@ -277,61 +282,35 @@ function SnapshotStrip({
   stats: { total: number; available: number; outOfStock: number };
   loading: boolean;
 }) {
+  const tiles = [
+    { label: "Listings", value: stats.total, icon: Storefront, tone: "bg-forest text-canvas", iconTone: "forest" as const, sub: "In your shop" },
+    { label: "In stock", value: stats.available, icon: PackageIcon, tone: "bg-mint text-forest", iconTone: "pale" as const, sub: "Buyers can order" },
+    {
+      label: "Sold out",
+      value: stats.outOfStock,
+      icon: WarningCircle,
+      tone: stats.outOfStock > 0 ? "bg-warning-pale text-warning" : "bg-canvas text-ink",
+      iconTone: stats.outOfStock > 0 ? ("warning" as const) : ("neutral" as const),
+      sub: stats.outOfStock > 0 ? "Restock or hide them" : "Nothing to restock",
+    },
+  ];
   return (
-    <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-border bg-canvas p-4 sm:p-5">
-      <SnapshotStat
-        label="Total listings"
-        value={stats.total}
-        loading={loading}
-      />
-      <Divider />
-      <SnapshotStat
-        label="Available"
-        value={stats.available}
-        loading={loading}
-      />
-      <Divider />
-      <SnapshotStat
-        label="Out of stock"
-        value={stats.outOfStock}
-        loading={loading}
-        emphasize={stats.outOfStock > 0}
-      />
-    </section>
-  );
-}
-
-function SnapshotStat({
-  label,
-  value,
-  loading,
-  emphasize,
-}: {
-  label: string;
-  value: number;
-  loading: boolean;
-  emphasize?: boolean;
-}) {
-  return (
-    <div className="flex-1 min-w-[110px]">
-      <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
-        {label}
-      </p>
-      <p
-        className={cn(
-          "mt-1 text-lg font-semibold leading-none tabular-nums",
-          emphasize ? "text-warning" : "text-ink",
-        )}
-      >
-        {loading ? <Skeleton className="h-5 w-10" /> : value}
-      </p>
-    </div>
-  );
-}
-
-function Divider() {
-  return (
-    <div aria-hidden className="hidden h-6 w-px bg-border sm:block" />
+    <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {tiles.map((t) => (
+        <StaggerItem key={t.label} className={cn("flex items-center gap-4 rounded-2xl p-5", t.tone)}>
+          <BrandIcon icon={t.icon} tone={t.iconTone === "forest" ? "mint" : t.iconTone} size="md" />
+          <div>
+            <p className="text-sm font-medium opacity-80">{t.label}</p>
+            {loading ? (
+              <Skeleton className="mt-1 h-7 w-10" />
+            ) : (
+              <AnimatedNumber value={t.value} className="block font-display text-h1 tabular-nums" />
+            )}
+            <p className="text-xs opacity-70">{t.sub}</p>
+          </div>
+        </StaggerItem>
+      ))}
+    </Stagger>
   );
 }
 
@@ -356,50 +335,50 @@ function SearchAndFilters({
     k === "all" ? stats.total : k === "available" ? stats.available : stats.outOfStock;
 
   return (
-    <section className="rounded-2xl border border-border bg-canvas p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft"
-          />
-          <Input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search your listings"
-            className="h-10 pl-9"
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => {
-            const isActive = filter === f.key;
-            return (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setFilter(f.key)}
-                className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                  isActive
-                    ? "border-brand bg-brand-soft text-brand-soft-foreground"
-                    : "border-border bg-canvas text-ink-soft hover:text-ink",
-                )}
-              >
-                {f.label}
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums",
-                    isActive ? "bg-canvas text-brand" : "bg-surface text-ink-soft",
-                  )}
-                >
-                  {countFor(f.key)}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+    <section className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="relative flex-1">
+        <MagnifyingGlass
+          size={18}
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-mute"
+        />
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search your listings"
+          className="h-11 rounded-full border-0 bg-canvas pl-11"
+        />
+      </div>
+      <div className="flex gap-1 rounded-full bg-canvas p-1" role="tablist" aria-label="Filter by stock">
+        {FILTERS.map((f) => {
+          const isActive = filter === f.key;
+          return (
+            <button
+              key={f.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setFilter(f.key)}
+              className={cn(
+                "relative inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition-colors",
+                isActive ? "text-mint" : "text-body hover:text-ink",
+              )}
+            >
+              {isActive && (
+                <motion.span
+                  layoutId="listing-filter"
+                  className="absolute inset-0 rounded-full bg-forest"
+                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                />
+              )}
+              <span className="relative">{f.label}</span>
+              <span className={cn("relative text-xs tabular-nums", isActive ? "text-mint/80" : "text-mute")}>
+                {countFor(f.key)}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -452,11 +431,6 @@ function ListingCard({
     });
   };
 
-  const stockLabel = isOut
-    ? "Out of stock"
-    : listing.inStock > 1
-      ? `In stock (${listing.inStock})`
-      : "In stock";
 
   // Toggle stock through the API client → market store. The store is
   // reactive, so this card (and the buyer page) reflect the change
@@ -493,12 +467,9 @@ function ListingCard({
 
   return (
     <div
-      className={cn(
-        "group flex flex-col overflow-hidden rounded-2xl border bg-canvas transition-all duration-300  hover:scale-[1.01] hover:-translate-y-0.5 hover:shadow-md",
-        "border-border focus-within:border-brand hover:border-brand/35",
-      )}
+      className="group flex h-full flex-col overflow-hidden rounded-2xl bg-canvas transition-shadow duration-300 hover:shadow-[var(--shadow-float)]"
     >
-      <div className="relative aspect-square overflow-hidden bg-surface">
+      <div className="relative aspect-[4/3] overflow-hidden bg-canvas-soft">
         {cover ? (
           <img
             src={cover}
@@ -515,64 +486,48 @@ function ListingCard({
 
         {/* "+N" chip — extra images count */}
         {extraImages > 0 && (
-          <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-xs font-semibold uppercase tracking-tight text-white">
-            +{extraImages}
+          <span className="absolute top-3 right-3 rounded-full bg-forest/70 px-2 py-0.5 text-xs font-semibold text-canvas backdrop-blur-sm">
+            +{extraImages} photos
           </span>
         )}
-
-        {/* Out-of-stock ribbon */}
-        {isOut && (
-          <span className="absolute left-0 top-3 rounded-r-md bg-warning-pale px-2 py-1 text-xs font-bold uppercase tracking-wide text-warning shadow-sm">
-            Out of stock
-          </span>
-        )}
+        <span
+          className={cn(
+            "absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
+            isOut ? "bg-warning-pale text-warning" : "bg-mint text-forest",
+          )}
+        >
+          <span className={cn("h-1.5 w-1.5 rounded-full", isOut ? "bg-warning" : "bg-brand")} />
+          {isOut ? "Sold out" : `${listing.inStock} in stock`}
+        </span>
       </div>
 
-      <div className="flex-1 space-y-1.5 p-4">
+      <div className="flex-1 p-5">
         <Link
           to={`/buy/${listing.id}`}
           target="_blank"
           rel="noreferrer"
-          className="line-clamp-2 text-sm font-medium text-ink hover:underline focus-visible:outline-none focus-visible:underline"
+          className="line-clamp-2 font-semibold text-ink hover:underline focus-visible:outline-none focus-visible:underline"
         >
           {listing.title}
         </Link>
-        <p className="text-base font-semibold tabular-nums text-ink">
-          {formatNGN(listing.priceNGN)}
-          {listing.deliveryFee ? (
-            <span className="ml-1.5 text-xs font-normal text-ink-soft">
-              + {formatNGN(listing.deliveryFee)} delivery ={" "}
-              {formatNGN(listing.priceNGN + listing.deliveryFee)}
-            </span>
-          ) : null}
-        </p>
-        <p className="text-xs text-ink-soft">
-          {stockLabel} ·{" "}
-          {formatRelative(
-            new Date(listing.publishedAt * 1000).toISOString(),
-          )}
+        <p className="mt-2 font-display text-h2 text-ink tabular-nums">{formatNGN(listing.priceNGN)}</p>
+        <p className="mt-1 text-sm text-mute">
+          {listing.deliveryFee ? `+ ${formatNGN(listing.deliveryFee)} delivery` : "Free delivery"} · Listed{" "}
+          {formatRelative(new Date(listing.publishedAt * 1000).toISOString())}
         </p>
       </div>
 
-      <div className="flex border-t border-border">
-        <FooterAction
-          icon={Copy}
-          label="Copy buyer link"
-          onClick={copyLink}
-        />
-        <div aria-hidden className="w-px bg-border" />
-        <FooterAction
-          icon={Share2}
-          label="Share"
-          onClick={onShare}
-        />
-        <div aria-hidden className="w-px bg-border" />
+      <div className="flex items-center gap-2 px-5 pb-5">
+        <Button variant="mint" size="sm" className="flex-1" onClick={copyLink}>
+          <Copy /> Copy link
+        </Button>
+        <FooterAction icon={Share2} label="Share" onClick={onShare} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               aria-label="More actions"
-              className="inline-flex h-10 flex-1 items-center justify-center text-ink-soft transition-colors hover:bg-surface hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
+              className="grid h-9 w-9 place-items-center rounded-full bg-canvas-soft text-body transition-colors hover:bg-canvas-sunken hover:text-ink"
             >
               <MoreHorizontal className="h-4 w-4" />
             </button>
@@ -629,7 +584,7 @@ function FooterAction({
       onClick={onClick}
       title={label}
       aria-label={label}
-      className="inline-flex h-10 flex-1 items-center justify-center text-ink-soft transition-colors hover:bg-surface hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
+      className="grid h-9 w-9 place-items-center rounded-full bg-canvas-soft text-body transition-colors hover:bg-canvas-sunken hover:text-ink"
     >
       <Icon className="h-4 w-4" />
     </button>
@@ -958,9 +913,16 @@ function CreateListingSheet({
     !stillUploading &&
     !isSavingToBackend;
 
-  const onFilesPicked = async (e: ChangeEvent<HTMLInputElement>) => {
+  const [dragging, setDragging] = useState(false);
+
+  const onFilesPicked = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = ""; // allow re-selecting the same file
+    void addFiles(files);
+  };
+
+  const addFiles = async (all: File[]) => {
+    const files = all.filter((f) => f.type.startsWith("image/"));
     if (files.length === 0) return;
 
     const remainingSlots = Math.max(0, MAX_PHOTOS - photos.length);
@@ -1120,6 +1082,10 @@ function CreateListingSheet({
     setTimeout(() => onPublished(optimistic), 250);
   };
 
+  const priceNum = Number(price) || 0;
+  const feeNum = Number(deliveryFee) || 0;
+  const cover = photos.find((p) => p.status !== "error")?.previewUrl ?? null;
+
   return (
     <Sheet
       open={open}
@@ -1128,221 +1094,299 @@ function CreateListingSheet({
       }}
     >
       <SheetContent
-        side="bottom"
-        className="rounded-t-2xl p-0 sm:left-auto sm:right-0 sm:h-full sm:max-w-xl sm:rounded-none sm:rounded-l-2xl"
+        side="right"
+        className="w-full gap-0 overflow-hidden p-0 sm:max-w-5xl sm:rounded-l-3xl"
       >
-        <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-border sm:hidden" />
-        <SheetHeader className="px-5 pt-4">
-          <SheetTitle className="text-left text-lg">New listing</SheetTitle>
-          <SheetDescription className="text-left">
-            Add a clear title, photos and price. Your listing goes live on
-            SafeSale immediately.
-          </SheetDescription>
-        </SheetHeader>
+        <div className="grid h-full min-h-0 lg:grid-cols-[1fr_380px]">
+          {/* Form */}
+          <div className="flex min-h-0 flex-col">
+            <SheetHeader className="border-b border-line px-6 pt-6 pb-5">
+              <div className="flex items-center gap-3">
+                <BrandIcon icon={Storefront} size="md" />
+                <div>
+                  <SheetTitle className="font-display text-h2 text-ink">New listing</SheetTitle>
+                  <SheetDescription className="text-body">
+                    Goes live on your shop the moment you publish.
+                  </SheetDescription>
+                </div>
+              </div>
+            </SheetHeader>
 
-        <div className="max-h-[75vh] overflow-y-auto px-5 py-4 pb-8 sm:max-h-[calc(100vh-200px)]">
-          <div className="space-y-5">
-            {/* Photos */}
-            <div>
-              <Label>Photos</Label>
-              <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {photos.map((p) => (
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+              <div className="space-y-7">
+                {/* Photos */}
+                <FormBlock step={1} title="Photos" hint="Up to 4. The first one is the cover buyers see.">
                   <div
-                    key={p.key}
-                    className="relative aspect-square overflow-hidden rounded-xl border border-border bg-surface"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragging(true);
+                    }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragging(false);
+                      void addFiles(Array.from(e.dataTransfer.files));
+                    }}
+                    className={cn(
+                      "rounded-2xl border-2 border-dashed p-3 transition-colors",
+                      dragging ? "border-brand bg-brand-pale" : "border-line-strong bg-canvas-soft",
+                    )}
                   >
-                    <img
-                      src={p.previewUrl}
-                      alt=""
-                      className={cn(
-                        "h-full w-full object-cover",
-                        p.status === "uploading" && "opacity-60",
-                        p.status === "error" && "opacity-40",
-                      )}
-                    />
-                    {p.status === "uploading" && (
-                      <span
-                        aria-label="Uploading"
-                        className="absolute inset-0 grid place-items-center bg-black/20 text-white"
+                    {photos.length === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex w-full flex-col items-center gap-3 px-4 py-10 text-center"
                       >
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      </span>
+                        <BrandIcon icon={ImageSquare} size="lg" />
+                        <span className="font-semibold text-ink">Drag photos here, or tap to choose</span>
+                        <span className="text-sm text-mute">JPG, PNG or WebP · clear, well-lit photos sell faster</span>
+                      </button>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                        <AnimatePresence initial={false}>
+                          {photos.map((p, i) => (
+                            <motion.div
+                              key={p.key}
+                              layout
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              className="relative aspect-square overflow-hidden rounded-xl bg-canvas"
+                            >
+                              <img
+                                src={p.previewUrl}
+                                alt=""
+                                className={cn(
+                                  "h-full w-full object-cover",
+                                  p.status === "uploading" && "opacity-60",
+                                  p.status === "error" && "opacity-40",
+                                )}
+                              />
+                              {i === 0 && p.status !== "error" && (
+                                <span className="absolute bottom-1.5 left-1.5 rounded-full bg-forest px-2 py-0.5 text-[11px] font-semibold text-mint">
+                                  Cover
+                                </span>
+                              )}
+                              {p.status === "uploading" && (
+                                <span aria-label="Processing" className="absolute inset-0 grid place-items-center bg-forest/30 text-canvas">
+                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                </span>
+                              )}
+                              {p.status === "error" && (
+                                <span title={p.errorMessage} className="absolute inset-0 grid place-items-center bg-negative/80 text-xs font-semibold text-canvas">
+                                  Failed
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => removePhoto(p.key)}
+                                aria-label="Remove photo"
+                                className="absolute top-1.5 right-1.5 grid h-7 w-7 place-items-center rounded-full bg-canvas/90 text-body hover:text-ink"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                        {photos.length < MAX_PHOTOS && (
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl bg-canvas text-body transition-colors hover:text-brand"
+                          >
+                            <ImageSquare size={24} weight="duotone" />
+                            <span className="text-xs font-medium">Add</span>
+                          </button>
+                        )}
+                      </div>
                     )}
-                    {p.status === "error" && (
-                      <span
-                        title={p.errorMessage}
-                        className="absolute inset-0 grid place-items-center bg-negative text-xs font-semibold text-white"
-                      >
-                        Failed
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(p.key)}
-                      aria-label="Remove photo"
-                      className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-canvas/85 text-ink-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
                   </div>
-                ))}
-                {photos.length < MAX_PHOTOS && (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border bg-surface text-ink-soft hover:border-brand hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  >
-                    <Upload className="h-5 w-5" />
-                    <span className="text-xs font-medium">Add photo</span>
-                  </button>
+                  <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={onFilesPicked} />
+                </FormBlock>
+
+                <FormBlock step={2} title="What are you selling?">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="title">Title</Label>
+                      <Input
+                        id="title"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value.slice(0, 80))}
+                        placeholder="e.g. Ankara two-piece set, size M"
+                        className="mt-1.5"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-baseline justify-between">
+                        <Label htmlFor="desc">Description</Label>
+                        <span className="text-xs text-mute tabular-nums">{description.length}/2000</span>
+                      </div>
+                      <Textarea
+                        id="desc"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
+                        placeholder="Condition, size, what's included, how you deliver — keep it real."
+                        className="mt-1.5 min-h-32"
+                      />
+                    </div>
+                  </div>
+                </FormBlock>
+
+                <FormBlock step={3} title="Price and stock" hint="Buyers see the delivery fee added before they pay.">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    <MoneyField id="price" label="Price" value={price} onChange={setPrice} placeholder="25,000" />
+                    <MoneyField id="delivery-fee" label="Delivery fee" value={deliveryFee} onChange={setDeliveryFee} placeholder="0 = free" />
+                    <div className="col-span-2 sm:col-span-1">
+                      <Label htmlFor="quantity">Quantity in stock</Label>
+                      <Input
+                        id="quantity"
+                        inputMode="numeric"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+                        className="mt-1.5 tabular-nums"
+                      />
+                    </div>
+                  </div>
+                </FormBlock>
+
+                {error && (
+                  <p role="alert" className="rounded-xl bg-negative-pale p-3 text-sm text-negative">
+                    {error}
+                  </p>
                 )}
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                hidden
-                onChange={onFilesPicked}
-              />
-              <p className="mt-2 text-xs text-ink-soft">
-                JPG / PNG / WebP, up to 4 photos. The first photo is the cover.
-                {stillUploading && (
-                  <span className="ml-1 inline-flex items-center gap-1 text-brand">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Uploading…
-                  </span>
-                )}
+            </div>
+
+            <div className="flex items-center justify-between gap-3 border-t border-line bg-canvas px-6 py-4">
+              <p className="hidden text-sm text-mute sm:block">
+                {stillUploading ? "Processing photos…" : canPublish ? "Ready to go live." : "Add a photo, title and price to publish."}
               </p>
-            </div>
-
-            {/* Title */}
-            <div>
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value.slice(0, 80))}
-                placeholder="e.g. Vintage Levi's 501 Jeans"
-                className="mt-1.5 h-11"
-              />
-            </div>
-
-            {/* Price + delivery fee */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="price">Price (NGN)</Label>
-                <div className="relative mt-1.5">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-ink-soft">
-                    ₦
-                  </span>
-                  <Input
-                    id="price"
-                    inputMode="numeric"
-                    value={price}
-                    onChange={(e) =>
-                      setPrice(e.target.value.replace(/[^0-9]/g, ""))
-                    }
-                    placeholder="25000"
-                    className="h-11 pl-7"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="delivery-fee">Delivery fee (NGN)</Label>
-                <div className="relative mt-1.5">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-ink-soft">
-                    ₦
-                  </span>
-                  <Input
-                    id="delivery-fee"
-                    inputMode="numeric"
-                    value={deliveryFee}
-                    onChange={(e) =>
-                      setDeliveryFee(e.target.value.replace(/[^0-9]/g, ""))
-                    }
-                    placeholder="0 = free"
-                    className="h-11 pl-7"
-                  />
-                </div>
+              <div className="ml-auto flex gap-2">
+                <Button variant="ghost" onClick={onClose} disabled={isSavingToBackend}>
+                  Cancel
+                </Button>
+                <Button onClick={onPublish} disabled={!canPublish} size="lg" className="px-6">
+                  {isSavingToBackend ? (
+                    <>
+                      <Loader2 className="animate-spin" /> Publishing…
+                    </>
+                  ) : stillUploading ? (
+                    <>
+                      <Loader2 className="animate-spin" /> Processing photos…
+                    </>
+                  ) : (
+                    <>
+                      <RocketLaunch size={20} weight="fill" /> Publish listing
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
-            <div className="max-w-[12rem]">
-              <Label htmlFor="quantity">Quantity in stock</Label>
-              <Input
-                id="quantity"
-                inputMode="numeric"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
-                className="mt-1.5 tabular-nums"
-              />
-            </div>
-            <p className="-mt-2 text-xs text-ink-soft">
-              Buyers see the delivery fee added to the total before they pay —
-              no surprises after payment.
-            </p>
-
-            {/* Description */}
-            <div>
-              <Label htmlFor="desc">Description</Label>
-              <Textarea
-                id="desc"
-                value={description}
-                onChange={(e) =>
-                  setDescription(e.target.value.slice(0, 2000))
-                }
-                placeholder="Condition, size, what's included, pickup or delivery details — keep it real."
-                className="mt-1.5 min-h-[140px]"
-              />
-              {description.length > 1500 && (
-                <p className="mt-1 text-right text-xs text-ink-soft tabular-nums">
-                  {description.length}/2000
-                </p>
-              )}
-            </div>
-
-            {error && (
-              <div className="rounded-lg border border-negative/25 bg-negative-pale p-3 text-sm text-negative">
-                {error}
-              </div>
-            )}
           </div>
-        </div>
 
-        {/* Sticky footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-border bg-canvas px-5 py-4">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isSavingToBackend}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={onPublish}
-            disabled={!canPublish}
-            className="bg-brand text-brand-foreground hover:bg-brand/90"
-          >
-            {isSavingToBackend ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Publishing…
-              </>
-            ) : stillUploading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Waiting for uploads…
-              </>
-            ) : (
-              <>
-                <Send className="mr-2 h-4 w-4" />
-                Publish
-              </>
-            )}
-          </Button>
+          {/* Live preview */}
+          <aside className="hidden min-h-0 flex-col overflow-y-auto bg-mint p-6 lg:flex">
+            <p className="text-sm font-semibold text-forest">Live preview</p>
+            <p className="text-sm text-forest/70">This is what buyers see.</p>
+            <motion.div layout className="mt-5 overflow-hidden rounded-2xl bg-canvas shadow-[var(--shadow-float)]">
+              <div className="relative aspect-square bg-canvas-soft">
+                <AnimatePresence mode="wait">
+                  {cover ? (
+                    <motion.img
+                      key={cover}
+                      src={cover}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    />
+                  ) : (
+                    <motion.div key="empty" className="grid h-full place-items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                      <ImageSquare size={48} weight="duotone" className="text-line-strong" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              <div className="p-5">
+                <p className={cn("font-semibold", title ? "text-ink" : "text-mute")}>{title || "Your product title"}</p>
+                <div className="mt-4 space-y-1.5 text-sm">
+                  <div className="flex justify-between text-body">
+                    <span>Item</span>
+                    <span className="tabular-nums">{priceNum ? formatNGN(priceNum) : "—"}</span>
+                  </div>
+                  <div className="flex justify-between text-body">
+                    <span>Delivery</span>
+                    <span className="tabular-nums">{feeNum ? formatNGN(feeNum) : "Free"}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-line pt-2 font-semibold text-ink">
+                    <span>Total</span>
+                    <AnimatedNumber value={priceNum + feeNum} format={(n) => formatNGN(Math.round(n))} className="tabular-nums" />
+                  </div>
+                </div>
+                <div className="mt-4 flex h-11 items-center justify-center gap-2 rounded-full bg-forest text-sm font-semibold text-mint">
+                  <Lock className="h-4 w-4" /> Buy with SafeSale
+                </div>
+                <p className="mt-3 text-center text-xs text-mute">Sold by {currentSeller?.name ?? "your shop"}</p>
+              </div>
+            </motion.div>
+            <p className="mt-5 flex items-start gap-2 text-sm text-forest/80">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+              Buyers pay SafeSale first, so they're happy to pay before you ship.
+            </p>
+          </aside>
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function FormBlock({ step, title, hint, children }: { step: number; title: string; hint?: string; children: ReactNode }) {
+  return (
+    <section>
+      <div className="mb-3 flex items-center gap-3">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-forest text-xs font-bold text-mint tabular-nums">
+          {step}
+        </span>
+        <div>
+          <h3 className="font-semibold text-ink">{title}</h3>
+          {hint && <p className="text-sm text-mute">{hint}</p>}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function MoneyField({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div>
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative mt-1.5">
+        <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 font-medium text-mute">₦</span>
+        <Input
+          id={id}
+          inputMode="numeric"
+          value={value ? Number(value).toLocaleString("en-NG") : ""}
+          onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, "").slice(0, 9))}
+          placeholder={placeholder}
+          className="pl-8 tabular-nums"
+        />
+      </div>
+    </div>
   );
 }
 

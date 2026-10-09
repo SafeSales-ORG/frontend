@@ -1,7 +1,8 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useState, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { Home, Loader2, LogOut, Package, Receipt, Scale, Settings, ShieldCheck, Wallet } from "lucide-react";
+import { Loader2, LogOut, ShieldCheck } from "lucide-react";
+import { GearSix, House, Package, Receipt, Scales, Wallet, type Icon } from "@phosphor-icons/react";
 
 import { Logo, LogoMark } from "./Logo";
 import { Avatar } from "./Avatar";
@@ -27,16 +28,16 @@ interface Props {
 }
 
 const mobileTabs = [
-  { to: "/app", icon: Home, label: "Home", end: true },
+  { to: "/app", icon: House, label: "Home", end: true },
   { to: "/app/listings", icon: Package, label: "Listings" },
   { to: "/app/orders", icon: Receipt, label: "Orders" },
   { to: "/app/earnings", icon: Wallet, label: "Earnings" },
-  { to: "/app/dispute", icon: Scale, label: "Disputes" },
+  { to: "/app/dispute", icon: Scales, label: "Disputes" },
 ];
 
 interface NavItem {
   to: string;
-  icon: typeof Home;
+  icon: Icon;
   label: string;
   end?: boolean;
   badge?: string;
@@ -47,7 +48,7 @@ function sidebarGroups(activeDisputes: number): { label: string; items: NavItem[
     {
       label: "Manage",
       items: [
-        { to: "/app", icon: Home, label: "Home", end: true },
+        { to: "/app", icon: House, label: "Home", end: true },
         { to: "/app/listings", icon: Package, label: "Listings" },
         { to: "/app/orders", icon: Receipt, label: "Orders" },
         { to: "/app/earnings", icon: Wallet, label: "Earnings" },
@@ -56,8 +57,8 @@ function sidebarGroups(activeDisputes: number): { label: string; items: NavItem[
     {
       label: "Support",
       items: [
-        { to: "/app/dispute", icon: Scale, label: "Disputes", badge: activeDisputes > 0 ? String(activeDisputes) : undefined },
-        { to: "/app/settings", icon: Settings, label: "Settings" },
+        { to: "/app/dispute", icon: Scales, label: "Disputes", badge: activeDisputes > 0 ? String(activeDisputes) : undefined },
+        { to: "/app/settings", icon: GearSix, label: "Settings" },
       ],
     },
   ];
@@ -125,7 +126,7 @@ export function AppShell({ children, title, subtitle, action }: Props) {
                           isActive ? "text-forest" : "text-canvas/75 hover:bg-canvas/10 hover:text-canvas",
                         )}
                       >
-                        <t.icon className="h-4 w-4" />
+                        <t.icon size={19} weight={isActive ? "fill" : "regular"} />
                         <span className="flex-1">{t.label}</span>
                         {t.badge && (
                           <span className="rounded-full bg-warning-pale px-2 py-0.5 text-xs font-semibold text-warning tabular-nums">
@@ -168,7 +169,7 @@ export function AppShell({ children, title, subtitle, action }: Props) {
                 )
               }
             >
-              <Settings className="h-[18px] w-[18px]" />
+              <GearSix size={20} />
             </NavLink>
             <div className="ml-1 lg:hidden">
               <AccountMenu variant="header" {...accountProps} />
@@ -197,7 +198,11 @@ export function AppShell({ children, title, subtitle, action }: Props) {
                       transition={{ type: "spring", stiffness: 500, damping: 40 }}
                     />
                   )}
-                  <t.icon className={cn("relative mt-1.5 h-5 w-5", isActive ? "text-forest" : "text-mute")} />
+                  <t.icon
+                    size={22}
+                    weight={isActive ? "fill" : "regular"}
+                    className={cn("relative mt-1", isActive ? "text-forest" : "text-mute")}
+                  />
                   <span className={cn("relative mt-1", isActive ? "text-forest" : "text-mute")}>{t.label}</span>
                 </NavLink>
               </li>

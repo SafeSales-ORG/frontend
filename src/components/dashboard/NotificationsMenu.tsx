@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertTriangle, Banknote, Bell, Lock, Truck } from "lucide-react";
+import { Bell, LockKey, Money, Truck, WarningCircle, type Icon } from "@phosphor-icons/react";
 
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -19,11 +19,11 @@ interface Notification {
   to: string;
 }
 
-const ICON: Record<Kind, { Icon: typeof Bell; tone: string }> = {
-  paid: { Icon: Lock, tone: "bg-brand-pale text-brand" },
+const ICON: Record<Kind, { Icon: Icon; tone: string }> = {
+  paid: { Icon: LockKey, tone: "bg-brand-pale text-brand" },
   shipped: { Icon: Truck, tone: "bg-info-pale text-info" },
-  disputed: { Icon: AlertTriangle, tone: "bg-warning-pale text-warning" },
-  paidout: { Icon: Banknote, tone: "bg-mint text-forest" },
+  disputed: { Icon: WarningCircle, tone: "bg-warning-pale text-warning" },
+  paidout: { Icon: Money, tone: "bg-mint text-forest" },
 };
 
 /**
@@ -85,7 +85,7 @@ export function NotificationsMenu() {
         aria-expanded={open}
         className="relative grid h-10 w-10 place-items-center rounded-full text-body transition-colors hover:bg-canvas-soft hover:text-ink"
       >
-        <Bell className="h-[18px] w-[18px]" />
+        <Bell size={20} weight={open ? "fill" : "regular"} />
         <AnimatePresence>
           {unread > 0 && (
             <motion.span
@@ -121,7 +121,7 @@ export function NotificationsMenu() {
             </div>
             {items.length === 0 ? (
               <div className="p-8 text-center">
-                <Bell className="mx-auto h-6 w-6 text-mute" aria-hidden />
+                <Bell size={28} weight="duotone" className="mx-auto text-mute" aria-hidden />
                 <p className="mt-3 text-sm font-medium text-ink">Nothing yet</p>
                 <p className="mt-1 text-sm text-mute">New payments, shipments and payouts show up here.</p>
               </div>
@@ -146,7 +146,7 @@ export function NotificationsMenu() {
                         className={cn("flex items-start gap-3 px-4 py-3 hover:bg-canvas-soft", isUnread && "bg-brand-pale/40")}
                       >
                         <span className={cn("mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full", tone)}>
-                          <Icon className="h-4 w-4" />
+                          <Icon size={18} weight="duotone" />
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-sm text-ink">{n.text}</span>
