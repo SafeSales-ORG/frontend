@@ -16,6 +16,7 @@
 import { useState } from "react";
 import { useSeoMeta } from "@unhead/react";
 import { Link, useParams } from "react-router-dom";
+import { DemoMediatorLink } from "@/components/safesale/DemoMediatorLink";
 import { useGoBack } from "@/hooks/useGoBack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/safesale/AppShell";
@@ -313,6 +314,7 @@ function DisputeDetailView({
         </button>
 
         <StatusBanner dispute={dispute} amount={order.amountNGN} />
+        {!isResolved && <DemoMediatorLink />}
 
         <div className="grid gap-5 lg:grid-cols-3">
           {/* Order context */}

@@ -186,6 +186,7 @@ function SiteFooter() {
               { to: "/onboarding", label: "Start selling" },
               { to: "/onboarding", label: "Sign in" },
               { to: "/app", label: "Seller dashboard" },
+              { to: "/admin", label: "Mediator console" },
             ]}
           />
         </div>

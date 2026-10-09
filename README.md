@@ -75,7 +75,6 @@ Copy `.env.example` to `.env`. Key variables:
 | `VITE_DEMO_MODE` | `true` runs the whole app on an in-memory mock (no backend) and unlocks `/admin` — useful for UI work and demos. `false` uses the real backend. |
 | `VITE_GOOGLE_CLIENT_ID` | Google OAuth client ID (for "Continue with Google"). |
 | `VITE_GOOGLE_ENABLED` | `true` shows the Google sign-in button. Leave unset/`false` to hide it (until the OAuth origins are configured). |
-| `VITE_MEDIATOR_EMAIL` | The mediator account's email; only this account can access `/admin`. |
 | `VITE_APP_URL` | Public app URL, used in shared links. |
 | `VITE_SUPPORT_EMAIL` / `VITE_SUPPORT_WHATSAPP` | Shown in the Help dialog (optional). |
 

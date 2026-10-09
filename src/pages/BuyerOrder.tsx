@@ -45,6 +45,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { DemoMediatorLink } from "@/components/safesale/DemoMediatorLink";
 import { useSeoMeta } from "@unhead/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -1255,6 +1256,7 @@ function DisputeSummaryCard({ dispute }: { dispute: ApiDispute | null }) {
           ? "This dispute is closed. The outcome is shown above."
           : "A SafeSale mediator is reviewing what you and the seller sent. Check this page for the outcome."}
       </p>
+      {!isResolved && <DemoMediatorLink className="mt-4" />}
     </section>
   );
 }
