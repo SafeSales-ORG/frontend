@@ -520,6 +520,12 @@ export interface LoginRequest {
  * account's stable id + verified email (obtained by the frontend from the
  * Google Identity SDK) and returns a JWT session.
  */
+/** `GET /api/sellers/:handle` + `GET /api/listings?seller=` — a public shop. */
+export interface GetShopResponse {
+  seller: ApiSeller;
+  listings: ApiListing[];
+}
+
 export interface GoogleAuthRequest {
   /** Google OAuth access token — the backend verifies it with Google. */
   accessToken: string;

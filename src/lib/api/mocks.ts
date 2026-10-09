@@ -31,6 +31,7 @@ import type {
   GetDisputesResponse,
   GetOrderResponse,
   GetSellerOrdersResponse,
+  GetShopResponse,
   GoogleAuthRequest,
   GoogleAuthResponse,
   LoginRequest,
@@ -297,6 +298,16 @@ export const mockApi = {
   async getListing(id: string): Promise<{ listing: ApiListing } | null> {
     const listing = marketStore.getListing(id);
     return listing ? { listing } : null;
+  },
+
+  async getShop(handle: string): Promise<GetShopResponse | null> {
+    const wanted = handle.toLowerCase();
+    const seller = Object.values(marketStore.getSnapshot().sellersByNpub).find(
+      (s) => s.handle.toLowerCase() === wanted,
+    );
+    if (!seller) return null;
+    const listings = marketStore.listingsForSeller(seller.id).filter((l) => l.active !== false);
+    return { seller, listings };
   },
 
   async getSellerOrders(npub: string): Promise<GetSellerOrdersResponse> {

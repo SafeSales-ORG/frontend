@@ -1,5 +1,6 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { Logo, LogoMark } from "./Logo";
 import { Avatar } from "./Avatar";
@@ -157,260 +158,219 @@ export function AppShell({ children, title, subtitle, action }: Props) {
   );
 
   return (
-    <div className="min-h-screen bg-surface text-foreground">
+    <div className="min-h-screen bg-canvas-soft text-foreground">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-border bg-background lg:flex lg:flex-col">
-        <div className="flex h-16 items-center border-b border-border px-5">
-          {/* Logo always returns to the marketing landing page —
-              the standard SaaS convention. The sidebar's 'Home' nav
-              item below is the dashboard home; the brand-mark up here
-              is the marketing home. Two different "homes," same as
-              Stripe / Shopify / Linear. */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 bg-forest lg:flex lg:flex-col">
+        <div className="flex h-16 items-center px-6">
           <Link to="/" aria-label="SafeSale home">
-            <Logo />
+            <Logo className="[&_span]:text-canvas" />
           </Link>
         </div>
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Seller dashboard">
           {sidebarGroups.map((group) => (
-            <div key={group.label} className="mb-4">
-              <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wider text-ink-soft">
+            <div key={group.label} className="mb-6">
+              <p className="px-3 pb-2 text-xs font-medium tracking-wider text-canvas/50 uppercase">
                 {group.label}
               </p>
               {group.items.map((t) => (
-                <NavLink
-                  key={t.to}
-                  to={t.to}
-                  end={t.end}
-                  className={({ isActive }) =>
-                    cn(
-                      "mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                      isActive
-                         ? "bg-brand-soft text-brand-soft-foreground"
-                         : "text-ink-soft hover:bg-secondary hover:text-ink"
-                    )
-                  }
-                >
-                  <t.icon className="h-4 w-4" />
-                  <span className="flex-1">{t.label}</span>
-                  {t.badge && (
-                    <span className="rounded-full bg-negative-pale px-1.5 py-0.5 text-xs font-semibold text-negative">
-                      {t.badge}
-                    </span>
+                <NavLink key={t.to} to={t.to} end={t.end} className="relative mb-0.5 block">
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <motion.span
+                          layoutId="sidebar-active"
+                          className="absolute inset-0 rounded-full bg-mint"
+                          transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                        />
+                      )}
+                      <span
+                        className={cn(
+                          "relative flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors",
+                          isActive ? "text-forest" : "text-canvas/75 hover:bg-canvas/10 hover:text-canvas",
+                        )}
+                      >
+                        <t.icon className="h-4 w-4" />
+                        <span className="flex-1">{t.label}</span>
+                        {t.badge && (
+                          <span className="rounded-full bg-warning-pale px-2 py-0.5 text-xs font-semibold text-warning tabular-nums">
+                            {t.badge}
+                          </span>
+                        )}
+                      </span>
+                    </>
                   )}
                 </NavLink>
               ))}
             </div>
           ))}
         </nav>
-        <div className="border-t border-border p-3">
-          <div className="flex w-full items-center gap-3 rounded-lg p-2 text-left">
+        <div className="border-t border-canvas/10 p-3">
+          <div className="flex items-center gap-3 rounded-lg p-2">
             <Avatar seed={avatarSeed} name={displayName} size={36} src={avatarUrl} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-ink">{displayName}</p>
+              <p className="truncate text-sm font-medium text-canvas">{displayName}</p>
               {displayHandle ? (
-                <p className="truncate text-xs text-ink-soft">@{displayHandle}</p>
+                <p className="truncate text-xs text-canvas/60">@{displayHandle}</p>
               ) : !loggedIn ? (
-                <Link to="/onboarding" className="text-xs text-brand hover:underline">
+                <Link to="/onboarding" className="text-xs text-mint hover:underline">
                   Start selling
                 </Link>
               ) : null}
             </div>
           </div>
-
-          {/* Logout */}
           {loggedIn && (
             <button
               type="button"
               onClick={() => setLogoutOpen(true)}
-              className="mt-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-ink-soft transition-colors hover:bg-secondary hover:text-ink"
+              className="mt-1 flex w-full items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-canvas/70 transition-colors hover:bg-canvas/10 hover:text-canvas"
             >
-              <LogOut className="h-3.5 w-3.5" />
+              <LogOut className="h-4 w-4" />
               Log out
             </button>
           )}
         </div>
       </aside>
 
-      <div className="lg:pl-60">
+      <div className="lg:pl-64">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 border-b border-border bg-background/85 backdrop-blur-md">
-          <div className="flex h-14 items-center gap-3 px-4 lg:h-16 lg:px-8">
-            <Link to="/" className="lg:hidden" aria-label="SafeSale home">
+        <header className="sticky top-0 z-20 border-b border-line bg-canvas">
+          <div className="flex h-16 items-center gap-2 px-4 lg:px-8">
+            <Link to="/" className="mr-1 lg:hidden" aria-label="SafeSale home">
               <LogoMark />
             </Link>
-            <div className="flex-1 min-w-0">
-              {title && (
-                <p className="truncate text-base font-semibold text-ink lg:text-lg">
-                  {title}
-                </p>
-              )}
-              {subtitle && (
-                <p className="truncate text-xs text-ink-soft lg:text-sm">{subtitle}</p>
-              )}
+            <div className="min-w-0 flex-1">
+              {title && <h1 className="truncate font-sans text-h3 text-ink lg:text-h2">{title}</h1>}
+              {subtitle && <p className="hidden truncate text-sm text-mute sm:block">{subtitle}</p>}
             </div>
+            {action && <div className="hidden items-center gap-2 md:flex">{action}</div>}
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => setSearchOpen((v) => !v)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-soft hover:bg-secondary hover:text-ink"
-                aria-label="Search"
-              >
-                <Search className="h-4 w-4" />
-              </button>
-              {searchOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setSearchOpen(false)} />
-                  <div className="absolute right-0 mt-2 z-20 w-80 overflow-hidden rounded-2xl border border-border bg-canvas shadow-xl">
-                    <div className="border-b border-border p-3">
-                      <Input
-                        autoFocus
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search orders & listings…"
-                        className="h-9"
-                      />
-                    </div>
-                    <div className="max-h-[320px] overflow-y-auto p-2">
-                      {!searchQuery.trim() ? (
-                        <p className="p-4 text-center text-xs text-ink-soft">
-                          Search by buyer, order ID, or product.
-                        </p>
-                      ) : searchResults.orders.length === 0 &&
-                        searchResults.listings.length === 0 ? (
-                        <p className="p-4 text-center text-xs text-ink-soft">
-                          No matches.
-                        </p>
-                      ) : (
-                        <>
-                          {searchResults.orders.map((o) => (
-                            <NavLink
-                              key={o.orderToken}
-                              to={`/app/orders/${o.orderToken}`}
-                              onClick={() => setSearchOpen(false)}
-                              className="block rounded-lg px-3 py-2 text-sm hover:bg-surface"
-                            >
-                              <span className="font-medium text-ink">{o.shortId}</span>{" "}
-                              <span className="text-ink-soft">· {o.buyerName} · {o.listing.title}</span>
-                            </NavLink>
-                          ))}
-                          {searchResults.listings.map((l) => (
-                            <NavLink
-                              key={l.id}
-                              to={`/buy/${l.id}`}
-                              onClick={() => setSearchOpen(false)}
-                              className="block rounded-lg px-3 py-2 text-sm hover:bg-surface"
-                            >
-                              <span className="font-medium text-ink">{l.title}</span>{" "}
-                              <span className="text-ink-soft">· listing</span>
-                            </NavLink>
-                          ))}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
+              <IconButton label="Search" onClick={() => setSearchOpen((v) => !v)}>
+                <Search className="h-[18px] w-[18px]" />
+              </IconButton>
+              <Popover open={searchOpen} onClose={() => setSearchOpen(false)}>
+                <div className="border-b border-line p-3">
+                  <Input
+                    autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search orders and listings"
+                  />
+                </div>
+                <div className="max-h-80 overflow-y-auto p-2">
+                  {!searchQuery.trim() ? (
+                    <p className="p-4 text-center text-sm text-mute">Search by buyer, order number or product.</p>
+                  ) : searchResults.orders.length === 0 && searchResults.listings.length === 0 ? (
+                    <p className="p-4 text-center text-sm text-mute">No matches.</p>
+                  ) : (
+                    <>
+                      {searchResults.orders.map((o) => (
+                        <NavLink
+                          key={o.orderToken}
+                          to={`/app/orders/${o.orderToken}`}
+                          onClick={() => setSearchOpen(false)}
+                          className="block rounded-md px-3 py-2 text-sm hover:bg-canvas-soft"
+                        >
+                          <span className="font-medium text-ink">{o.shortId}</span>{" "}
+                          <span className="text-mute">· {o.buyerName} · {o.listing.title}</span>
+                        </NavLink>
+                      ))}
+                      {searchResults.listings.map((l) => (
+                        <NavLink
+                          key={l.id}
+                          to={`/buy/${l.id}`}
+                          onClick={() => setSearchOpen(false)}
+                          className="block rounded-md px-3 py-2 text-sm hover:bg-canvas-soft"
+                        >
+                          <span className="font-medium text-ink">{l.title}</span>{" "}
+                          <span className="text-mute">· listing</span>
+                        </NavLink>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </Popover>
             </div>
-            <button
-              type="button"
-              onClick={() => setHelpOpen(true)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-soft hover:bg-secondary hover:text-ink"
-              aria-label="Help"
-            >
-              <LifeBuoy className="h-4 w-4" />
-            </button>
+            <IconButton label="Help" onClick={() => setHelpOpen(true)}>
+              <LifeBuoy className="h-[18px] w-[18px]" />
+            </IconButton>
             <div className="relative">
-              <button
-                type="button"
+              <IconButton
+                label="Notifications"
                 onClick={() => {
                   setNotifsOpen(!notifsOpen);
                   if (!notifsOpen) setHasUnread(true);
                 }}
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-soft hover:bg-secondary hover:text-ink"
-                aria-label="Notifications"
               >
-                <Bell className="h-4 w-4" />
+                <Bell className="h-[18px] w-[18px]" />
                 {notifications.length > 0 && !hasUnread && (
-                  <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-brand" />
+                  <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-brand ring-2 ring-canvas" />
                 )}
-              </button>
-
-              {notifsOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setNotifsOpen(false)}
-                  />
-                  <div className="absolute right-0 mt-2 z-20 w-80 overflow-hidden rounded-2xl border border-border bg-canvas shadow-xl animate-in fade-in zoom-in duration-200">
-                    <div className="border-b border-border p-4">
-                      <p className="text-sm font-semibold text-ink">Notifications</p>
-                    </div>
-                    {notifications.length === 0 ? (
-                      <div className="max-h-[320px] overflow-y-auto p-6 text-center">
-                        <p className="text-sm text-ink-soft">You're all caught up.</p>
-                        <p className="mt-1 text-xs text-ink-soft">
-                          New orders, messages and disputes appear here.
-                        </p>
-                      </div>
-                    ) : (
-                      <ul className="max-h-[320px] divide-y divide-border overflow-y-auto">
-                        {notifications.map((n) => (
-                          <li key={n.id}>
-                            <NavLink
-                              to={n.to}
-                              onClick={() => setNotifsOpen(false)}
-                              className="flex items-start gap-3 px-4 py-3 hover:bg-surface"
-                            >
-                              <span
-                                className={cn(
-                                  "mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                                  n.icon === "dispute"
-                                    ? "bg-negative-pale text-negative"
-                                    : n.icon === "done"
-                                      ? "bg-brand-pale text-brand"
-                                      : n.icon === "msg"
-                                        ? "bg-info-pale text-info"
-                                        : "bg-brand-soft text-brand",
-                                )}
-                              >
-                                {n.icon === "dispute" ? (
-                                  <Scale className="h-3.5 w-3.5" />
-                                ) : n.icon === "msg" ? (
-                                  <Bell className="h-3.5 w-3.5" />
-                                ) : (
-                                  <Receipt className="h-3.5 w-3.5" />
-                                )}
-                              </span>
-                              <span className="min-w-0 flex-1 text-sm text-ink">
-                                {n.text}
-                              </span>
-                            </NavLink>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <Link to="/app/orders" className="block border-t border-border p-3 text-center text-xs font-medium text-brand hover:bg-brand-soft/40">
-                      View all orders
-                    </Link>
+              </IconButton>
+              <Popover open={notifsOpen} onClose={() => setNotifsOpen(false)}>
+                <p className="border-b border-line p-4 font-semibold text-ink">Notifications</p>
+                {notifications.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <p className="text-sm text-ink">You're all caught up.</p>
+                    <p className="mt-1 text-sm text-mute">New orders and disputes show up here.</p>
                   </div>
-                </>
-              )}
+                ) : (
+                  <ul className="max-h-80 divide-y divide-line overflow-y-auto">
+                    {notifications.map((n) => (
+                      <li key={n.id}>
+                        <NavLink
+                          to={n.to}
+                          onClick={() => setNotifsOpen(false)}
+                          className="flex items-start gap-3 px-4 py-3 hover:bg-canvas-soft"
+                        >
+                          <span
+                            className={cn(
+                              "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full",
+                              n.icon === "dispute"
+                                ? "bg-warning-pale text-warning"
+                                : n.icon === "msg"
+                                  ? "bg-info-pale text-info"
+                                  : "bg-brand-pale text-brand",
+                            )}
+                          >
+                            {n.icon === "dispute" ? (
+                              <Scale className="h-3.5 w-3.5" />
+                            ) : n.icon === "msg" ? (
+                              <Bell className="h-3.5 w-3.5" />
+                            ) : (
+                              <Receipt className="h-3.5 w-3.5" />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1 text-sm text-ink">{n.text}</span>
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <Link
+                  to="/app/orders"
+                  onClick={() => setNotifsOpen(false)}
+                  className="block border-t border-line p-3 text-center text-sm font-medium text-brand hover:bg-canvas-soft"
+                >
+                  View all orders
+                </Link>
+              </Popover>
             </div>
-            <div className="lg:hidden">
+            <div className="ml-1 lg:hidden">
               <Avatar seed={avatarSeed} name={displayName} size={32} src={avatarUrl} />
             </div>
           </div>
-          {action && (
-            <div className="border-t border-border/60 px-4 py-2 lg:px-8">{action}</div>
-          )}
+          {action && <div className="flex gap-2 border-t border-line px-4 py-2.5 md:hidden">{action}</div>}
         </header>
 
-        <main className="px-4 pb-28 pt-4 lg:px-8 lg:pb-12 lg:pt-6">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 pt-6 pb-28 lg:px-8 lg:pt-8 lg:pb-12">{children}</main>
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-background/95 pb-safe backdrop-blur-md lg:hidden">
-        <ul className="grid grid-cols-5">
+      <nav
+        className="fixed right-0 bottom-0 left-0 z-30 border-t border-line bg-canvas pb-safe lg:hidden"
+        aria-label="Seller dashboard"
+      >
+        <ul className="grid grid-cols-5 px-2 pt-2">
           {mobileTabs.map((t) => {
             const isActive = t === activeTab;
             return (
@@ -418,13 +378,17 @@ export function AppShell({ children, title, subtitle, action }: Props) {
                 <NavLink
                   to={t.to}
                   end={t.end}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-1 px-1 py-2.5 text-xs font-medium",
-                    isActive ? "text-brand" : "text-ink-soft"
-                  )}
+                  className="relative flex flex-col items-center gap-1 px-1 py-1.5 text-xs font-medium"
                 >
-                  <t.icon className={cn("h-5 w-5", isActive && "text-brand")} />
-                  {t.label}
+                  {isActive && (
+                    <motion.span
+                      layoutId="mobile-tab-active"
+                      className="absolute top-0 h-8 w-14 rounded-full bg-mint"
+                      transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                    />
+                  )}
+                  <t.icon className={cn("relative mt-1.5 h-5 w-5", isActive ? "text-forest" : "text-mute")} />
+                  <span className={cn("relative mt-1", isActive ? "text-forest" : "text-mute")}>{t.label}</span>
                 </NavLink>
               </li>
             );
@@ -450,11 +414,8 @@ export function AppShell({ children, title, subtitle, action }: Props) {
           </DialogHeader>
 
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:gap-2">
-            <Button
-              className="w-full bg-brand text-brand-foreground hover:bg-brand/90"
-              onClick={handleLogout}
-            >
-              <LogOut className="mr-2 h-4 w-4" /> Log out
+            <Button className="w-full" onClick={handleLogout}>
+              <LogOut /> Log out
             </Button>
             <Button
               variant="ghost"
@@ -467,5 +428,40 @@ export function AppShell({ children, title, subtitle, action }: Props) {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function IconButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="relative grid h-10 w-10 place-items-center rounded-full text-body transition-colors hover:bg-canvas-soft hover:text-ink"
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Small anchored panel under a header icon; closes on outside click. */
+function Popover({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={onClose} aria-hidden />
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.16, ease: [0.2, 0, 0, 1] }}
+            className="absolute right-0 z-20 mt-2 w-[min(20rem,calc(100vw-2rem))] origin-top-right overflow-hidden rounded-lg bg-canvas shadow-[var(--shadow-float)]"
+          >
+            {children}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

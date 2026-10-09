@@ -27,6 +27,7 @@ import type {
   GetDisputesResponse,
   GetOrderResponse,
   GetSellerOrdersResponse,
+  GetShopResponse,
   GoogleAuthRequest,
   GoogleAuthResponse,
   LoginRequest,
@@ -187,6 +188,22 @@ export const httpApi = {
         "GET",
         `/api/listings/${encodeURIComponent(id)}`,
       );
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
+    }
+  },
+  async getShop(handle: string): Promise<GetShopResponse | null> {
+    try {
+      const { seller } = await request<{ seller: ApiSeller }>(
+        "GET",
+        `/api/sellers/${encodeURIComponent(handle)}`,
+      );
+      const { listings } = await request<{ listings: ApiListing[] }>(
+        "GET",
+        `/api/listings?seller=${encodeURIComponent(seller.npub)}`,
+      );
+      return { seller, listings };
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) return null;
       throw err;

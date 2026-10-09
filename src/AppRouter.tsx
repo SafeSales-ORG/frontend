@@ -6,6 +6,7 @@ import HowItWorks from "./pages/HowItWorks";
 import ForSellers from "./pages/ForSellers";
 import Marketplace from "./pages/Marketplace";
 import PublicListing from "./pages/PublicListing";
+import ShopPage from "./pages/ShopPage";
 import Checkout from "./pages/Checkout";
 import BuyerOrder from "./pages/BuyerOrder";
 import Onboarding from "./pages/Onboarding";
@@ -34,6 +35,7 @@ export function AppRouter() {
         <Route path="/market" element={<Marketplace />} />
 
         {/* Buyer flow */}
+        <Route path="/s/:handle" element={<ShopPage />} />
         <Route path="/buy/:id" element={<PublicListing />} />
         <Route path="/checkout/:id" element={<Checkout />} />
         {/* Buyer order page — token is the buyer's secret credential. */}

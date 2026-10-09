@@ -17,6 +17,7 @@ import { mockApi } from "./mocks";
 import type {
   ApiListing,
   ApiSeller,
+  GetShopResponse,
   CreateListingRequest,
   CreateListingResponse,
   CreateOrderRequest,
@@ -72,6 +73,8 @@ export interface ApiClient {
   getListing(id: string): Promise<{ listing: ApiListing; seller?: ApiSeller | null } | null>;
   /** GET /api/orders/seller/:npub — seller dashboard orders feed. */
   getSellerOrders(npub: string): Promise<GetSellerOrdersResponse>;
+  /** Public shop by handle (null if it doesn't exist). */
+  getShop(handle: string): Promise<GetShopResponse | null>;
   /** POST /api/orders — buyer initiates a purchase. */
   createOrder(req: CreateOrderRequest): Promise<CreateOrderResponse>;
   /** POST /api/orders/:token/simulate-payment — DEMO: mark order paid. */

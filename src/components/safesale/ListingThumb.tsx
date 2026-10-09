@@ -52,6 +52,8 @@ export interface ListingThumbProps {
   iconScale?: number;
   /** Extra classes on the outer element (img or div). */
   className?: string;
+  /** Fill the parent box (which sets size and rounding) instead of a fixed square. */
+  fill?: boolean;
 }
 
 export function ListingThumb({
@@ -60,9 +62,11 @@ export function ListingThumb({
   size,
   iconScale = 0.25,
   className,
+  fill = false,
 }: ListingThumbProps) {
   const url = image?.url ? sanitizeUrl(image.url) : undefined;
-  const dim = { width: size, height: size };
+  const dim = fill ? undefined : { width: size, height: size };
+  const shape = fill ? "h-full w-full" : "shrink-0 rounded-xl";
 
   if (url) {
     return (
@@ -70,7 +74,7 @@ export function ListingThumb({
         src={url}
         alt={alt}
         loading="lazy"
-        className={`shrink-0 rounded-xl object-cover ${className ?? ""}`.trim()}
+        className={`${shape} object-cover ${className ?? ""}`.trim()}
         style={dim}
       />
     );
@@ -87,7 +91,7 @@ export function ListingThumb({
   return (
     <div
       aria-hidden
-      className={`flex shrink-0 items-center justify-center rounded-xl bg-surface text-ink-soft ${className ?? ""}`.trim()}
+      className={`flex items-center justify-center bg-surface text-ink-soft ${shape} ${className ?? ""}`.trim()}
       style={{
         ...dim,
         background: `linear-gradient(135deg, hsl(${hueA} 35% 88%), hsl(${hueB} 30% 80%))`,

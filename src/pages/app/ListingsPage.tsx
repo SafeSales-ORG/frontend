@@ -19,6 +19,7 @@ import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/safesale/AppShell";
+import { listingUrl } from "@/lib/links";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -447,7 +448,7 @@ function ListingCard({
   const cover = listing.images[0] ? sanitizeUrl(listing.images[0]) : undefined;
   const extraImages = Math.max(0, listing.images.length - 1);
   const isOut = listing.inStock <= 0;
-  const buyLink = buyUrlFor(listing.id);
+  const buyLink = listingUrl(listing.id);
 
   const copyLink = () => {
     void navigator.clipboard?.writeText(buyLink).then(() => {
@@ -764,7 +765,7 @@ function ShareDialog({
 }) {
   const { toast } = useToast();
   if (!listing) return null;
-  const shareLink = buyUrlFor(listing.id);
+  const shareLink = listingUrl(listing.id);
 
   const copy = () => {
     void navigator.clipboard?.writeText(shareLink).then(() => {
@@ -1714,11 +1715,3 @@ function EditListingSheet({
 /*                                 Helpers                                    */
 /* -------------------------------------------------------------------------- */
 
-function buyUrlFor(id: string): string {
-  const base =
-    (typeof import.meta !== "undefined" && import.meta.env?.VITE_APP_URL) ||
-    (typeof window !== "undefined"
-      ? window.location.origin
-      : "https://safesale.app");
-  return `${base.replace(/\/$/, "")}/buy/${id}`;
-}
