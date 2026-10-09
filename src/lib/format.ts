@@ -74,3 +74,13 @@ export function formatCountdownLong(targetIso: string, now = Date.now()): string
   if (days === 0 && mins > 0) parts.push(`${mins}m`);
   return parts.join(" ") || `${mins}m`;
 }
+
+/** A future moment, e.g. "in 7 days (16 Oct)" or "today". */
+export function formatDue(iso: string, now = Date.now()): string {
+  const target = new Date(iso);
+  const days = Math.ceil((target.getTime() - now) / 86_400_000);
+  const date = target.toLocaleDateString("en-NG", { day: "numeric", month: "short" });
+  if (days <= 0) return "today";
+  if (days === 1) return `tomorrow (${date})`;
+  return `in ${days} days (${date})`;
+}

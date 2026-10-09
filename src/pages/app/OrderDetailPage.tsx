@@ -74,6 +74,7 @@ import { useUploadFile } from "@/hooks/useUploadFile";
 import { marketStore } from "@/lib/store/marketStore";
 import {
   apiClient,
+  DEMO_MODE,
   ApiError,
   type ApiDispute,
   type ApiOrder,
@@ -85,6 +86,7 @@ import {
   formatNGN,
   formatRelative,
   formatTime,
+  formatDue,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -142,7 +144,7 @@ export default function OrderDetailPage() {
       setCarrier("");
       toast({
         title: "Marked as shipped",
-        description: "Buyer was notified.",
+        description: "The buyer can see it on their order page.",
       });
     },
     onError: (err: unknown) => {
@@ -154,28 +156,6 @@ export default function OrderDetailPage() {
             : err instanceof Error
               ? err.message
               : "Try again in a moment.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deliverMutation = useMutation({
-    mutationFn: () => apiClient.deliverOrder(token),
-    onSuccess: (res) => {
-      qc.setQueryData<GetOrderResponse>(
-        ["safesale", "order", token],
-        (prev) => (prev ? { ...prev, order: res.order } : prev),
-      );
-      qc.invalidateQueries({ queryKey: ["safesale", "seller-orders"] });
-      toast({
-        title: "Marked as delivered",
-        description: "Buyer notified to confirm receipt and release payment.",
-      });
-    },
-    onError: (err: unknown) => {
-      toast({
-        title: "Couldn't mark as delivered",
-        description: err instanceof Error ? err.message : "Try again.",
         variant: "destructive",
       });
     },
@@ -235,8 +215,8 @@ export default function OrderDetailPage() {
       ? (query.data.dispute as ApiDispute)
       : null;
   const isPaymentLocked = order.status === "paid";
-  const shipDisabled =
-    !tracking.trim() || !carrier.trim() || shipMutation.isPending;
+  // Tracking and courier are optional — the backend accepts shipping without them.
+  const shipDisabled = shipMutation.isPending;
 
   return (
     <AppShell
@@ -256,10 +236,7 @@ export default function OrderDetailPage() {
         {/* Heading row */}
         <header className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h1 className="font-mono text-2xl font-semibold tabular-nums text-ink">
-              {order.shortId}
-            </h1>
-            <p className="mt-1 text-sm text-ink-soft">
+            <p className="text-body">
               Placed · {formatRelative(order.createdAt)} · by{" "}
               <span className="text-ink">{order.buyerName}</span>
             </p>
@@ -287,8 +264,6 @@ export default function OrderDetailPage() {
                   : null
               }
               onShip={() => shipMutation.mutate()}
-              onDeliver={() => deliverMutation.mutate()}
-              isDelivering={deliverMutation.isPending}
             />
 
             {/* Dispute working panel — only when disputed */}
@@ -306,7 +281,8 @@ export default function OrderDetailPage() {
           {/* RIGHT — ship-to + timeline + chat */}
           <div className="space-y-6">
             <ShipToCard order={order} />
-            {order.status !== "pending_payment" && (
+            {/* Chat is stored in this browser only, so it's demo-mode only. */}
+            {DEMO_MODE && order.status !== "pending_payment" && (
               <OrderChat orderToken={token} viewer="seller" counterpartyName={order.buyerName} />
             )}
             <TimelineCard order={order} dispute={dispute} />
@@ -357,8 +333,6 @@ interface HeroProps {
   isShipping: boolean;
   shipError: string | null;
   onShip: () => void;
-  onDeliver: () => void;
-  isDelivering: boolean;
 }
 
 function HeroCard({
@@ -373,8 +347,6 @@ function HeroCard({
   isShipping,
   shipError,
   onShip,
-  onDeliver,
-  isDelivering,
 }: HeroProps) {
   switch (order.status) {
     case "paid":
@@ -391,12 +363,12 @@ function HeroCard({
             Ship this order
           </h2>
           <p className="mt-1 text-sm text-ink-soft">
-            Once you mark this shipped, the buyer gets notified. They have 3
-            days to confirm — after that the payment auto-releases to you.
+            Mark it shipped once it's on its way. The buyer sees the update on their order page. If they
+            don't confirm or report a problem within 7 days, the payment is released to you automatically.
           </p>
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <Label htmlFor="tracking">Tracking number</Label>
+              <Label htmlFor="tracking">Tracking number (optional)</Label>
               <Input
                 id="tracking"
                 ref={trackingRef}
@@ -408,7 +380,7 @@ function HeroCard({
               />
             </div>
             <div>
-              <Label htmlFor="carrier">Carrier</Label>
+              <Label htmlFor="carrier">Courier (optional)</Label>
               <Input
                 id="carrier"
                 value={carrier}
@@ -426,16 +398,15 @@ function HeroCard({
             type="button"
             onClick={onShip}
             disabled={shipDisabled}
-            className="mt-4 h-11 rounded-lg bg-brand px-5 text-sm font-semibold text-brand-foreground hover:bg-brand/90 disabled:opacity-50"
+            className="mt-5"
           >
             {isShipping ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Marking
-                shipped…
+                <Loader2 className="animate-spin" /> Marking shipped…
               </>
             ) : (
               <>
-                <Send className="mr-2 h-4 w-4" /> Mark as shipped
+                <Send /> Mark as shipped
               </>
             )}
           </Button>
@@ -454,40 +425,18 @@ function HeroCard({
                 Item is on the way
               </h2>
               <p className="mt-1 text-sm text-ink-soft">
-                You've shipped this order. The buyer has until{" "}
+                You've shipped this order. If the buyer doesn't confirm or report a problem, the payment is released to you{" "}
                 <span className="font-medium text-ink">
-                  {order.autoReleaseAt
-                    ? formatRelative(order.autoReleaseAt)
-                    : "release"}
-                </span>{" "}
-                to release the payment, or it'll release automatically.
+                  {order.autoReleaseAt ? formatDue(order.autoReleaseAt) : "after 7 days"}
+                </span>
+                .
               </p>
             </div>
           </div>
           <ShipmentData order={order} />
-          <div className="mt-4 border-t border-border pt-4">
-            <p className="text-xs text-ink-soft">
-              Courier confirmed delivery? Mark it delivered to prompt the buyer
-              to confirm receipt.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onDeliver}
-              disabled={isDelivering}
-              className="mt-3 h-10 rounded-lg"
-            >
-              {isDelivering ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating…
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" /> Mark as delivered
-                </>
-              )}
-            </Button>
-          </div>
+          <p className="mt-4 border-t border-line pt-4 text-sm text-mute">
+            The buyer confirms delivery from their private order link. You don't need to do anything else.
+          </p>
         </Card>
       );
 
@@ -548,8 +497,7 @@ function HeroCard({
                 This order is in dispute
               </h2>
               <p className="mt-1 text-sm text-ink-soft">
-                A mediator is reviewing. You'll be notified when there's a
-                decision.
+                A SafeSale mediator is reviewing. The decision will show on this page.
               </p>
             </div>
           </div>
@@ -836,15 +784,6 @@ function ShipToCard({ order }: { order: ApiOrder }) {
             </p>
           )}
         </Field>
-        <Field label="Contact preference">
-          <span className="inline-block rounded-md border border-border bg-surface px-2 py-0.5 text-xs text-ink-soft">
-            {order.contactMethod === "phone"
-              ? "Phone"
-              : order.contactMethod === "email"
-                ? "Email"
-                : "Either"}
-          </span>
-        </Field>
         {order.buyerEmail && (
           <Field label="Email">
             <div className="flex items-center justify-between gap-2">
@@ -893,24 +832,20 @@ function SummaryCard({
           <p className="truncate text-sm font-medium text-ink">
             {listing.title}
           </p>
-          <p className="mt-0.5 truncate font-mono text-xs tabular-nums text-ink-soft">
-            {listing.id}
-          </p>
+          {order.variant && <p className="mt-0.5 truncate text-sm text-mute">{order.variant}</p>}
         </div>
       </div>
 
       <dl className="mt-4 space-y-0 text-sm">
-        <SummaryRow label="Unit price">
+        <SummaryRow label="Item">
+          <span className="tabular-nums text-ink">{formatNGN(order.itemNGN ?? listing.priceNGN)}</span>
+        </SummaryRow>
+        <SummaryRow label="Delivery">
           <span className="tabular-nums text-ink">
-            {formatNGN(listing.priceNGN)}
+            {order.deliveryFee ? formatNGN(order.deliveryFee) : "Free"}
           </span>
         </SummaryRow>
-        {order.variant && (
-          <SummaryRow label="Variant">
-            <span className="text-ink">{order.variant}</span>
-          </SummaryRow>
-        )}
-        <SummaryRow label="Total (NGN)">
+        <SummaryRow label="Total paid">
           <span className="font-semibold tabular-nums text-ink">
             {formatNGN(order.amountNGN)}
           </span>
@@ -918,8 +853,8 @@ function SummaryCard({
       </dl>
 
       <p className="mt-4 text-xs italic text-ink-soft">
-        Buyer paid in Naira via Nomba; funds are held in escrow until the
-        buyer confirms delivery.
+        Paid by bank transfer. SafeSale holds the money until the buyer confirms delivery, or 7 days
+        after you ship if no problem is reported.
       </p>
     </Card>
   );

@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar } from "@/components/safesale/Avatar";
 import { EscrowShield } from "@/components/safesale/EscrowShield";
-import { Countdown } from "@/components/safesale/Countdown";
 import { useListing } from "@/hooks/useListing";
 import { getSeller as getFixtureSeller } from "@/lib/mock";
 import {
@@ -88,7 +87,6 @@ export default function Checkout() {
     accountNumber: string;
     bankName: string;
     accountName: string;
-    expiresAt: string;
     payInError: string | null;
   } | null>(null);
   const [creating, setCreating] = useState(false);
@@ -177,21 +175,8 @@ export default function Checkout() {
     address.trim().length > 4 &&
     city.trim().length > 1;
 
-  // Placeholder pay-in details used briefly before createOrder returns
-  // a real account. Computed via useState initializer (the one place a
-  // hook is allowed to call Date.now()), and stable for the lifetime
-  // of the page so the Countdown doesn't reset across re-renders.
-  const [placeholderPayTo] = useState<{
-    accountNumber: string;
-    bankName: string;
-    accountName: string;
-    expiresAt: string;
-  }>(() => ({
-    accountNumber: "—",
-    bankName: "—",
-    accountName: "SafeSale Escrow",
-    expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(),
-  }));
+  // Shown briefly before createOrder returns the real pay-in account.
+  const placeholderPayTo = { accountNumber: "—", bankName: "—", accountName: "SafeSale Escrow" };
 
   // ------------------------------------------------------------------
   //  Loading + not-found gates
@@ -271,7 +256,6 @@ export default function Checkout() {
         accountNumber: res.payIn?.bankAccountNumber ?? "—",
         bankName: res.payIn?.bankName ?? "—",
         accountName: res.payIn?.bankAccountName ?? "SafeSale Escrow",
-        expiresAt: res.payIn?.expiresAt ?? placeholderPayTo.expiresAt,
         payInError: res.payInError ?? null,
       });
     } catch (err) {
@@ -353,20 +337,13 @@ export default function Checkout() {
   // The bank-transfer (pay-in) details come from the API response. In
   // real mode Nomba issues them; in mock mode the mock client makes
   // them up. Either way they're per-order and survive across polls.
-  const payTo: {
-    accountNumber: string;
-    bankName: string;
-    accountName: string;
-    expiresAt: string;
-  } = createdOrder
+  const payTo = createdOrder
     ? {
         accountNumber: createdOrder.accountNumber,
         bankName: createdOrder.bankName,
         accountName: createdOrder.accountName,
-        expiresAt: createdOrder.expiresAt,
       }
     : placeholderPayTo;
-  const payExpiresAt = createdOrder?.expiresAt ?? payTo.expiresAt;
 
   const heroImage = sanitizeUrl(listing.images[0]);
   // Buyer pays item + delivery into escrow — the full, known-up-front total.
@@ -417,7 +394,6 @@ export default function Checkout() {
               <Instructions
                 amount={total}
                 payTo={payTo}
-                expiresAt={payExpiresAt}
                 onConfirm={handleConfirmTransferSent}
                 pending={creating}
                 hasAccount={!!createdOrder}
@@ -426,10 +402,7 @@ export default function Checkout() {
               />
             )}
             {step === "waiting" && (
-              <WaitingPayment
-                amount={total}
-                expiresAt={payExpiresAt}
-              />
+              <WaitingPayment amount={total} />
             )}
             {step === "detected" && <Detected amount={total} />}
             {step === "secured" && createdOrder && (
@@ -650,7 +623,6 @@ function DetailsForm(props: {
 function Instructions({
   amount,
   payTo,
-  expiresAt,
   onConfirm,
   pending,
   hasAccount,
@@ -662,9 +634,7 @@ function Instructions({
     accountNumber: string;
     bankName: string;
     accountName: string;
-    expiresAt: string;
   };
-  expiresAt: string;
   onConfirm: () => void;
   pending: boolean;
   /** True once createOrder has returned and we have real account details. */
@@ -687,7 +657,7 @@ function Instructions({
     return (
       <Card
         title="Pay to escrow"
-        subtitle="Generate a unique bank account to send your payment to. It expires in 24 hours."
+        subtitle="We'll give you bank details for this order only. Transfer the exact amount to them."
       >
         <div className="mt-1 rounded-xl border border-border bg-surface p-4 text-sm text-ink-soft">
           Your money is held in escrow — the seller cannot touch it until
@@ -722,13 +692,7 @@ function Instructions({
 
   return (
     <Card title="Transfer to escrow" subtitle="Send the exact amount. Your money is held safely until you confirm delivery.">
-      <div className="mt-1 rounded-xl border border-warning/25 bg-warning-pale px-4 py-3 text-warning">
-        <p className="inline-flex items-center gap-1.5 text-xs">
-          <Countdown targetIso={expiresAt} prefix="Account expires in" />
-        </p>
-      </div>
-
-      <ul className="mt-4 space-y-2 text-sm">
+      <ul className="mt-2 space-y-2 text-sm">
         <PayRow label="Bank" value={payTo.bankName} onCopy={() => copy(payTo.bankName)} />
         <PayRow label="Account number" value={payTo.accountNumber} onCopy={() => copy(payTo.accountNumber)} highlight />
         <PayRow label="Account name" value={payTo.accountName} onCopy={() => copy(payTo.accountName)} />
@@ -808,7 +772,7 @@ function PayRow({
   );
 }
 
-function WaitingPayment({ amount, expiresAt }: { amount: number; expiresAt: string }) {
+function WaitingPayment({ amount }: { amount: number }) {
   return (
     <Card
       title="Waiting for your payment"
@@ -820,9 +784,6 @@ function WaitingPayment({ amount, expiresAt }: { amount: number; expiresAt: stri
         <p className="mt-1 text-xs text-ink-soft">
           {formatNGN(amount)} expected
         </p>
-        <div className="mt-4 inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-ink-soft">
-          <Countdown targetIso={expiresAt} prefix="Auto-cancels in" />
-        </div>
       </div>
     </Card>
   );

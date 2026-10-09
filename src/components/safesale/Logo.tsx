@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
@@ -35,6 +36,12 @@ export function Logo({ className, variant = "full" }: LogoProps) {
  * Optically tuned to read at 16px (favicon) through hero sizes.
  */
 export function LogoMark({ className }: { className?: string }) {
+  // Unique ids per instance: with two logos on a page (e.g. a hidden sidebar
+  // copy), shared ids made the visible one reference hidden gradients.
+  const uid = useId().replace(/:/g, "");
+  const primary = `ss-primary-${uid}`;
+  const secondary = `ss-secondary-${uid}`;
+  const weave = `ss-weave-${uid}`;
   return (
     <span
       className={cn(
@@ -51,14 +58,14 @@ export function LogoMark({ className }: { className?: string }) {
       >
         <defs>
           {/* Brand emerald, deep → bright, top-left to bottom-right */}
-          <linearGradient id="ss-primary" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+          <linearGradient id={primary} x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor="hsl(160 68% 22%)" />
             <stop offset="55%" stopColor="hsl(158 64% 32%)" />
             <stop offset="100%" stopColor="hsl(150 58% 40%)" />
           </linearGradient>
 
           {/* Inner ribbon — slightly lighter so the overlap reads */}
-          <linearGradient id="ss-secondary" x1="6" y1="28" x2="28" y2="6" gradientUnits="userSpaceOnUse">
+          <linearGradient id={secondary} x1="6" y1="28" x2="28" y2="6" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor="hsl(154 56% 44%)" />
             <stop offset="100%" stopColor="hsl(160 64% 30%)" />
           </linearGradient>
@@ -67,7 +74,7 @@ export function LogoMark({ className }: { className?: string }) {
             Mask that knocks a notch out of the back ribbon where the
             front ribbon crosses it, creating a true "woven" interlock.
           */}
-          <mask id="ss-weave" maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32">
+          <mask id={weave} maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32">
             <rect width="32" height="32" fill="white" />
             {/* punch a small gap where the front ribbon enters the back */}
             <path
@@ -92,11 +99,11 @@ export function LogoMark({ className }: { className?: string }) {
             C 18.5 6.2, 13.5 6.6, 11 9
             C 8.5 11.4, 9.5 14.2, 13 15.5
           "
-          stroke="url(#ss-primary)"
+          stroke={`url(#${primary})`}
           strokeWidth="3.6"
           strokeLinecap="round"
           fill="none"
-          mask="url(#ss-weave)"
+          mask={`url(#${weave})`}
         />
         <path
           d="
@@ -104,7 +111,7 @@ export function LogoMark({ className }: { className?: string }) {
             C 16.5 16.8, 22 17.4, 22 20.6
             C 22 23.2, 18 25.4, 12.5 25.4
           "
-          stroke="url(#ss-primary)"
+          stroke={`url(#${primary})`}
           strokeWidth="3.6"
           strokeLinecap="round"
           fill="none"
@@ -122,7 +129,7 @@ export function LogoMark({ className }: { className?: string }) {
             C 13.5 25.8, 18.5 25.4, 21 23
             C 23.5 20.6, 22.5 17.8, 19 16.5
           "
-          stroke="url(#ss-secondary)"
+          stroke={`url(#${secondary})`}
           strokeWidth="3.6"
           strokeLinecap="round"
           fill="none"
@@ -133,7 +140,7 @@ export function LogoMark({ className }: { className?: string }) {
             C 15.5 15.2, 10 14.6, 10 11.4
             C 10 8.8, 14 6.6, 19.5 6.6
           "
-          stroke="url(#ss-secondary)"
+          stroke={`url(#${secondary})`}
           strokeWidth="3.6"
           strokeLinecap="round"
           fill="none"

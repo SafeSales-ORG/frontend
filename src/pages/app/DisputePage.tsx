@@ -426,9 +426,8 @@ function DisputeDetailView({
                   You're not alone in this
                 </p>
                 <p className="mt-1 text-xs leading-relaxed">
-                  Funds stay frozen while the case is open. A trained SafeSale
-                  mediator reviews evidence from both sides and decides — usually
-                  within 24 hours of escalation.
+                  Funds stay frozen while the case is open. A SafeSale mediator
+                  reviews evidence from both sides and decides.
                 </p>
               </div>
             </div>
@@ -464,10 +463,9 @@ function StatusBanner({
               Try to resolve directly with the buyer first
             </p>
             <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-              For the next 72 hours, you and the buyer can work this out via
-              chat — a replacement, a partial refund, or a clear explanation. If
-              you don't reach an agreement, a SafeSale mediator will
-              automatically take the case.
+              Reply with your side of the story and any evidence — a replacement,
+              a partial refund, or a clear explanation. A SafeSale mediator reviews
+              both sides and decides.
             </p>
             {dispute.directResolutionUntil && (
               <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-warning-pale px-2.5 py-1 text-xs font-medium text-warning">
@@ -495,7 +493,7 @@ function StatusBanner({
             </p>
             <p className="mt-1 text-xs text-ink-soft">
               {formatNGN(amount)} is held safely while a SafeSale mediator
-              reviews. Most cases are resolved within 24 hours.
+              reviews the case.
             </p>
           </div>
         </div>
@@ -625,7 +623,7 @@ function ResponseForm({
         description:
           dispute.status === "direct_resolution"
             ? "The buyer can see your reply. Funds stay frozen until you both agree or a mediator decides."
-            : "Your response is with the SafeSale mediator. You'll be notified of the outcome.",
+            : "Your response is with the SafeSale mediator. The outcome will show here.",
       });
     },
     onError: (err: unknown) => {

@@ -494,7 +494,7 @@ function BankPanel({
         <div className="flex-1">
           {hasAny ? (
             <>
-              <p className="text-sm font-semibold text-ink">✓ Payout details added</p>
+              <p className="text-sm font-semibold text-ink">Payout details added</p>
               {hasBank && (
                 <p className="mt-1 text-sm text-ink-soft">
                   {seller?.bankName} ·{" "}

@@ -423,9 +423,8 @@ export default function BuyerOrder() {
               </h2>
               <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
                 The payout is frozen while a SafeSale mediator reviews it.
-                Your funds stay locked in escrow until it's resolved — usually
-                within 48 hours. You can keep talking to the seller in the order
-                chat.
+                Your money stays with SafeSale until the mediator decides. Check this page for the
+                outcome.
               </p>
               <Button
                 onClick={() => {
@@ -722,7 +721,7 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
         iconBg: "bg-brand",
         Icon: Wallet,
         headline: "Awaiting your bank transfer",
-        subline: `Send ${amount} to the account below within 24 hours. We'll confirm automatically once your transfer lands.`,
+        subline: `Send ${amount} to the account below. This page updates as soon as your transfer arrives.`,
       };
     case "paid":
       return {
@@ -774,7 +773,7 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
         subline:
           dispute?.status === "resolved"
             ? "A mediator has resolved your dispute. See details below."
-            : "Your funds are frozen. A SafeSale mediator will respond within 48 hours.",
+            : "Your money is frozen while a SafeSale mediator reviews the problem.",
       };
     case "refunded":
       return {

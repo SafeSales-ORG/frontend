@@ -537,7 +537,7 @@ export const mockApi = {
       status: "shipped",
       shippedAt,
       // Auto-release 3 days after shipment if the buyer takes no action.
-      autoReleaseAt: marketIsoIn(3 * 24 * 60 * 60 * 1000),
+      autoReleaseAt: marketIsoIn(7 * 24 * 60 * 60 * 1000),
       trackingNumber: req.trackingNumber ?? null,
       carrier: req.carrier ?? null,
     })!;

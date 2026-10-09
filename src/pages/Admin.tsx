@@ -46,7 +46,7 @@ import {
 
 import { useToast } from "@/hooks/useToast";
 import { useMessagesLive } from "@/hooks/useMarket";
-import { formatNGN, formatRelative } from "@/lib/format";
+import { formatDue, formatNGN, formatRelative } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { apiClient, DEMO_MODE } from "@/lib/api";
 import type { AdminDisputeRow, ApiDisputeStatus, DisputeOutcome } from "@/lib/api";
@@ -747,7 +747,7 @@ function DisputeDetail({
               <Pair label="Evidence due">
                 <span className="inline-flex items-center gap-1 text-ink">
                   <Calendar className="h-3.5 w-3.5 text-ink-soft" aria-hidden />
-                  {formatRelative(dispute.evidenceDueAt)}
+                  {formatDue(dispute.evidenceDueAt)}
                 </span>
               </Pair>
             </dl>
