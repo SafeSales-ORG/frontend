@@ -44,7 +44,8 @@
 
 import { useSeoMeta } from "@unhead/react";
 import { useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/safesale/AppShell";
@@ -102,7 +103,7 @@ export default function OrderDetailPage() {
   useSeoMeta({ title: "Order detail — SafeSale" });
 
   const { token = "" } = useParams<{ token: string }>();
-  const navigate = useNavigate();
+  const goBack = useGoBack("/app/orders");
   const qc = useQueryClient();
   const { toast } = useToast();
 
@@ -230,10 +231,10 @@ export default function OrderDetailPage() {
         {/* Back link */}
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={goBack}
           className="inline-flex items-center gap-1 rounded text-xs font-medium text-ink-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Back to orders
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Back
         </button>
 
         {/* Status banner */}

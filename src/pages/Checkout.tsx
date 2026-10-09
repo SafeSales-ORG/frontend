@@ -2,6 +2,7 @@ import { useSeoMeta } from "@unhead/react";
 import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Logo } from "@/components/safesale/Logo";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ export default function Checkout() {
   const sellerVerified = fixtureSeller?.verified ?? false;
 
   const navigate = useNavigate();
+  const goBack = useGoBack(`/buy/${id}`);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -358,13 +360,14 @@ export default function Checkout() {
     <div className="min-h-screen bg-surface">
       <header className="border-b border-border/60 bg-background/85 backdrop-blur">
         <div className="container flex h-14 items-center justify-between">
-          <Link
-            to={`/buy/${listing.id}`}
+          <button
+            type="button"
+            onClick={goBack}
             className="inline-flex items-center gap-1 text-xs font-medium text-ink-soft hover:text-ink"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
             Back
-          </Link>
+          </button>
           <Logo />
           <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-soft-foreground">
             <ShieldCheck className="h-3 w-3" />

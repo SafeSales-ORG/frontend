@@ -1,5 +1,6 @@
 import { useSeoMeta } from "@unhead/react";
 import { Link, useParams } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
@@ -49,6 +50,7 @@ export default function PublicListing() {
 /* -------------------------------------------------------------------------- */
 
 function PublicListingView({ listing }: { listing: ListingDetails }) {
+  const goBack = useGoBack("/market");
   const [activeImage, setActiveImage] = useState(0);
 
   const sellerName = listing.sellerName ?? "Seller";
@@ -69,13 +71,14 @@ function PublicListingView({ listing }: { listing: ListingDetails }) {
       {/* Sticky header */}
       <header className="fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link
-            to="/"
-            aria-label="Back home"
+          <button
+            type="button"
+            onClick={goBack}
+            aria-label="Go back"
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-canvas text-body transition-colors hover:bg-canvas-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <ChevronLeft className="h-4 w-4" />
-          </Link>
+          </button>
           <Logo />
           <button
             type="button"

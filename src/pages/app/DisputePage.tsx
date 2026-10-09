@@ -16,6 +16,7 @@
 import { useState } from "react";
 import { useSeoMeta } from "@unhead/react";
 import { Link, useParams } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/safesale/AppShell";
 import { Stagger, StaggerItem } from "@/components/motion";
@@ -287,6 +288,7 @@ function DisputeDetailView({
   dispute: ApiDispute;
 }) {
   useSeoMeta({ title: `Dispute on ${order.shortId} — SafeSale` });
+  const goBack = useGoBack("/app/dispute");
   const isResolved = dispute.status === "resolved";
   const heroImg = listing.images[0]?.url
     ? sanitizeUrl(listing.images[0].url)
@@ -302,12 +304,13 @@ function DisputeDetailView({
       }
     >
       <div className="space-y-5">
-        <Link
-          to="/app/dispute"
+        <button
+          type="button"
+          onClick={goBack}
           className="inline-flex items-center gap-1 text-xs font-medium text-ink-soft hover:text-ink"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> All disputes
-        </Link>
+          <ArrowLeft className="h-3.5 w-3.5" /> Back
+        </button>
 
         <StatusBanner dispute={dispute} amount={order.amountNGN} />
 
