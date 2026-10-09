@@ -31,6 +31,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { AppShell } from "@/components/safesale/AppShell";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { EscrowStatusPill } from "@/components/safesale/EscrowStatus";
 import { ListingThumb } from "@/components/safesale/ListingThumb";
 import { Input } from "@/components/ui/input";
@@ -177,20 +178,20 @@ export default function OrdersPage() {
                     <th className="w-10" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <Stagger as="tbody" className="divide-y divide-border" stagger={0.04}>
                   {filtered.map((o) => (
                     <OrderTableRow key={o.orderToken} order={o} />
                   ))}
-                </tbody>
+                </Stagger>
               </table>
             </div>
 
             {/* Mobile cards */}
-            <ul className="space-y-3 sm:hidden">
+            <Stagger as="ul" className="space-y-3 sm:hidden">
               {filtered.map((o) => (
                 <OrderMobileCard key={o.orderToken} order={o} />
               ))}
-            </ul>
+            </Stagger>
           </>
         )}
       </div>
@@ -298,7 +299,7 @@ function SearchAndFilters({
 
 function OrderTableRow({ order }: { order: SellerOrderRow }) {
   return (
-    <tr className="group transition-colors hover:bg-surface focus-within:bg-surface">
+    <StaggerItem as="tr" className="group transition-colors hover:bg-surface focus-within:bg-surface">
       <td className="px-4 py-3 align-middle">
         <Link
           to={`/app/orders/${order.orderToken}`}
@@ -340,7 +341,7 @@ function OrderTableRow({ order }: { order: SellerOrderRow }) {
       <td className="w-10 px-2 align-middle text-right">
         <ChevronRight className="h-4 w-4 text-ink-soft" aria-hidden />
       </td>
-    </tr>
+    </StaggerItem>
   );
 }
 
@@ -348,7 +349,7 @@ function OrderTableRow({ order }: { order: SellerOrderRow }) {
 
 function OrderMobileCard({ order }: { order: SellerOrderRow }) {
   return (
-    <li>
+    <StaggerItem as="li" lift>
       <Link
         to={`/app/orders/${order.orderToken}`}
         className="block rounded-2xl border border-border bg-canvas p-4 transition-colors active:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
@@ -386,7 +387,7 @@ function OrderMobileCard({ order }: { order: SellerOrderRow }) {
           Updated · {formatRelative(order.updatedAt)}
         </p>
       </Link>
-    </li>
+    </StaggerItem>
   );
 }
 

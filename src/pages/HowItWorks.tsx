@@ -1,4 +1,9 @@
+import { useRef } from "react";
 import { useSeoMeta } from "@unhead/react";
+import { motion, useScroll, useSpring } from "motion/react";
+
+import { Reveal } from "@/components/safesale/Reveal";
+import { Stagger, StaggerItem } from "@/components/motion";
 
 import { MarketingLayout } from "@/components/safesale/MarketingLayout";
 import { ClosingCta, PageHero, SectionHeading } from "@/components/safesale/Marketing";
@@ -58,23 +63,45 @@ const JOURNEY: { status: EscrowStatus; title: string; who: string; body: string 
 ];
 
 function MoneyJourney() {
+  const ref = useRef<HTMLOListElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 75%", "end 55%"] });
+  const lineScale = useSpring(scrollYProgress, { stiffness: 120, damping: 30, restDelta: 0.001 });
+
   return (
     <section id="protection" className="scroll-mt-20 bg-canvas">
       <div className="container py-16 md:py-24">
-        <SectionHeading title="One order, start to finish" />
-        <ol className="mt-12 divide-y divide-line rounded-lg border border-line">
+        <Reveal>
+          <SectionHeading title="One order, start to finish" />
+        </Reveal>
+        <ol ref={ref} className="relative mt-12 max-w-3xl">
+          {/* Track + a line that draws as you scroll */}
+          <span className="absolute top-2 bottom-2 left-[17px] w-0.5 bg-line" aria-hidden />
+          <motion.span
+            className="absolute top-2 bottom-2 left-[17px] w-0.5 origin-top bg-forest"
+            style={{ scaleY: lineScale }}
+            aria-hidden
+          />
           {JOURNEY.map((step, i) => (
-            <li key={step.status} className="grid gap-3 p-5 sm:grid-cols-[48px_1fr_auto] sm:items-start sm:gap-6 sm:p-6">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-pale text-sm font-semibold text-brand-ink tabular-nums">
+            <motion.li
+              key={step.status}
+              className="relative flex gap-6 pb-10 last:pb-0"
+              initial={{ opacity: 0, x: -16 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.4, ease: [0.2, 0, 0, 1] }}
+            >
+              <span className="relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-forest text-sm font-semibold text-mint tabular-nums">
                 {i + 1}
               </span>
-              <div>
-                <h3 className="text-h3 text-ink">{step.title}</h3>
-                <p className="mt-1 max-w-2xl text-body">{step.body}</p>
+              <div className="flex-1 rounded-lg bg-canvas-soft p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <h3 className="text-h3 text-ink">{step.title}</h3>
+                  <EscrowStatusPill status={step.status} />
+                </div>
+                <p className="mt-2 text-body">{step.body}</p>
                 <p className="mt-2 text-sm text-mute">Done by: {step.who}</p>
               </div>
-              <EscrowStatusPill status={step.status} className="justify-self-start" />
-            </li>
+            </motion.li>
           ))}
         </ol>
       </div>
@@ -116,15 +143,15 @@ function Disputes() {
             <EscrowStatusPill status="released" />
           </div>
         </div>
-        <ol className="space-y-3">
+        <Stagger as="ol" className="space-y-3" inView>
           {steps.map((s, i) => (
-            <li key={s.title} className="rounded-lg bg-canvas p-5 sm:p-6">
+            <StaggerItem as="li" key={s.title} className="rounded-lg bg-canvas p-5 sm:p-6" lift>
               <p className="text-sm font-medium text-brand tabular-nums">Step {i + 1}</p>
               <h3 className="mt-1 text-h3 text-ink">{s.title}</h3>
               <p className="mt-2 text-body">{s.body}</p>
-            </li>
+            </StaggerItem>
           ))}
-        </ol>
+        </Stagger>
       </div>
     </section>
   );

@@ -27,6 +27,7 @@ import { apiClient } from "@/lib/api";
 import { ApiError } from "@/lib/api/errors";
 import { GOOGLE_SIGN_IN_ENABLED } from "@/lib/config";
 import { cn } from "@/lib/utils";
+import { celebrate } from "@/lib/celebrate";
 
 const PASSWORD_MIN = 8;
 
@@ -88,6 +89,7 @@ function OnboardingFlow() {
       createdAt: seller.createdAt,
     });
     toast({ title: "Your shop is open", description: `Welcome, @${seller.handle}.` });
+    celebrate();
     navigate("/app");
   };
 

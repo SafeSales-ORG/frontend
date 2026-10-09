@@ -19,6 +19,7 @@ import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/safesale/AppShell";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { listingUrl } from "@/lib/links";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,6 +83,7 @@ import type { ApiListing } from "@/lib/api/types";
 import { marketStore } from "@/lib/store/marketStore";
 import { formatNGN, formatRelative } from "@/lib/format";
 import { cn, sanitizeUrl } from "@/lib/utils";
+import { celebrate } from "@/lib/celebrate";
 
 /**
  * Adapt a store `ApiListing` into the `MyListing` view-model the cards
@@ -417,16 +419,13 @@ function ListingsGrid({
   onEdit: (l: MyListing) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {listings.map((l) => (
-        <ListingCard
-          key={l.id}
-          listing={l}
-          onShare={() => onShare(l)}
-          onEdit={() => onEdit(l)}
-        />
+        <StaggerItem key={l.id} lift>
+          <ListingCard listing={l} onShare={() => onShare(l)} onEdit={() => onEdit(l)} />
+        </StaggerItem>
       ))}
-    </div>
+    </Stagger>
   );
 }
 
@@ -1114,6 +1113,7 @@ function CreateListingSheet({
       title: "Listing published",
       description: "It's live — share the link to start selling.",
     });
+    celebrate();
     void queryClient.invalidateQueries({ queryKey: MY_LISTINGS_KEY });
     onClose();
     setIsSavingToBackend(false);

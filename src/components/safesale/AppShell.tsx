@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Logo, LogoMark } from "./Logo";
 import { Avatar } from "./Avatar";
 import { HelpDialog } from "./HelpDialog";
+import { PageTransition } from "@/components/motion";
 import {
   Home,
   Package,
@@ -363,7 +364,9 @@ export function AppShell({ children, title, subtitle, action }: Props) {
           {action && <div className="flex gap-2 border-t border-line px-4 py-2.5 md:hidden">{action}</div>}
         </header>
 
-        <main className="mx-auto max-w-6xl px-4 pt-6 pb-28 lg:px-8 lg:pt-8 lg:pb-12">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 pt-6 pb-28 lg:px-8 lg:pt-8 lg:pb-12">
+          <PageTransition key={pathname}>{children}</PageTransition>
+        </main>
       </div>
 
       {/* Mobile bottom nav */}

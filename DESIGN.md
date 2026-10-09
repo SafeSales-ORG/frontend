@@ -227,8 +227,17 @@ Use motion only where it explains something or confirms an action:
 - **Scroll reveal**: sections fade up 16px once, the first time they enter
   the viewport (`<Reveal>`). Never on transactional pages.
 - **Accordions and step changes**: height/opacity, 250ms.
-- **Buttons**: press scale 0.97. **Success moments** (payment received,
-  paid out): one spring on the check icon.
+- **Page transitions**: every page fades up 12px on entry (`PageTransition`).
+- **Lists and grids** cascade in (`Stagger` / `StaggerItem`, 40–80ms apart);
+  clickable cards lift 3px on hover.
+- **Dashboard**: figures count up, the setup ring and weekly bars grow in,
+  checklist ticks spring in.
+- **Checkout**: steps slide horizontally; "listening for your transfer"
+  pulses; payment detected springs in.
+- **Buttons**: press scale 0.97.
+- **Celebrations** (`celebrate()` confetti in brand colours) only at real
+  milestones: shop opened, listing published, payment secured, payment
+  released. Never on routine actions.
 - Never: parallax, infinite pulses, animated gradients, motion on page load
   of checkout/order pages beyond a simple fade.
 

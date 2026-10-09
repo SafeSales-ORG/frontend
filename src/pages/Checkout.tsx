@@ -1,5 +1,6 @@
 import { useSeoMeta } from "@unhead/react";
 import { useEffect, useId, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Logo } from "@/components/safesale/Logo";
@@ -31,6 +32,7 @@ import {
   MapPin,
   Bookmark,
   Truck,
+  Landmark,
 } from "lucide-react";
 import {
   Select,
@@ -41,6 +43,7 @@ import {
 } from "@/components/ui/select";
 import { NIGERIAN_STATES } from "@/lib/nigeria";
 import { cn, sanitizeUrl } from "@/lib/utils";
+import { celebrate } from "@/lib/celebrate";
 
 type Step = "details" | "instructions" | "waiting" | "detected" | "secured";
 
@@ -152,6 +155,7 @@ export default function Checkout() {
       }
       detectedTimerRef.current = window.setTimeout(() => {
         setStep("secured");
+        celebrate();
         detectedTimerRef.current = null;
       }, 1500);
     }
@@ -373,7 +377,15 @@ export default function Checkout() {
         <StepBar step={step} />
 
         <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_360px]">
-          <div className="space-y-5">
+          <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={step}
+            className="space-y-5"
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+          >
             {step === "details" && (
               <DetailsForm
                 name={name}
@@ -413,7 +425,8 @@ export default function Checkout() {
                 onContinue={() => navigate(`/order/${createdOrder.orderToken}`)}
               />
             )}
-          </div>
+          </motion.div>
+          </AnimatePresence>
 
           {/* Order summary - sidebar */}
           <aside className="space-y-4 lg:sticky lg:top-20 lg:h-min">
@@ -778,12 +791,23 @@ function WaitingPayment({ amount }: { amount: number }) {
       title="Waiting for your payment"
       subtitle="As soon as the transfer arrives, we'll lock it in escrow for your protection."
     >
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-canvas px-6 py-10 text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-brand" />
-        <p className="mt-4 text-sm font-medium text-ink">Listening for your transfer…</p>
-        <p className="mt-1 text-xs text-ink-soft">
-          {formatNGN(amount)} expected
-        </p>
+      <div className="flex flex-col items-center justify-center rounded-lg bg-canvas-soft px-6 py-12 text-center">
+        <div className="relative grid h-20 w-20 place-items-center">
+          {[0, 1].map((i) => (
+            <motion.span
+              key={i}
+              className="absolute inset-0 rounded-full border-2 border-brand"
+              initial={{ scale: 0.6, opacity: 0.6 }}
+              animate={{ scale: 1.4, opacity: 0 }}
+              transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.9, ease: "easeOut" }}
+            />
+          ))}
+          <span className="grid h-14 w-14 place-items-center rounded-full bg-forest text-mint">
+            <Landmark className="h-6 w-6" aria-hidden />
+          </span>
+        </div>
+        <p className="mt-5 font-semibold text-ink">Listening for your transfer…</p>
+        <p className="mt-1 text-sm text-body tabular-nums">{formatNGN(amount)} expected</p>
       </div>
     </Card>
   );
@@ -791,16 +815,18 @@ function WaitingPayment({ amount }: { amount: number }) {
 
 function Detected({ amount }: { amount: number }) {
   return (
-    <Card title="Payment detected" subtitle="Verifying & moving into escrow…">
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-brand/25 bg-brand-soft/50 px-6 py-10 text-center">
-        <span className="relative inline-flex">
-          <span className="absolute inset-0 rounded-full bg-brand/20 " />
-          <CheckCircle2 className="relative h-12 w-12 text-brand" />
-        </span>
-        <p className="mt-4 text-base font-semibold text-ink">
-          {formatNGN(amount)} received
-        </p>
-        <p className="mt-1 text-sm text-ink-soft">Locking it in escrow now…</p>
+    <Card title="Payment detected" subtitle="Moving it into escrow…">
+      <div className="flex flex-col items-center justify-center rounded-lg bg-brand-pale px-6 py-12 text-center">
+        <motion.span
+          initial={{ scale: 0.4, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 18 }}
+          className="grid h-14 w-14 place-items-center rounded-full bg-forest text-mint"
+        >
+          <CheckCircle2 className="h-7 w-7" aria-hidden />
+        </motion.span>
+        <p className="mt-5 text-h3 text-ink tabular-nums">{formatNGN(amount)} received</p>
+        <p className="mt-1 text-sm text-body">Locking it in escrow now…</p>
       </div>
     </Card>
   );

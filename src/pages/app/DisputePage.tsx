@@ -18,6 +18,7 @@ import { useSeoMeta } from "@unhead/react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/safesale/AppShell";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { Avatar } from "@/components/safesale/Avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -107,21 +108,21 @@ function DisputeList() {
           <EmptyDisputes />
         ) : (
           <Section title="Needs your action" count={open.length}>
-            <ul className="space-y-3">
+            <Stagger as="ul" className="space-y-3">
               {open.map((o) => (
                 <DisputeRow key={o.orderToken} order={o} />
               ))}
-            </ul>
+            </Stagger>
           </Section>
         )}
 
         {closed.length > 0 && (
           <Section title="Resolved" count={closed.length}>
-            <ul className="space-y-3">
+            <Stagger as="ul" className="space-y-3">
               {closed.map((o) => (
                 <DisputeRow key={o.orderToken} order={o} />
               ))}
-            </ul>
+            </Stagger>
           </Section>
         )}
       </div>
@@ -168,10 +169,10 @@ function DisputeRow({ order }: { order: SellerOrderRow }) {
     : undefined;
 
   return (
-    <li>
+    <StaggerItem as="li" lift>
       <Link
         to={`/app/dispute/${order.orderToken}`}
-        className="block rounded-2xl border border-border bg-canvas p-4 transition-all hover:-translate-y-0.5 hover:"
+        className="block rounded-2xl border border-border bg-canvas p-4 transition-colors hover:"
       >
         <div className="flex items-start gap-3">
           {heroImg ? (
@@ -207,7 +208,7 @@ function DisputeRow({ order }: { order: SellerOrderRow }) {
           </div>
         </div>
       </Link>
-    </li>
+    </StaggerItem>
   );
 }
 

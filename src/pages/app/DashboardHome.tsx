@@ -8,10 +8,14 @@
 import { useSeoMeta } from "@unhead/react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "motion/react";
 import { ArrowRight, Copy, ExternalLink, Plus } from "lucide-react";
 
 import { AppShell } from "@/components/safesale/AppShell";
+import { Stagger, StaggerItem } from "@/components/motion";
+import { GettingStarted, type SetupStep } from "@/components/dashboard/GettingStarted";
+import { WeekChart } from "@/components/dashboard/WeekChart";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { cn } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/safesale/AnimatedNumber";
 import { EscrowStatusPill } from "@/components/safesale/EscrowStatus";
 import { ListingThumb } from "@/components/safesale/ListingThumb";
@@ -67,6 +71,22 @@ export default function DashboardHome() {
     [orders],
   );
   const toShip = needsAction.filter((o) => o.status === "paid").length;
+  const [now] = useState(() => Date.now());
+  const [sharedLink, setSharedLink] = useLocalStorage<boolean>(`safesale:shared-link:${seller?.id ?? ""}`, false);
+  const setup: SetupStep[] = [
+    { label: "Open your shop", done: true },
+    { label: "Add your first product", done: listings.length > 0, to: "/app/listings", cta: "Add" },
+    { label: "Share your shop link", done: sharedLink || orders.length > 0 },
+    { label: "Get your first order", done: orders.length > 0 },
+    {
+      label: "Ship an order",
+      done: orders.some((o) => ["shipped", "delivered", "completed"].includes(o.status)),
+      to: "/app/orders",
+      cta: "Ship",
+    },
+    { label: "Get your first payout", done: orders.some((o) => o.status === "completed") },
+  ];
+  const setupComplete = setup.every((s) => s.done);
   const firstName = (seller?.name ?? "").split(" ")[0] || "there";
 
   const summary =
@@ -87,21 +107,28 @@ export default function DashboardHome() {
         </Button>
       }
     >
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+      <Stagger stagger={0.08}>
+      <StaggerItem>
         <h2 className="text-h1 text-ink">
           {greeting()}, {firstName}
         </h2>
         <p className="mt-1 text-body">{summary}</p>
-      </motion.div>
+      </StaggerItem>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-        <ShopLinkCard handle={seller?.handle} />
+      <StaggerItem className="mt-6 grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+        <ShopLinkCard handle={seller?.handle} onCopied={() => setSharedLink(true)} />
         <div className="grid grid-cols-2 gap-4">
           <Stat label="Held in escrow" value={stats.heldNGN} money note={`${stats.heldCount} order${stats.heldCount === 1 ? "" : "s"}`} />
           <Stat label="Paid out this week" value={stats.paidOutWeekNGN} money note="To your bank" />
         </div>
-      </div>
+      </StaggerItem>
 
+      <StaggerItem className={cn("mt-4 grid gap-4", !setupComplete && "lg:grid-cols-[1fr_1.3fr]")}>
+        {!setupComplete && <GettingStarted steps={setup} />}
+        <WeekChart orders={orders} now={now} />
+      </StaggerItem>
+
+      <StaggerItem>
       <Section
         title="Needs your action"
         link={{ to: "/app/orders", label: "All orders" }}
@@ -112,26 +139,27 @@ export default function DashboardHome() {
         ) : needsAction.length === 0 ? (
           <p className="px-5 py-8 text-center text-body">You're all caught up. New paid orders appear here.</p>
         ) : (
-          <ul className="divide-y divide-line">
+          <Stagger as="ul" className="divide-y divide-line">
             {needsAction.slice(0, 6).map((o) => (
               <OrderRow key={o.orderToken} order={o} cta={o.status === "paid" ? "Ship order" : "Respond"} />
             ))}
-          </ul>
+          </Stagger>
         )}
       </Section>
+      </StaggerItem>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-2">
+      <StaggerItem className="mt-8 grid gap-8 lg:grid-cols-2">
         <Section title="Recent orders" link={{ to: "/app/orders", label: "View all" }}>
           {isLoading ? (
             <RowSkeleton />
           ) : orders.length === 0 ? (
             <p className="px-5 py-8 text-center text-body">No orders yet. Share your shop link to get your first sale.</p>
           ) : (
-            <ul className="divide-y divide-line">
+            <Stagger as="ul" className="divide-y divide-line">
               {orders.slice(0, 5).map((o) => (
                 <OrderRow key={o.orderToken} order={o} />
               ))}
-            </ul>
+            </Stagger>
           )}
         </Section>
 
@@ -146,9 +174,9 @@ export default function DashboardHome() {
               </Button>
             </div>
           ) : (
-            <ul className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+            <Stagger as="ul" className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
               {listings.slice(0, 4).map((l) => (
-                <li key={l.id}>
+                <StaggerItem as="li" key={l.id} lift>
                   <Link to={`/buy/${l.id}`} className="group block">
                     <div className="aspect-square overflow-hidden rounded-md bg-canvas-soft">
                       <ListingThumb image={l.images[0]} alt={l.title} size={300} fill />
@@ -158,17 +186,18 @@ export default function DashboardHome() {
                       {formatNGN(l.priceNGN)} · {l.inStock === 0 ? "Sold out" : `${l.inStock} left`}
                     </p>
                   </Link>
-                </li>
+                </StaggerItem>
               ))}
-            </ul>
+            </Stagger>
           )}
         </Section>
-      </div>
+      </StaggerItem>
+      </Stagger>
     </AppShell>
   );
 }
 
-function ShopLinkCard({ handle }: { handle?: string }) {
+function ShopLinkCard({ handle, onCopied }: { handle?: string; onCopied: () => void }) {
   const { toast } = useToast();
   const url = handle ? shopUrl(handle) : null;
   return (
@@ -183,7 +212,12 @@ function ShopLinkCard({ handle }: { handle?: string }) {
           <Button
             variant="mint"
             size="sm"
-            onClick={() => void navigator.clipboard?.writeText(url).then(() => toast({ title: "Shop link copied" }))}
+            onClick={() =>
+              void navigator.clipboard?.writeText(url).then(() => {
+                onCopied();
+                toast({ title: "Shop link copied", description: "Paste it in your bio, status or a DM." });
+              })
+            }
           >
             <Copy /> Copy link
           </Button>
@@ -242,7 +276,7 @@ function Section({
 
 function OrderRow({ order, cta }: { order: SellerOrderRow; cta?: string }) {
   return (
-    <li>
+    <StaggerItem as="li">
       <Link
         to={`/app/orders/${order.orderToken}`}
         className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-canvas-soft"
@@ -266,7 +300,7 @@ function OrderRow({ order, cta }: { order: SellerOrderRow; cta?: string }) {
           </span>
         )}
       </Link>
-    </li>
+    </StaggerItem>
   );
 }
 

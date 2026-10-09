@@ -106,6 +106,8 @@ import { marketStore } from "@/lib/store/marketStore";
 import { useReviewForOrderLive } from "@/hooks/useMarket";
 import { formatCountdownLong, formatDate, formatNGN } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { celebrate } from "@/lib/celebrate";
+import { motion } from "motion/react";
 
 /* ----------------------------- constants ----------------------------- */
 
@@ -184,9 +186,7 @@ export default function BuyerOrder() {
 
   const releaseMutation = useMutation({
     mutationFn: async () => {
-      // Release takes no body — possession of the orderToken in the URL is
-      // the buyer's authority. The backend triggers the Nomba payout to
-      // the seller's bank.
+      // No body: the buyer's secret token in the URL is their authority.
       return apiClient.releaseOrder(token);
     },
     onSuccess: (res) => {
@@ -195,6 +195,7 @@ export default function BuyerOrder() {
         (prev) => (prev ? { ...prev, order: res.order } : prev),
       );
       setReleaseOpen(false);
+      celebrate();
       toast({
         title: "Payment released",
         description: `${formatNGN(res.order.amountNGN)} on its way to the seller.`,
@@ -297,7 +298,11 @@ export default function BuyerOrder() {
   return (
     <div className="min-h-screen bg-surface">
       <HeaderBar />
-      <main className="container mx-auto max-w-3xl space-y-6 px-4 pb-32 pt-6 sm:px-6 lg:pb-12">
+      <motion.main
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.2, 0, 0, 1] }}
+        className="container mx-auto max-w-3xl space-y-6 px-4 pb-32 pt-6 sm:px-6 lg:pb-12">
         <OrderIdStrip order={order} />
 
         <HeroStatusBlock order={order} dispute={dispute} />
@@ -339,7 +344,7 @@ export default function BuyerOrder() {
         />
 
         <EscrowTrustFooter />
-      </main>
+      </motion.main>
 
       {/* Sticky mobile bottom bar — only for actionable statuses */}
       {ACTIONABLE_STATUSES.includes(status) && (
@@ -813,13 +818,21 @@ function TimelineCard({ order, dispute }: TimelineProps) {
         {/* base line */}
         <div className="absolute left-4 right-4 top-4 h-[2px] bg-border" />
         {/* progress line */}
-        <div
-          className="absolute left-4 top-4 h-[2px] bg-brand transition-all duration-500"
-          style={{ width: `calc((100% - 32px) * ${Math.max(0, Math.min(1, progressPct / 100))})` }}
+        <motion.div
+          className="absolute left-4 top-4 h-[2px] bg-brand"
+          initial={{ width: 0 }}
+          animate={{ width: `calc((100% - 32px) * ${Math.max(0, Math.min(1, progressPct / 100))})` }}
+          transition={{ duration: 0.9, delay: 0.2, ease: [0.2, 0, 0, 1] }}
         />
         <ol className="relative z-10 grid grid-cols-4 gap-2">
-          {steps.map((step) => (
-            <li key={step.key} className="flex flex-col items-center text-center">
+          {steps.map((step, i) => (
+            <motion.li
+              key={step.key}
+              className="flex flex-col items-center text-center"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + i * 0.12, duration: 0.3 }}
+            >
               <span
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-full ring-4 ring-background",
@@ -843,7 +856,7 @@ function TimelineCard({ order, dispute }: TimelineProps) {
               >
                 {step.label}
               </span>
-            </li>
+            </motion.li>
           ))}
         </ol>
       </div>

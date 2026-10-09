@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { Logo } from "./Logo";
+import { PageTransition } from "@/components/motion";
 import { Avatar } from "./Avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -152,7 +153,9 @@ export function MarketingLayout({ children }: Props) {
           </div>
         )}
       </header>
-      <main className="flex-1">{children}</main>
+      <main className="flex-1">
+        <PageTransition key={pathname}>{children}</PageTransition>
+      </main>
       <SiteFooter />
     </div>
   );

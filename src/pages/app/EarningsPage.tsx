@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Banknote, Landmark, Loader2, Lock, Pencil } from "lucide-react";
 
 import { AppShell } from "@/components/safesale/AppShell";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { AnimatedNumber } from "@/components/safesale/AnimatedNumber";
 import { ListingThumb } from "@/components/safesale/ListingThumb";
 import { Button } from "@/components/ui/button";
@@ -70,8 +71,8 @@ export default function EarningsPage() {
 
   return (
     <AppShell title="Earnings" subtitle="Money held for you, and what's been paid to your bank">
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
-        <div className="rounded-xl bg-forest p-6 text-canvas">
+      <Stagger className="grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
+        <StaggerItem className="rounded-xl bg-forest p-6 text-canvas">
           <p className="flex items-center gap-2 text-sm font-medium text-mint">
             <Lock className="h-4 w-4" aria-hidden /> Held in escrow
           </p>
@@ -81,10 +82,14 @@ export default function EarningsPage() {
               ? "Nothing waiting right now."
               : `Across ${heldCount} order${heldCount === 1 ? "" : "s"}. Released when buyers confirm delivery.`}
           </p>
-        </div>
-        <Figure label="Paid out this month" value={monthNGN} />
-        <Figure label="Paid out in total" value={totalNGN} />
-      </div>
+        </StaggerItem>
+        <StaggerItem>
+          <Figure label="Paid out this month" value={monthNGN} />
+        </StaggerItem>
+        <StaggerItem>
+          <Figure label="Paid out in total" value={totalNGN} />
+        </StaggerItem>
+      </Stagger>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.4fr]">
         <div className="space-y-4">
@@ -120,9 +125,9 @@ export default function EarningsPage() {
                 <p className="mt-1 text-sm text-body">Your first payout shows here when a buyer confirms delivery.</p>
               </div>
             ) : (
-              <ul className="divide-y divide-line">
+              <Stagger as="ul" className="divide-y divide-line">
                 {paidOut.map((o) => (
-                  <li key={o.orderToken}>
+                  <StaggerItem as="li" key={o.orderToken}>
                     <Link
                       to={`/app/orders/${o.orderToken}`}
                       className="flex items-center gap-4 px-5 py-4 hover:bg-canvas-soft"
@@ -138,9 +143,9 @@ export default function EarningsPage() {
                       </div>
                       <p className="font-semibold text-brand tabular-nums">+{formatNGN(o.amountNGN)}</p>
                     </Link>
-                  </li>
+                  </StaggerItem>
                 ))}
-              </ul>
+              </Stagger>
             )}
           </div>
         </section>
@@ -151,7 +156,7 @@ export default function EarningsPage() {
 
 function Figure({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex flex-col justify-between rounded-xl bg-canvas p-6">
+    <div className="flex h-full flex-col justify-between rounded-xl bg-canvas p-6">
       <p className="text-sm text-mute">{label}</p>
       <AnimatedNumber value={value} format={(n) => formatNGN(Math.round(n))} className="mt-4 block text-h1 text-ink tabular-nums" />
     </div>

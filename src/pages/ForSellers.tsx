@@ -2,6 +2,7 @@ import { useSeoMeta } from "@unhead/react";
 import { Banknote, Link2, ShieldCheck, Truck } from "lucide-react";
 
 import { MarketingLayout } from "@/components/safesale/MarketingLayout";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { ClosingCta, PageHero, SectionHeading } from "@/components/safesale/Marketing";
 
 export default function ForSellers() {
@@ -51,9 +52,9 @@ function Benefits() {
     <section className="bg-canvas">
       <div className="container py-16 md:py-24">
         <SectionHeading title="What changes for your business" />
-        <div className="mt-12 grid gap-x-10 gap-y-10 md:grid-cols-2">
+        <Stagger className="mt-12 grid gap-x-10 gap-y-10 md:grid-cols-2" inView stagger={0.1}>
           {items.map(({ icon: Icon, title, body }) => (
-            <div key={title} className="flex gap-4">
+            <StaggerItem key={title} className="flex gap-4">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-pale text-brand">
                 <Icon className="h-5 w-5" aria-hidden />
               </span>
@@ -61,9 +62,9 @@ function Benefits() {
                 <h3 className="text-h3 text-ink">{title}</h3>
                 <p className="mt-2 text-body">{body}</p>
               </div>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </div>
     </section>
   );
@@ -81,16 +82,16 @@ function Setup() {
     <section className="bg-canvas-soft">
       <div className="container grid gap-10 py-16 md:py-24 lg:grid-cols-[1fr_1.4fr]">
         <SectionHeading title="Getting set up" lead="About two minutes, start to finish." />
-        <ol className="divide-y divide-line rounded-lg bg-canvas">
+        <Stagger as="ol" className="divide-y divide-line rounded-lg bg-canvas" inView>
           {steps.map((step, i) => (
-            <li key={step} className="flex items-start gap-4 p-5 sm:p-6">
+            <StaggerItem as="li" key={step} className="flex items-start gap-4 p-5 sm:p-6">
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-pale text-sm font-semibold text-brand-ink tabular-nums">
                 {i + 1}
               </span>
               <p className="pt-1 text-ink">{step}</p>
-            </li>
+            </StaggerItem>
           ))}
-        </ol>
+        </Stagger>
       </div>
     </section>
   );

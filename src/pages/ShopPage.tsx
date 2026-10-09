@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { BadgeCheck, Share2, ShieldCheck } from "lucide-react";
 
 import { Logo } from "@/components/safesale/Logo";
+import { PageTransition } from "@/components/motion";
 import { Avatar } from "@/components/safesale/Avatar";
 import { ListingThumb } from "@/components/safesale/ListingThumb";
 import { Button } from "@/components/ui/button";
@@ -73,7 +74,7 @@ export default function ShopPage() {
             </div>
           </section>
 
-          <main className="container py-10">
+          <PageTransition className="container py-10">
             <p className="mb-8 flex items-start gap-3 rounded-lg bg-canvas p-4 text-sm text-body">
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" aria-hidden />
               Every order here is protected by SafeSale. You pay SafeSale, and {data.seller.name} is only paid
@@ -99,7 +100,7 @@ export default function ShopPage() {
                 ))}
               </ul>
             )}
-          </main>
+          </PageTransition>
         </>
       )}
     </div>

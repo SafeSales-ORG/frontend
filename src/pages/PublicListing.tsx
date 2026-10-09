@@ -1,6 +1,7 @@
 import { useSeoMeta } from "@unhead/react";
 import { Link, useParams } from "react-router-dom";
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { Logo } from "@/components/safesale/Logo";
 import { Button } from "@/components/ui/button";
@@ -94,7 +95,12 @@ function PublicListingView({ listing }: { listing: ListingDetails }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pt-20 pb-32 sm:px-6 md:pt-24 lg:pb-16">
+      <motion.main
+        className="mx-auto max-w-6xl px-4 pt-20 pb-32 sm:px-6 md:pt-24 lg:pb-16"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.2, 0, 0, 1] }}
+      >
         <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:gap-12">
           {/* ------------------------ Gallery + body ------------------------ */}
           <div className="space-y-8">
@@ -218,7 +224,7 @@ function PublicListingView({ listing }: { listing: ListingDetails }) {
             </section>
           </aside>
         </div>
-      </main>
+      </motion.main>
 
       {/* Sticky mobile bottom CTA */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas shadow-[var(--shadow-float)] md:hidden">
@@ -269,7 +275,36 @@ function Gallery({
       {/* Capped on mobile so price + buy peek into view with minimal scroll;
           full ratio on desktop where it sits beside the details rail. */}
       <div className="relative aspect-[4/5] max-h-[44vh] overflow-hidden rounded-lg bg-canvas sm:max-h-[58vh] lg:max-h-none">
-        <ListingImage src={hero} alt={listing.title} className="h-full w-full" />
+        <AnimatePresence initial={false} mode="popLayout">
+          <motion.div
+            key={activeIndex}
+            className="absolute inset-0 touch-pan-y"
+            initial={{ opacity: 0, scale: 1.02 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            drag={listing.images.length > 1 ? "x" : false}
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.25}
+            onDragEnd={(_, info) => {
+              const n = listing.images.length;
+              if (info.offset.x < -50) onSelect((activeIndex + 1) % n);
+              else if (info.offset.x > 50) onSelect((activeIndex - 1 + n) % n);
+            }}
+          >
+            <ListingImage src={hero} alt={listing.title} className="pointer-events-none h-full w-full select-none" />
+          </motion.div>
+        </AnimatePresence>
+        {listing.images.length > 1 && (
+          <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5 lg:hidden" aria-hidden>
+            {listing.images.map((_, i) => (
+              <span
+                key={i}
+                className={cn("h-1.5 rounded-full bg-canvas transition-all", i === activeIndex ? "w-5" : "w-1.5 opacity-60")}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {listing.images.length > 1 && (
