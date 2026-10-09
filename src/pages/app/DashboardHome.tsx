@@ -18,7 +18,7 @@ import { ListingThumb } from "@/components/safesale/ListingThumb";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
-import { useSellerListingsLive } from "@/hooks/useMarket";
+import { useMyListings } from "@/hooks/useMyListings";
 import { useSellerOrders } from "@/hooks/useSellerOrders";
 import { useToast } from "@/hooks/useToast";
 import type { ApiOrderStatus, SellerOrderRow } from "@/lib/api";
@@ -40,7 +40,7 @@ export default function DashboardHome() {
 
   const [seller] = useCurrentSeller();
   const { orders, isLoading } = useSellerOrders();
-  const listings = useSellerListingsLive();
+  const { listings } = useMyListings();
 
   const [weekAgo] = useState(() => Date.now() - WEEK_MS);
   const stats = useMemo(() => {

@@ -72,11 +72,11 @@ import { XIcon } from "@/components/safesale/BrandIcons";
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
 import { useAuth } from "@/hooks/useAuth";
 import { type MyListing } from "@/lib/types";
-import { useSellerListingsLive } from "@/hooks/useMarket";
+import { MY_LISTINGS_KEY, useMyListings } from "@/hooks/useMyListings";
 import { useToast } from "@/hooks/useToast";
 import { useUploadFile } from "@/hooks/useUploadFile";
 
-import { apiClient } from "@/lib/api";
+import { apiClient, DEMO_MODE } from "@/lib/api";
 import { ApiError, isEndpointMissing, backendPendingMessage } from "@/lib/api/errors";
 import type { ApiListing } from "@/lib/api/types";
 import { marketStore } from "@/lib/store/marketStore";
@@ -137,12 +137,8 @@ export default function ListingsPage() {
   const canSell = isAuthed && !!seller;
   // Live from the market store — the source of truth in demo mode. New
   // listings (and edits / stock toggles) reflect here instantly.
-  const liveListings = useSellerListingsLive();
-  const listings = useMemo(
-    () => liveListings.map(apiToMyListing),
-    [liveListings],
-  );
-  const isLoading = false;
+  const { listings: apiListings, isLoading } = useMyListings();
+  const listings = useMemo(() => apiListings.map(apiToMyListing), [apiListings]);
   const error: unknown = null;
   const [createOpen, setCreateOpen] = useState(false);
   const [editListing, setEditListing] = useState<MyListing | null>(null);
@@ -443,6 +439,7 @@ function ListingCard({
   onShare: () => void;
   onEdit: () => void;
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [stockBusy, setStockBusy] = useState(false);
   const cover = listing.images[0] ? sanitizeUrl(listing.images[0]) : undefined;
@@ -472,9 +469,8 @@ function ListingCard({
       const { listing: updated } = await apiClient.updateListing(listing.id, {
         inStock: isOut ? 1 : 0,
       });
-      // Keep the store (which the dashboard + marketplace render from) in sync;
-      // the real HTTP client doesn't write to it. See onPublish for context.
-      marketStore.upsertListing(updated);
+      void updated;
+      void queryClient.invalidateQueries({ queryKey: MY_LISTINGS_KEY });
       toast({
         title: isOut ? "Back in stock" : "Marked out of stock",
         description: isOut
@@ -920,6 +916,7 @@ function CreateListingSheet({
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [deliveryFee, setDeliveryFee] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState<PendingPhoto[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -1050,13 +1047,9 @@ function CreateListingSheet({
 
     setIsSavingToBackend(true);
 
-    // Ensure the seller exists in the reactive `marketStore` BEFORE creating
-    // the listing. In demo mode the mock `createListing` looks the seller up
-    // by npub and rejects with "Seller npub does not match any registered
-    // seller" if it's missing — which happens when a localStorage reset cleared
-    // the store but left the cached seller session. The dashboard + public
-    // Marketplace also read sellers from this store, so register it either way.
-    if (!marketStore.getSellerByNpub(currentSeller.npub)) {
+    // Demo mode only: make sure the in-browser store knows this seller (a
+    // cleared localStorage can drop it while the session survives).
+    if (DEMO_MODE && !marketStore.getSellerByNpub(currentSeller.npub)) {
       marketStore.upsertSeller({
         id: currentSeller.id,
         npub: currentSeller.npub,
@@ -1083,15 +1076,10 @@ function CreateListingSheet({
         // Sheet doesn't capture category yet. "General" satisfies the
         // backend's Zod min(2). When a category picker lands, swap this.
         category: "General",
-        inStock: 1,
+        inStock: Math.max(1, Number(quantity) || 1),
         deliveryFee: Number(deliveryFee) || 0,
       });
       backendListingId = listing.id;
-
-      // Mirror the listing into the reactive store so the dashboard +
-      // Marketplace (which read from `marketStore`, not the backend directly)
-      // reflect it immediately.
-      marketStore.upsertListing(listing);
     } catch (err) {
       setIsSavingToBackend(false);
       const msg =
@@ -1116,7 +1104,7 @@ function CreateListingSheet({
       description: trimmedDescription,
       priceNGN,
       images: uploadedPhotos.map((p) => p.uploadedUrl),
-      inStock: 1,
+      inStock: Math.max(1, Number(quantity) || 1),
       publishedAt: now,
     };
 
@@ -1126,9 +1114,7 @@ function CreateListingSheet({
       title: "Listing published",
       description: "It's live — share the link to start selling.",
     });
-    queryClient.invalidateQueries({
-      queryKey: ["safesale", "my-listings", currentSeller.npub],
-    });
+    void queryClient.invalidateQueries({ queryKey: MY_LISTINGS_KEY });
     onClose();
     setIsSavingToBackend(false);
     setTimeout(() => onPublished(optimistic), 250);
@@ -1281,6 +1267,16 @@ function CreateListingSheet({
                 </div>
               </div>
             </div>
+            <div className="max-w-[12rem]">
+              <Label htmlFor="quantity">Quantity in stock</Label>
+              <Input
+                id="quantity"
+                inputMode="numeric"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+                className="mt-1.5 tabular-nums"
+              />
+            </div>
             <p className="-mt-2 text-xs text-ink-soft">
               Buyers see the delivery fee added to the total before they pay —
               no surprises after payment.
@@ -1363,6 +1359,7 @@ function EditListingSheet({
   open: boolean;
   onClose: () => void;
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { mutateAsync: uploadFile } = useUploadFile();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1481,8 +1478,8 @@ function EditListingSheet({
           : null,
         images: uploaded.map((p) => ({ url: p.uploadedUrl })),
       });
-      // Sync the store the UI renders from; the real HTTP client doesn't.
-      marketStore.upsertListing(updated);
+      void updated;
+      void queryClient.invalidateQueries({ queryKey: MY_LISTINGS_KEY });
       toast({
         title: "Listing updated",
         description: "Changes are live — the buyer page reflects them now.",

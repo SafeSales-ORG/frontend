@@ -30,7 +30,8 @@ import { Button } from "@/components/ui/button";
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
 import { useAuth } from "@/hooks/useAuth";
 import { useSellerOrders } from "@/hooks/useSellerOrders";
-import { useSellerListingsLive, useMarketState } from "@/hooks/useMarket";
+import { useMarketState } from "@/hooks/useMarket";
+import { useMyListings } from "@/hooks/useMyListings";
 import { marketStore } from "@/lib/store/marketStore";
 import { Input } from "@/components/ui/input";
 
@@ -111,7 +112,7 @@ export function AppShell({ children, title, subtitle, action }: Props) {
   const sidebarGroups = buildSidebarGroups(activeDisputes);
 
   // Live listings for the header search.
-  const listings = useSellerListingsLive();
+  const { listings } = useMyListings();
   // Subscribe to the store so message-based notifications refresh live.
   useMarketState();
 

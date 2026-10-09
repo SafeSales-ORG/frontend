@@ -73,6 +73,8 @@ export interface ApiClient {
   getListing(id: string): Promise<{ listing: ApiListing; seller?: ApiSeller | null } | null>;
   /** GET /api/orders/seller/:npub — seller dashboard orders feed. */
   getSellerOrders(npub: string): Promise<GetSellerOrdersResponse>;
+  /** GET /api/listings/mine — the signed-in seller's listings, hidden ones included. */
+  getMyListings(): Promise<{ listings: ApiListing[] }>;
   /** Public shop by handle (null if it doesn't exist). */
   getShop(handle: string): Promise<GetShopResponse | null>;
   /** POST /api/orders — buyer initiates a purchase. */

@@ -193,6 +193,9 @@ export const httpApi = {
       throw err;
     }
   },
+  getMyListings(): Promise<{ listings: ApiListing[] }> {
+    return request<{ listings: ApiListing[] }>("GET", "/api/listings/mine");
+  },
   async getShop(handle: string): Promise<GetShopResponse | null> {
     try {
       const { seller } = await request<{ seller: ApiSeller }>(

@@ -300,6 +300,17 @@ export const mockApi = {
     return listing ? { listing } : null;
   },
 
+  async getMyListings(): Promise<{ listings: ApiListing[] }> {
+    const session = getSession();
+    if (!session) throw new ApiError("UNAUTHORIZED", "Not signed in.", 401);
+    const seller = session.user.nostrNpub ? marketStore.getSellerByNpub(session.user.nostrNpub) : undefined;
+    if (!seller) return { listings: [] };
+    const listings = marketStore
+      .listingsForSeller(seller.id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { listings };
+  },
+
   async getShop(handle: string): Promise<GetShopResponse | null> {
     const wanted = handle.toLowerCase();
     const seller = Object.values(marketStore.getSnapshot().sellersByNpub).find(
