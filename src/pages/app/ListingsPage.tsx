@@ -26,13 +26,6 @@ import { Stagger, StaggerItem } from "@/components/motion";
 import { listingUrl } from "@/lib/links";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -41,7 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QRCodeCanvas } from "@/components/ui/qrcode";
+import { ShareListingDialog } from "@/components/listings/ShareListingDialog";
 import {
   Sheet,
   SheetContent,
@@ -53,12 +46,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 
 import {
-  Check,
   Copy,
   Eye,
   ImagePlus,
   Loader2,
-  MessageSquare,
   MoreHorizontal,
   PackageX,
   Pencil,
@@ -67,8 +58,6 @@ import {
   ShieldCheck,
   Upload,
 } from "lucide-react";
-
-import { XIcon } from "@/components/safesale/BrandIcons";
 
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
 import { useAuth } from "@/hooks/useAuth";
@@ -145,6 +134,7 @@ export default function ListingsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editListing, setEditListing] = useState<MyListing | null>(null);
   const [shareListing, setShareListing] = useState<MyListing | null>(null);
+  const [shareFresh, setShareFresh] = useState(false);
 
   const [filter, setFilter] = useState<StockFilter>("all");
   const [query, setQuery] = useState("");
@@ -226,7 +216,10 @@ export default function ListingsPage() {
             ) : (
               <ListingsGrid
                 listings={filtered}
-                onShare={setShareListing}
+                onShare={(l) => {
+                  setShareFresh(false);
+                  setShareListing(l);
+                }}
                 onEdit={setEditListing}
               />
             )}
@@ -250,15 +243,19 @@ export default function ListingsPage() {
       <CreateListingSheet
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onPublished={(l) => setShareListing(l)}
+        onPublished={(l) => {
+          setShareFresh(true);
+          setShareListing(l);
+        }}
       />
       <EditListingSheet
         listing={editListing}
         open={!!editListing}
         onClose={() => setEditListing(null)}
       />
-      <ShareDialog
+      <ShareListingDialog
         listing={shareListing}
+        fresh={shareFresh}
         open={!!shareListing}
         onOpenChange={(o) => !o && setShareListing(null)}
       />
@@ -692,141 +689,6 @@ function ErrorState({ message }: { message: string }) {
       <p className="text-sm font-medium text-ink">Couldn't load listings</p>
       <p className="mt-1 text-xs text-ink-soft">{message}</p>
     </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*                              Share dialog                                  */
-/* -------------------------------------------------------------------------- */
-
-function ShareDialog({
-  listing,
-  open,
-  onOpenChange,
-}: {
-  listing: MyListing | null;
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-}) {
-  const { toast } = useToast();
-  if (!listing) return null;
-  const shareLink = listingUrl(listing.id);
-
-  const copy = () => {
-    void navigator.clipboard?.writeText(shareLink).then(() => {
-      toast({ title: "Link copied" });
-    });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-2xl">
-        <DialogHeader>
-          <div className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-soft text-brand-soft-foreground">
-            <Check className="h-5 w-5" />
-          </div>
-          <DialogTitle className="text-center text-base">
-            Your listing is live.
-          </DialogTitle>
-          <DialogDescription className="text-center text-sm">
-            Paste this link in your Instagram bio, WhatsApp About, TikTok —
-            anywhere you sell.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-5 py-2">
-          {/* URL row */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-xl border border-border bg-surface p-2">
-            <div className="flex-1 min-w-0 break-all px-2 py-1 font-mono text-xs text-ink-soft select-all">
-              {shareLink}
-            </div>
-            <Button
-              size="sm"
-              onClick={copy}
-              className="h-9 sm:h-8 w-full sm:w-auto px-3 text-xs font-semibold bg-brand text-brand-foreground hover:bg-brand/90 shrink-0"
-            >
-              <Copy className="mr-1 h-3.5 w-3.5" />
-              Copy Link
-            </Button>
-          </div>
-
-          {/* Share targets */}
-          <div className="grid grid-cols-3 gap-2">
-            <ShareTarget
-              icon={MessageSquare}
-              label="WhatsApp"
-              onClick={() =>
-                window.open(
-                  `https://wa.me/?text=${encodeURIComponent(`Check out this ${listing.title} on SafeSale: ${shareLink}`)}`,
-                  "_blank",
-                  "noopener,noreferrer",
-                )
-              }
-            />
-            <ShareTarget
-              icon={XIcon}
-              label="X"
-              onClick={() =>
-                window.open(
-                  `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this ${listing.title} on SafeSale!`)}&url=${encodeURIComponent(shareLink)}`,
-                  "_blank",
-                  "noopener,noreferrer",
-                )
-              }
-            />
-            <ShareTarget
-              icon={Share2}
-              label="More…"
-              onClick={async () => {
-                if (
-                  typeof navigator !== "undefined" &&
-                  typeof navigator.share === "function"
-                ) {
-                  try {
-                    await navigator.share({
-                      title: listing.title,
-                      text: `Check out this ${listing.title} on SafeSale`,
-                      url: shareLink,
-                    });
-                  } catch {
-                    // User cancelled — silent.
-                  }
-                } else {
-                  copy();
-                }
-              }}
-            />
-          </div>
-
-          {/* QR */}
-          <div className="rounded-xl border border-border bg-canvas p-3 text-center">
-            <QRCodeCanvas value={shareLink} size={120} className="mx-auto" />
-            <p className="mt-2 text-xs text-ink-soft">Or share the QR</p>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function ShareTarget({
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-canvas px-3 text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-    >
-      <Icon className="h-4 w-4 text-ink-soft" />
-      {label}
-    </button>
   );
 }
 
