@@ -53,7 +53,7 @@ export function OrderChat({
   const other = viewer === "buyer" ? "seller" : "buyer";
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-background">
+    <section className="overflow-hidden rounded-2xl bg-canvas">
       <header className="flex items-center gap-2 border-b border-border px-4 py-3">
         <MessageCircle className="h-4 w-4 text-brand" />
         <h3 className="text-sm font-semibold text-ink">

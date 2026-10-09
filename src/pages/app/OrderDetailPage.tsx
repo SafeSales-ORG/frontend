@@ -48,7 +48,10 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/safesale/AppShell";
-import { EscrowStatusPill } from "@/components/safesale/EscrowStatus";
+import { BrandIcon } from "@/components/safesale/BrandIcon";
+import { OrderProgress } from "@/components/orders/OrderProgress";
+import { MapPinLine } from "@phosphor-icons/react";
+import { motion } from "motion/react";
 import { OrderChat } from "@/components/safesale/OrderChat";
 import { ListingThumb } from "@/components/safesale/ListingThumb";
 import { Button } from "@/components/ui/button";
@@ -233,16 +236,29 @@ export default function OrderDetailPage() {
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Back to orders
         </button>
 
-        {/* Heading row */}
-        <header className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-body">
-              Placed · {formatRelative(order.createdAt)} · by{" "}
-              <span className="text-ink">{order.buyerName}</span>
-            </p>
+        {/* Status banner */}
+        <motion.header
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="rounded-3xl bg-forest p-6 text-canvas sm:p-8"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm text-canvas/70">
+                {order.shortId} · placed {formatRelative(order.createdAt)} by {order.buyerName}
+              </p>
+              <h2 className="mt-2 font-display text-h1 text-canvas sm:text-display-md">{statusHeadline(order)}</h2>
+            </div>
+            <div className="shrink-0 sm:text-right">
+              <p className="text-sm text-canvas/70">{order.status === "completed" ? "Paid out" : "Order total"}</p>
+              <p className="font-display text-h1 text-mint tabular-nums">{formatNGN(order.amountNGN)}</p>
+            </div>
           </div>
-          <EscrowStatusPill status={order.status} />
-        </header>
+          <div className="mt-8">
+            <OrderProgress status={order.status} tone="dark" />
+          </div>
+        </motion.header>
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* LEFT — hero + summary */}
@@ -293,7 +309,7 @@ export default function OrderDetailPage() {
       {/* Mobile sticky action bar — only when paid */}
       {isPaymentLocked && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-30 flex items-center gap-3 border-t border-border bg-canvas px-4 py-3 sm:hidden"
+          className="fixed right-0 bottom-0 left-0 z-30 flex items-center gap-3 border-t border-line bg-canvas px-4 py-3 shadow-[var(--shadow-float)] sm:hidden"
           role="region"
           aria-label="Quick ship action"
         >
@@ -309,9 +325,8 @@ export default function OrderDetailPage() {
               });
               trackingRef.current?.focus();
             }}
-            className="h-11 rounded-lg bg-brand px-4 text-sm font-semibold text-brand-foreground hover:bg-brand/90"
           >
-            <Send className="mr-1 h-4 w-4" /> Mark shipped
+            <Send /> Mark shipped
           </Button>
         </div>
       )}
@@ -745,9 +760,10 @@ function ShipToCard({ order }: { order: ApiOrder }) {
   const { toast } = useToast();
   return (
     <Card>
-      <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
-        Ship to
-      </p>
+      <div className="flex items-center gap-3">
+        <BrandIcon icon={MapPinLine} size="sm" />
+        <p className="font-semibold text-ink">Deliver to</p>
+      </div>
       <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-1">
         <Field label="Buyer name">
           <p className="text-sm text-ink">{order.buyerName}</p>
@@ -822,7 +838,7 @@ function SummaryCard({
 }) {
   return (
     <Card>
-      <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
+      <p className="font-semibold text-ink">
         Order summary
       </p>
 
@@ -880,7 +896,7 @@ function TimelineCard({
   const steps = buildTimelineSteps(order, dispute);
   return (
     <Card>
-      <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
+      <p className="font-semibold text-ink">
         Activity
       </p>
       <ol className="mt-4 space-y-0">
@@ -1047,7 +1063,7 @@ function buildTimelineSteps(
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-border bg-canvas p-5 sm:p-6">
+    <section className="rounded-2xl bg-canvas p-5 sm:p-6">
       {children}
     </section>
   );
@@ -1063,17 +1079,9 @@ function AccentStrip({
   children: React.ReactNode;
 }) {
   // single tone for now; keeps prop API ready for future variants
-  const cls =
-    tone === "amber"
-      ? "border-warning/25 bg-warning-pale text-warning"
-      : "border-border bg-surface text-ink";
+  const cls = tone === "amber" ? "bg-warning-pale text-warning" : "bg-canvas-soft text-ink";
   return (
-    <div
-      className={cn(
-        "-mx-5 -mt-5 flex items-center gap-2 rounded-t-2xl border-b px-5 py-2 text-xs font-medium sm:-mx-6 sm:-mt-6 sm:px-6",
-        cls,
-      )}
-    >
+    <div className={cn("flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium", cls)}>
       {icon}
       <span>{children}</span>
     </div>
@@ -1115,7 +1123,7 @@ function Field({
 }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wider text-ink-soft">
+      <dt className="text-sm text-mute">
         {label}
       </dt>
       <dd className="mt-1">{children}</dd>
@@ -1132,7 +1140,7 @@ function DataPair({
 }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wider text-ink-soft">
+      <dt className="text-sm text-mute">
         {label}
       </dt>
       <dd className="mt-1 flex items-center justify-between gap-2">
@@ -1229,4 +1237,26 @@ function OrderSkeleton() {
       </div>
     </div>
   );
+}
+
+function statusHeadline(order: ApiOrder): string {
+  const buyer = order.buyerName.split(" ")[0];
+  switch (order.status) {
+    case "pending_payment":
+      return "Waiting for payment";
+    case "paid":
+      return "Paid and ready to ship";
+    case "shipped":
+      return `On its way to ${buyer}`;
+    case "delivered":
+      return `Delivered — waiting for ${buyer} to release`;
+    case "completed":
+      return "Paid out to your bank";
+    case "disputed":
+      return `${buyer} reported a problem`;
+    case "refunded":
+      return "Refunded to the buyer";
+    default:
+      return "Order";
+  }
 }

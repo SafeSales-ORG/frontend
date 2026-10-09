@@ -55,7 +55,6 @@ import {
   Copy,
   HeadphonesIcon,
   Loader2,
-  Lock,
   MessageCircle,
   PackageCheck,
   Scale,
@@ -71,6 +70,7 @@ import {
 } from "lucide-react";
 
 import { Logo } from "@/components/safesale/Logo";
+import { OrderProgress } from "@/components/orders/OrderProgress";
 import { Avatar } from "@/components/safesale/Avatar";
 import { HelpDialog } from "@/components/safesale/HelpDialog";
 import { OrderChat } from "@/components/safesale/OrderChat";
@@ -296,18 +296,14 @@ export default function BuyerOrder() {
   const disputing = disputeMutation.isPending;
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-canvas-soft">
       <HeaderBar />
       <motion.main
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: [0.2, 0, 0, 1] }}
         className="container mx-auto max-w-3xl space-y-6 px-4 pb-32 pt-6 sm:px-6 lg:pb-12">
-        <OrderIdStrip order={order} />
-
         <HeroStatusBlock order={order} dispute={dispute} />
-
-        <TimelineCard order={order} dispute={dispute} />
 
         <div className="grid gap-6 md:grid-cols-2">
           <OrderSummaryCard order={order} listing={listing} />
@@ -319,7 +315,7 @@ export default function BuyerOrder() {
         {/* Order chat is stored in this browser only (no backend yet), so it
             only appears in demo mode. */}
         {!DEMO_MODE ? null : status === "pending_payment" ? (
-          <section className="rounded-2xl border border-dashed border-border bg-surface/40 p-4 text-center">
+          <section className="rounded-2xl border border-dashed border-line-strong bg-canvas p-4 text-center">
             <MessageCircle className="mx-auto h-5 w-5 text-ink-soft" />
             <p className="mt-2 text-sm font-medium text-ink">
               Order chat unlocks after payment
@@ -608,41 +604,6 @@ function HeaderBar() {
   );
 }
 
-function OrderIdStrip({ order }: { order: ApiOrder }) {
-  const { toast } = useToast();
-  const url =
-    typeof window !== "undefined" ? window.location.href : `/order/${order.orderToken}`;
-  const copy = () => {
-    navigator.clipboard?.writeText(url);
-    toast({ title: "Order link copied" });
-  };
-  return (
-    <section className="flex items-center justify-between rounded-2xl border border-border/60 bg-background px-4 py-3">
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
-          Order ID
-        </p>
-        <p className="font-mono text-sm font-semibold text-ink">
-          {order.shortId}
-        </p>
-        <p className="mt-0.5 text-xs text-ink-soft">
-          Placed {formatDate(order.createdAt)}
-        </p>
-      </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={copy}
-        className="shrink-0"
-        aria-label="Copy order link"
-      >
-        <Copy className="mr-1.5 h-3.5 w-3.5" />
-        <span className="text-xs font-medium">Copy link</span>
-      </Button>
-    </section>
-  );
-}
-
 /* ----------------------- hero status block --------------------------- */
 
 interface HeroProps {
@@ -652,37 +613,56 @@ interface HeroProps {
 
 function HeroStatusBlock({ order, dispute }: HeroProps) {
   const config = getHeroConfig(order, dispute);
+  const { toast } = useToast();
+  const copy = () => {
+    navigator.clipboard?.writeText(window.location.href);
+    toast({ title: "Order link copied", description: "Bookmark it — it's how you get back to this order." });
+  };
   return (
-    <section
-      className={cn(
-        "rounded-2xl border p-6 sm:p-8",
-        config.bg,
-        config.border,
-      )}
-    >
-      <div className="flex items-start gap-4 sm:items-center">
-        <span
+    <section className="rounded-3xl bg-forest p-6 text-canvas sm:p-8">
+      <div className="flex items-center justify-between gap-3">
+        <p className="min-w-0 truncate text-sm text-canvas/70">
+          <span className="font-mono font-semibold text-canvas">{order.shortId}</span> · placed {formatDate(order.createdAt)}
+        </p>
+        <button
+          type="button"
+          onClick={copy}
+          aria-label="Copy order link"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-canvas/10 px-3 py-1.5 text-xs font-semibold text-canvas transition-colors hover:bg-canvas/20"
+        >
+          <Copy className="h-3.5 w-3.5" /> Copy link
+        </button>
+      </div>
+
+      <div className="mt-6 flex items-start gap-4">
+        <motion.span
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 320, damping: 20, delay: 0.1 }}
           className={cn(
-            "inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-md",
-            config.iconBg,
+            "inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
+            config.tone === "alert" ? "bg-warning-pale text-warning" : "bg-mint text-forest",
           )}
         >
-          <config.Icon className="h-7 w-7" />
-        </span>
+          <config.Icon className="h-6 w-6" />
+        </motion.span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold leading-tight text-ink sm:text-2xl">
-            {config.headline}
-          </h1>
-          {config.subline && (
-            <p className="mt-1.5 text-sm leading-relaxed text-ink-soft sm:text-base">
-              {config.subline}
-            </p>
-          )}
-          {config.countdownIso && (
-            <CountdownChip targetIso={config.countdownIso} />
-          )}
+          <h1 className="font-display text-h2 leading-tight text-canvas sm:text-h1">{config.headline}</h1>
+          {config.subline && <p className="mt-1.5 text-sm leading-relaxed text-canvas/75 sm:text-base">{config.subline}</p>}
+          {config.countdownIso && <CountdownChip targetIso={config.countdownIso} />}
         </div>
       </div>
+
+      <div className="mt-8">
+        <OrderProgress status={order.status} tone="dark" />
+      </div>
+
+      {order.status === "disputed" && dispute && (
+        <p className="mt-6 flex items-center gap-2 rounded-xl bg-canvas/10 px-4 py-3 text-sm text-canvas/85">
+          <Scale className="h-4 w-4 shrink-0 text-mint" />
+          Paused for review since {formatDate(dispute.createdAt)}. Your money stays held until a mediator decides.
+        </p>
+      )}
     </section>
   );
 }
@@ -694,18 +674,16 @@ function CountdownChip({ targetIso }: { targetIso: string }) {
   useTicker(() => setTick((t) => t + 1), 60_000);
   const remaining = formatCountdownLong(targetIso);
   return (
-    <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-background/70 px-3 py-1 text-xs font-medium text-ink">
+    <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-canvas/10 px-3 py-1 text-xs font-medium text-canvas">
       <Clock className="h-3.5 w-3.5" />
       <span className="tabular-nums">{remaining}</span>
-      <span className="text-ink-soft">until auto-release</span>
+      <span className="text-canvas/70">until auto-release</span>
     </span>
   );
 }
 
 interface HeroConfig {
-  bg: string;
-  border: string;
-  iconBg: string;
+  tone: "ok" | "alert";
   Icon: typeof Truck;
   headline: string;
   subline: string;
@@ -717,27 +695,21 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
   switch (order.status) {
     case "pending_payment":
       return {
-        bg: "bg-brand-soft",
-        border: "border-brand-soft/40",
-        iconBg: "bg-brand",
+        tone: "ok",
         Icon: Wallet,
         headline: "Awaiting your bank transfer",
         subline: `Send ${amount} to the account below. This page updates as soon as your transfer arrives.`,
       };
     case "paid":
       return {
-        bg: "bg-brand-soft",
-        border: "border-brand-soft/40",
-        iconBg: "bg-brand",
+        tone: "ok",
         Icon: ShieldCheck,
         headline: "Your payment is locked in escrow",
         subline: `${amount} is held by SafeSale. The seller can now see your payment and ship your order.`,
       };
     case "shipped":
       return {
-        bg: "bg-brand-soft",
-        border: "border-brand-soft/40",
-        iconBg: "bg-brand",
+        tone: "ok",
         Icon: Truck,
         headline: "Your order has been shipped",
         subline: order.trackingNumber
@@ -747,9 +719,7 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
       };
     case "delivered":
       return {
-        bg: "bg-brand-soft",
-        border: "border-brand-soft/40",
-        iconBg: "bg-brand",
+        tone: "ok",
         Icon: PackageCheck,
         headline: "Marked as delivered",
         subline: "Confirm you received your order, or let us know if there's a problem.",
@@ -757,18 +727,14 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
       };
     case "completed":
       return {
-        bg: "bg-brand-soft",
-        border: "border-brand-soft/40",
-        iconBg: "bg-brand",
+        tone: "ok",
         Icon: CheckCircle2,
         headline: "Payment released — order complete",
         subline: `Thank you. ${amount} has been sent to the seller. A receipt is in your email.`,
       };
     case "disputed":
       return {
-        bg: "bg-warning-pale",
-        border: "border-warning/25",
-        iconBg: "bg-warning",
+        tone: "alert",
         Icon: Scale,
         headline: "Dispute opened — under review",
         subline:
@@ -778,9 +744,7 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
       };
     case "refunded":
       return {
-        bg: "bg-negative-pale",
-        border: "border-negative/25",
-        iconBg: "bg-negative",
+        tone: "alert",
         Icon: Undo2,
         headline: "Dispute resolved in your favour",
         subline: `Your ${amount} refund has been approved. Our team will process it to you shortly.`,
@@ -788,120 +752,12 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
     default:
       // Defensive fallback — never crash the page on an unexpected status.
       return {
-        bg: "bg-brand-soft",
-        border: "border-brand-soft/40",
-        iconBg: "bg-brand",
+        tone: "ok",
         Icon: ShieldCheck,
         headline: "Your order is being processed",
         subline: "We're updating this order. Refresh in a moment for the latest status.",
       };
   }
-}
-
-/* ----------------------- timeline card ------------------------------- */
-
-interface TimelineProps {
-  order: ApiOrder;
-  dispute: ApiDispute | null;
-}
-
-function TimelineCard({ order, dispute }: TimelineProps) {
-  const steps = getTimelineState(order.status);
-  const disputedBranch = order.status === "disputed";
-  // Progress bar width = percentage of completed/active segments.
-  const doneCount = steps.filter((s) => s.state !== "pending").length;
-  const progressPct = ((doneCount - 0.5) / (steps.length - 1)) * 100;
-
-  return (
-    <section className="rounded-2xl border border-border bg-background p-5 sm:p-6">
-      <div className="relative">
-        {/* base line */}
-        <div className="absolute left-4 right-4 top-4 h-[2px] bg-border" />
-        {/* progress line */}
-        <motion.div
-          className="absolute left-4 top-4 h-[2px] bg-brand"
-          initial={{ width: 0 }}
-          animate={{ width: `calc((100% - 32px) * ${Math.max(0, Math.min(1, progressPct / 100))})` }}
-          transition={{ duration: 0.9, delay: 0.2, ease: [0.2, 0, 0, 1] }}
-        />
-        <ol className="relative z-10 grid grid-cols-4 gap-2">
-          {steps.map((step, i) => (
-            <motion.li
-              key={step.key}
-              className="flex flex-col items-center text-center"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + i * 0.12, duration: 0.3 }}
-            >
-              <span
-                className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full ring-4 ring-background",
-                  step.state === "done" && "bg-brand text-brand-foreground",
-                  step.state === "active" &&
-                    "border-2 border-brand bg-background text-brand",
-                  step.state === "pending" && "border border-border bg-background text-ink-soft",
-                )}
-              >
-                {step.state === "done" ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <step.Icon className="h-4 w-4" />
-                )}
-              </span>
-              <span
-                className={cn(
-                  "mt-2 text-xs font-medium",
-                  step.state === "pending" ? "text-ink-soft" : "text-ink",
-                )}
-              >
-                {step.label}
-              </span>
-            </motion.li>
-          ))}
-        </ol>
-      </div>
-
-      {disputedBranch && (
-        <div className="mt-4 flex items-center gap-3 rounded-xl bg-warning-pale px-4 py-3 text-warning">
-          <Scale className="h-4 w-4 shrink-0" />
-          <p className="text-xs font-medium">
-            Branched to dispute on {dispute ? formatDate(dispute.createdAt) : "unknown date"}.
-          </p>
-        </div>
-      )}
-    </section>
-  );
-}
-
-type TimelineStepState = "done" | "active" | "pending";
-interface TimelineStep {
-  key: string;
-  label: string;
-  Icon: typeof Truck;
-  state: TimelineStepState;
-}
-
-function getTimelineState(status: ApiOrderStatus): TimelineStep[] {
-  // 4 canonical steps. Disputed/refunded use the same skeleton but the
-  // "Released" step stays pending (it never happened).
-  const base: Omit<TimelineStep, "state">[] = [
-    { key: "held", label: "Payment held", Icon: Lock },
-    { key: "shipped", label: "Shipped", Icon: Truck },
-    { key: "delivered", label: "Delivered", Icon: PackageCheck },
-    { key: "released", label: "Paid out", Icon: CheckCircle2 },
-  ];
-  // Map each status to which step is "active" / what is "done"
-  const stateByStep: Record<ApiOrderStatus, TimelineStepState[]> = {
-    pending_payment: ["active", "pending", "pending", "pending"],
-    paid: ["done", "active", "pending", "pending"],
-    shipped: ["done", "done", "active", "pending"],
-    delivered: ["done", "done", "done", "active"],
-    completed: ["done", "done", "done", "done"],
-    disputed: ["done", "pending", "pending", "pending"],
-    refunded: ["done", "pending", "pending", "pending"],
-  };
-  const states = stateByStep[status];
-  return base.map((b, i) => ({ ...b, state: states[i] }));
 }
 
 /* ----------------------- order summary card ------------------------- */
@@ -915,7 +771,7 @@ function OrderSummaryCard({
 }) {
   const firstImage = listing.images[0];
   return (
-    <section className="rounded-2xl border border-border bg-background p-5 sm:p-6">
+    <section className="rounded-2xl bg-canvas p-5 sm:p-6">
       <div className="flex items-start gap-4">
         <ListingThumb image={firstImage} alt={listing.title} size={80} iconScale={0.35} />
         <div className="min-w-0 flex-1">
@@ -942,7 +798,7 @@ function OrderSummaryCard({
         />
         <PriceRow label="Buyer protection" value="Free" muted />
         <div className="mt-2 flex items-baseline justify-between border-t border-border pt-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
+          <span className="text-sm font-semibold text-ink">
             Total in escrow
           </span>
           <span className="text-base font-semibold tabular-nums text-ink">
@@ -984,7 +840,7 @@ function PriceRow({
 
 function DeliveryDetailsCard({ order }: { order: ApiOrder }) {
   return (
-    <section className="rounded-2xl border border-border bg-background p-5 sm:p-6">
+    <section className="rounded-2xl bg-canvas p-5 sm:p-6">
       <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
         <Truck className="h-4 w-4 text-brand" />
         Shipping to
@@ -1031,7 +887,7 @@ function DeliveryDetailsCard({ order }: { order: ApiOrder }) {
 
 function SellerMiniCard({ seller }: { seller: ApiSeller }) {
   return (
-    <section className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-background p-4">
+    <section className="flex items-center justify-between gap-4 rounded-2xl bg-canvas p-4">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="relative">
           <Avatar seed={seller.handle} name={seller.name} size={44} src={seller.avatarUrl} />
@@ -1047,7 +903,7 @@ function SellerMiniCard({ seller }: { seller: ApiSeller }) {
               {seller.name}
             </p>
             {seller.verified && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-brand-soft px-1.5 py-0.5 text-xs font-medium uppercase tracking-tight text-brand-soft-foreground">
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-brand-soft px-1.5 py-0.5 text-xs font-medium text-brand-soft-foreground">
                 <ShieldCheck className="h-2.5 w-2.5" /> Verified
               </span>
             )}
@@ -1129,7 +985,7 @@ function BankTransferCard({ order }: { order: ApiOrder }) {
     toast({ title: `${label} copied` });
   };
   return (
-    <section className="rounded-2xl border border-brand-soft/60 bg-brand-soft/60 p-5 sm:p-6">
+    <section className="rounded-2xl bg-brand-pale p-5 sm:p-6">
       <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
         <Wallet className="h-4 w-4 text-brand" />
         Awaiting your payment
@@ -1171,7 +1027,7 @@ function BankRow({
       )}
     >
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
+        <p className="text-sm font-semibold text-ink">
           {label}
         </p>
         <p className="text-sm font-semibold tabular-nums text-ink">{value}</p>
@@ -1201,8 +1057,8 @@ function DecisionCard({
   countdownIso: string | null;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-background p-5 sm:p-6">
-      <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
+    <section className="rounded-2xl bg-canvas p-5 sm:p-6">
+      <p className="text-sm font-semibold text-ink">
         Your decision
       </p>
       {locked && (
@@ -1261,7 +1117,7 @@ function ReviewSection({
 
   if (existing) {
     return (
-      <section className="rounded-2xl border border-border bg-background p-5 text-center sm:p-6">
+      <section className="rounded-2xl bg-canvas p-5 text-center sm:p-6">
         <CheckCircle2 className="mx-auto h-7 w-7 text-brand" />
         <p className="mt-3 text-base font-semibold text-ink">Thanks for your review!</p>
         <div className="mt-2 flex items-center justify-center gap-1">
@@ -1300,7 +1156,7 @@ function ReviewSection({
   };
 
   return (
-    <section className="rounded-2xl border border-border bg-background p-5 sm:p-6">
+    <section className="rounded-2xl bg-canvas p-5 sm:p-6">
       <p className="text-base font-semibold text-ink">Payment released — leave a review</p>
       <p className="mt-1 text-sm text-ink-soft">
         How was your experience with this seller? Your rating is public and
@@ -1349,7 +1205,7 @@ function ReviewSection({
 function DisputeSummaryCard({ dispute }: { dispute: ApiDispute | null }) {
   if (!dispute) {
     return (
-      <section className="rounded-2xl border border-warning/25 bg-warning-pale p-5 sm:p-6">
+      <section className="rounded-2xl bg-warning-pale p-5 sm:p-6">
         <p className="text-sm text-warning">Dispute is being prepared…</p>
       </section>
     );
@@ -1363,7 +1219,7 @@ function DisputeSummaryCard({ dispute }: { dispute: ApiDispute | null }) {
   };
   const isResolved = dispute.status === "resolved";
   return (
-    <section className="rounded-2xl border border-warning/25 bg-warning-pale p-5 sm:p-6">
+    <section className="rounded-2xl bg-warning-pale p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
           <Scale className="h-4 w-4 text-warning" />
@@ -1371,7 +1227,7 @@ function DisputeSummaryCard({ dispute }: { dispute: ApiDispute | null }) {
         </h3>
         <span
           className={cn(
-            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide",
+            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
             isResolved
               ? "bg-brand text-brand-foreground"
               : "bg-warning text-white",
@@ -1381,13 +1237,13 @@ function DisputeSummaryCard({ dispute }: { dispute: ApiDispute | null }) {
         </span>
       </div>
       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-[120px_1fr]">
-        <dt className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
+        <dt className="text-sm font-semibold text-ink">
           Reason
         </dt>
         <dd className="text-ink">{dispute.reason}</dd>
         {dispute.summary && (
           <>
-            <dt className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
+            <dt className="text-sm font-semibold text-ink">
               Your description
             </dt>
             <dd className="leading-relaxed text-ink-soft">{dispute.summary}</dd>
