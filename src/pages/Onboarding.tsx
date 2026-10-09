@@ -199,6 +199,11 @@ function AccountStep({
     queryClient.removeQueries({ queryKey: ["safesale", "seller-orders"] });
 
     const me = await apiClient.getMe();
+    // The mediator signs in on this same form and works from /admin.
+    if (me.user.role === "MEDIATOR") {
+      navigate("/admin");
+      return;
+    }
     const shop = me.user.seller;
     if (shop) {
       setCurrentSeller({

@@ -6,7 +6,7 @@
  *
  * Access control: this route is wrapped in `MediatorGate` at the
  * router level (`src/AppRouter.tsx`). The component below assumes
- * the viewer is the trusted mediator npub — no in-component gating.
+ * the viewer is the signed-in SafeSale mediator.
  *
  * Data source:
  *
@@ -16,31 +16,27 @@
  *   (`VITE_DEMO_MODE=true`) these resolve against the in-memory mock;
  *   against the real backend they hit `GET /api/admin/disputes` and
  *   `POST /api/admin/disputes/:id/resolve` (enumerated in `BACKEND.md`).
- *
- *   Still pending on the backend side: the Nostr kind-33889
- *   resolution-publishing path (per PROGRESS.md PRD delta #7). When
- *   that lands the resolve mutation gets a signed publish step — no
- *   change to this component's structure.
  */
 
 import { useSeoMeta } from "@unhead/react";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { AppShell } from "@/components/safesale/AppShell";
+import { MediatorShell } from "@/components/safesale/MediatorShell";
+import { BrandIcon } from "@/components/safesale/BrandIcon";
+import { AnimatedNumber } from "@/components/safesale/AnimatedNumber";
+import { Stagger, StaggerItem } from "@/components/motion";
+import { Hourglass, Money, Scales as ScalesIcon } from "@phosphor-icons/react";
 import { Avatar } from "@/components/safesale/Avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  AlertTriangle,
   ArrowLeft,
   Calendar,
   CheckCircle2,
   Gavel,
-  Package,
-  Scale,
   Search,
 } from "lucide-react";
 
@@ -173,17 +169,17 @@ const FILTERS: FilterSpec[] = [
   { key: "all", label: "All", matches: () => true },
   {
     key: "open",
-    label: "Escalated",
+    label: "Needs decision",
     matches: (s) => s === "escalated",
   },
   {
     key: "evidence",
-    label: "Awaiting evidence",
+    label: "Waiting for evidence",
     matches: (s) => s === "evidence_requested",
   },
   {
     key: "mediating",
-    label: "Mediating",
+    label: "In progress",
     matches: (s) => s === "mediating",
   },
 ];
@@ -262,36 +258,18 @@ export default function Admin() {
   };
 
   return (
-    <AppShell
-      title="Mediator dashboard"
-      subtitle="Review a dispute and sign a resolution — the buyer's and seller's order pages update immediately."
+    <MediatorShell
+      title="Dispute queue"
+      subtitle="Review both sides and decide. The buyer's and seller's order pages update immediately."
     >
       <div className="space-y-6">
-        {/* Mode banner */}
-        <div className="flex items-start gap-3 rounded-2xl border border-warning/25 bg-warning-pale p-4 text-warning">
-          <Scale className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden />
-          <div className="text-sm">
-            {DEMO_MODE ? (
-              <>
-                <p className="font-medium">Demo mode — this queue is fully interactive</p>
-                <p className="mt-1 text-xs text-warning">
-                  Disputes below are live from the in-memory escrow store. Resolving
-                  one immediately updates the matching buyer and seller order pages.
-                  No backend or live funds involved.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="font-medium">Admin endpoints aren't wired on the live backend yet</p>
-                <p className="mt-1 text-xs text-warning">
-                  Run with VITE_DEMO_MODE=true to drive the full mediator flow. On the live
-                  backend this page needs GET /api/admin/disputes and
-                  POST /api/admin/disputes/:id/resolve.
-                </p>
-              </>
-            )}
-          </div>
-        </div>
+        {DEMO_MODE && (
+          <p className="rounded-xl bg-canvas px-4 py-3 text-sm text-body">
+            Demo mode: these disputes come from the in-browser demo store. No real money moves.
+          </p>
+        )}
+
+        {!active && <QueueSummary disputes={allDisputes} />}
 
         {!active ? (
           <DisputeQueue
@@ -311,7 +289,35 @@ export default function Admin() {
           />
         )}
       </div>
-    </AppShell>
+    </MediatorShell>
+  );
+}
+
+function QueueSummary({ disputes }: { disputes: DisputeFixture[] }) {
+  const needsDecision = disputes.filter((d) => d.status === "escalated").length;
+  const waiting = disputes.length - needsDecision;
+  const held = disputes.reduce((sum, d) => sum + d.amountNGN, 0);
+  const tiles = [
+    { label: "Need your decision", value: needsDecision, icon: ScalesIcon, cls: "bg-forest text-canvas", tone: "mint" as const },
+    { label: "Waiting on someone", value: waiting, icon: Hourglass, cls: "bg-canvas text-ink", tone: "info" as const },
+    { label: "Money held in disputes", value: held, money: true, icon: Money, cls: "bg-mint text-forest", tone: "pale" as const },
+  ];
+  return (
+    <Stagger className="grid gap-4 sm:grid-cols-3">
+      {tiles.map((t) => (
+        <StaggerItem key={t.label} className={cn("flex items-center gap-4 rounded-2xl p-5", t.cls)}>
+          <BrandIcon icon={t.icon} tone={t.tone} />
+          <div>
+            <p className="text-sm opacity-80">{t.label}</p>
+            <AnimatedNumber
+              value={t.value}
+              format={t.money ? (n) => formatNGN(Math.round(n)) : undefined}
+              className="block font-display text-h1 tabular-nums"
+            />
+          </div>
+        </StaggerItem>
+      ))}
+    </Stagger>
   );
 }
 
@@ -407,7 +413,7 @@ function DisputeQueue({
           {/* Desktop table */}
           <div className="hidden overflow-hidden rounded-2xl border border-border bg-canvas sm:block">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-border bg-surface text-xs font-medium uppercase tracking-wider text-ink-soft">
+              <thead className="border-b border-border bg-surface text-sm font-medium text-mute">
                 <tr>
                   <th className="px-4 py-3">Dispute</th>
                   <th className="px-4 py-3">Order / parties</th>
@@ -639,7 +645,7 @@ function DisputeDetail({
 
             <div className="mt-5 space-y-4">
               <fieldset>
-                <legend className="text-xs font-medium uppercase tracking-wider text-ink-soft">
+                <legend className="text-sm font-medium text-mute">
                   Outcome
                 </legend>
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -691,7 +697,7 @@ function DisputeDetail({
 
               <div>
                 <Label htmlFor="rationale">
-                  Rationale <span className="text-ink-soft">(min 20 chars; published publicly)</span>
+                  Rationale <span className="text-ink-soft">(at least 20 characters — the buyer and seller both see this)</span>
                 </Label>
                 <Textarea
                   id="rationale"
@@ -721,7 +727,7 @@ function DisputeDetail({
         {/* RIGHT — case details + summary */}
         <div className="space-y-6">
           <section className="rounded-2xl border border-border bg-canvas p-5 sm:p-6">
-            <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
+            <p className="text-sm font-medium text-mute">
               Case
             </p>
             <dl className="mt-4 space-y-3 text-sm">
@@ -754,7 +760,7 @@ function DisputeDetail({
           </section>
 
           <section className="rounded-2xl border border-border bg-canvas p-5 sm:p-6">
-            <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
+            <p className="text-sm font-medium text-mute">
               Summary
             </p>
             <p className="mt-3 text-sm leading-relaxed text-ink">
@@ -779,38 +785,23 @@ function DisputeDetail({
 function StatusBadge({ status }: { status: DisputeQueueStatus }) {
   const cfg =
     status === "escalated"
-      ? { label: "Escalated", cls: "bg-negative-pale text-negative border-negative/25", Icon: AlertTriangle }
+      ? { label: "Needs your decision", cls: "bg-warning-pale text-warning" }
       : status === "evidence_requested"
-        ? { label: "Awaiting evidence", cls: "bg-warning-pale text-warning border-warning/25", Icon: Package }
-        : { label: "Mediating", cls: "bg-info-pale text-info border-info/25", Icon: Gavel };
-  const Icon = cfg.Icon;
+        ? { label: "Waiting for evidence", cls: "bg-info-pale text-info" }
+        : { label: "In progress", cls: "bg-canvas-sunken text-body" };
   return (
-    <span
-      className={cn(
-        "inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs font-semibold uppercase tracking-wide",
-        cfg.cls,
-      )}
-    >
-      <Icon className="h-3 w-3" aria-hidden /> {cfg.label}
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium", cfg.cls)}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+      {cfg.label}
     </span>
   );
 }
 
 function PriorityBadge({ priority }: { priority: DisputePriority }) {
-  const cls =
-    priority === "high"
-      ? "bg-negative-pale text-negative"
-      : priority === "medium"
-        ? "bg-warning-pale text-warning"
-        : "bg-surface text-ink-soft";
+  if (priority === "low") return null;
   return (
-    <span
-      className={cn(
-        "inline-block rounded-md px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider",
-        cls,
-      )}
-    >
-      priority: {priority}
+    <span className={cn("text-xs font-medium", priority === "high" ? "text-negative" : "text-mute")}>
+      {priority === "high" ? "High priority" : "Medium priority"}
     </span>
   );
 }
@@ -835,11 +826,11 @@ function PartyCard({
   return (
     <section className="rounded-2xl border border-border bg-canvas p-5">
       <header className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
+        <p className="text-sm font-medium text-mute">
           {role}
         </p>
         {opened && (
-          <span className="inline-flex items-center gap-1 rounded-md bg-negative-pale px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-negative">
+          <span className="inline-flex items-center gap-1 rounded-full bg-negative-pale px-2 py-0.5 text-xs font-medium text-negative">
             Opened
           </span>
         )}
@@ -869,7 +860,7 @@ function PartyCard({
       </div>
 
       {/* Evidence images */}
-      <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-ink-soft">
+      <p className="mt-4 text-sm font-semibold text-mute">
         Evidence ({evidence.length})
       </p>
       {evidence.length === 0 ? (
@@ -899,7 +890,7 @@ function ConversationCard({ orderToken }: { orderToken: string }) {
   if (messages.length === 0) return null;
   return (
     <section className="rounded-2xl border border-border bg-canvas p-5 sm:p-6">
-      <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
+      <p className="text-sm font-medium text-mute">
         Buyer ↔ seller conversation
       </p>
       <ul className="mt-3 space-y-2">
@@ -959,7 +950,7 @@ function Pair({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-border pb-2 last:border-0">
-      <dt className="text-xs uppercase tracking-wider text-ink-soft">
+      <dt className="text-sm text-mute">
         {label}
       </dt>
       <dd className="text-right">{children}</dd>

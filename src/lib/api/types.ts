@@ -581,6 +581,8 @@ export interface MeResponse {
     email: string;
     authProvider: string;
     emailVerified: boolean;
+    /** "USER" for sellers/buyers, "MEDIATOR" for the SafeSale mediator. */
+    role?: "USER" | "MEDIATOR" | "ADMIN";
     nostrNpub: string | null;
     createdAt: string;
     seller: MeSeller | null;
