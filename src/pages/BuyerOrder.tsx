@@ -445,11 +445,11 @@ export default function BuyerOrder() {
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-warning-pale text-warning">
                 <AlertTriangle className="h-5 w-5" />
               </span>
-              <DialogTitle className="leading-tight">Open a dispute</DialogTitle>
+              <DialogTitle className="leading-tight">Report a problem</DialogTitle>
             </div>
             <DialogDescription className="pt-3 text-sm leading-relaxed">
-              Your funds will be frozen and a mediator will be involved. Be
-              specific — both the seller and a SafeSale mediator will read this.
+              The payment is frozen while a SafeSale mediator looks into it. Be specific —
+              the seller and the mediator will both read this.
             </DialogDescription>
           </DialogHeader>
 
@@ -545,7 +545,7 @@ export default function BuyerOrder() {
                 onChange={onEvidencePicked}
               />
               <p className="text-xs text-ink-soft">
-                Clear photos help the mediator resolve your dispute faster.
+                Clear photos help the mediator understand what happened.
               </p>
             </div>
           </div>
@@ -558,11 +558,7 @@ export default function BuyerOrder() {
             >
               Cancel
             </Button>
-            <Button
-              disabled={disputing}
-              onClick={() => disputeMutation.mutate()}
-              className="bg-warning text-white hover:bg-warning"
-            >
+            <Button disabled={disputing} onClick={() => disputeMutation.mutate()}>
               {disputing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -571,7 +567,7 @@ export default function BuyerOrder() {
               ) : (
                 <>
                   <Scale className="mr-2 h-4 w-4" />
-                  Submit dispute
+                  Report problem
                 </>
               )}
             </Button>

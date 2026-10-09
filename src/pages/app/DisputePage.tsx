@@ -31,7 +31,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Timeline, type TimelineStep } from "@/components/safesale/Timeline";
-import { Countdown } from "@/components/safesale/Countdown";
 import { useSellerOrders } from "@/hooks/useSellerOrders";
 import { useToast } from "@/hooks/useToast";
 import { apiClient, ApiError, type GetOrderResponse } from "@/lib/api";
@@ -50,7 +49,6 @@ import {
   MessageCircle,
   ArrowLeft,
   ChevronRight,
-  Clock,
   AlertCircle,
 } from "lucide-react";
 import { cn, sanitizeUrl } from "@/lib/utils";
@@ -89,7 +87,7 @@ function DisputeList() {
     return (
       <AppShell
         title="Disputes"
-        subtitle="Stay calm. Share evidence. We'll get to a fair outcome."
+        subtitle="Problems buyers have reported, and what happens next"
       >
         <div className="space-y-4">
           <Skeleton className="h-24 w-full rounded-2xl" />
@@ -102,7 +100,7 @@ function DisputeList() {
   return (
     <AppShell
       title="Disputes"
-      subtitle="Stay calm. Share evidence. We'll get to a fair outcome."
+      subtitle="Problems buyers have reported, and what happens next"
     >
       <div className="space-y-5">
         {open.length === 0 ? (
@@ -200,24 +198,6 @@ function DisputeRow({ order }: { order: SellerOrderRow }) {
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <DisputeStatusBadge status={dispute.status} />
-              {dispute.directResolutionUntil && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-warning-pale px-2 py-0.5 text-xs font-medium text-warning ring-1 ring-inset ring-warning/25">
-                  <Clock className="h-2.5 w-2.5" />
-                  <Countdown
-                    targetIso={dispute.directResolutionUntil}
-                    prefix="Direct window"
-                  />
-                </span>
-              )}
-              {dispute.evidenceDueAt && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-negative-pale px-2 py-0.5 text-xs font-medium text-negative ring-1 ring-inset ring-negative/25">
-                  <AlertCircle className="h-2.5 w-2.5" />
-                  <Countdown
-                    targetIso={dispute.evidenceDueAt}
-                    prefix="Evidence due in"
-                  />
-                </span>
-              )}
               {dispute.isReturn && (
                 <span className="rounded-full bg-info-pale px-2 py-0.5 text-xs font-medium text-info">
                   Return in progress
@@ -317,7 +297,7 @@ function DisputeDetailView({
       subtitle={
         isResolved
           ? "This case has been closed."
-          : "Stay calm. Share clear evidence. A mediator will decide fairly."
+          : "Share clear evidence. A SafeSale mediator decides."
       }
     >
       <div className="space-y-5">
@@ -399,23 +379,6 @@ function DisputeDetailView({
           />
         </section>
 
-        {/* Chat placeholder */}
-        <section className="rounded-2xl border border-border bg-canvas p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">Order chat</h2>
-            <span className="text-xs font-medium text-ink-soft">
-              NIP-17 integration coming
-            </span>
-          </div>
-          <div className="mt-4 rounded-xl border border-dashed border-border px-6 py-8 text-center">
-            <MessageCircle className="mx-auto h-5 w-5 text-ink-soft" />
-            <p className="mt-2 text-sm text-ink-soft">
-              Encrypted order chat will show here once NIP-17 private messaging
-              is integrated.
-            </p>
-          </div>
-        </section>
-
         {/* Reassurance */}
         {!isResolved && (
           <div className="rounded-2xl border border-brand/25 bg-brand-soft/40 p-5">
@@ -467,13 +430,6 @@ function StatusBanner({
               a partial refund, or a clear explanation. A SafeSale mediator reviews
               both sides and decides.
             </p>
-            {dispute.directResolutionUntil && (
-              <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-warning-pale px-2.5 py-1 text-xs font-medium text-warning">
-                <Clock className="h-3 w-3" />
-                Auto-escalates in{" "}
-                <Countdown targetIso={dispute.directResolutionUntil} />
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -513,16 +469,8 @@ function StatusBanner({
               The mediator needs more evidence
             </p>
             <p className="mt-1 text-xs text-ink-soft">
-              Add the requested photos or messages below. Missing the deadline
-              weakens your case.
+              Add the photos or details the mediator asked for below.
             </p>
-            {dispute.evidenceDueAt && (
-              <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-negative-pale px-2.5 py-1 text-xs font-medium text-negative">
-                <Clock className="h-3 w-3" />
-                Evidence due in{" "}
-                <Countdown targetIso={dispute.evidenceDueAt} />
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -533,52 +481,18 @@ function StatusBanner({
   return null;
 }
 
+/** Plain-language dispute status for the seller. */
 function DisputeStatusBadge({ status }: { status: ApiDisputeStatus }) {
-  const map: Record<
-    ApiDisputeStatus,
-    { label: string; bg: string; text: string; ring: string }
-  > = {
-    direct_resolution: {
-      label: "Direct resolution",
-      bg: "bg-warning-pale",
-      text: "text-warning",
-      ring: "ring-warning/25",
-    },
-    escalated: {
-      label: "Escalated",
-      bg: "bg-negative-pale",
-      text: "text-negative",
-      ring: "ring-negative/25",
-    },
-    evidence_requested: {
-      label: "Evidence requested",
-      bg: "bg-negative-pale",
-      text: "text-negative",
-      ring: "ring-negative/25",
-    },
-    mediating: {
-      label: "Mediating",
-      bg: "bg-warning-pale",
-      text: "text-warning",
-      ring: "ring-warning/25",
-    },
-    resolved: {
-      label: "Resolved",
-      bg: "bg-brand-soft",
-      text: "text-brand-soft-foreground",
-      ring: "ring-brand/25",
-    },
+  const map: Record<ApiDisputeStatus, { label: string; tone: string }> = {
+    direct_resolution: { label: "Waiting for your reply", tone: "bg-warning-pale text-warning" },
+    escalated: { label: "With a mediator", tone: "bg-info-pale text-info" },
+    mediating: { label: "With a mediator", tone: "bg-info-pale text-info" },
+    evidence_requested: { label: "Evidence needed", tone: "bg-warning-pale text-warning" },
+    resolved: { label: "Resolved", tone: "bg-brand-pale text-brand-ink" },
   };
   const s = map[status];
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
-        s.bg,
-        s.text,
-        s.ring,
-      )}
-    >
+    <span className={cn("inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium", s.tone)}>
       {s.label}
     </span>
   );
@@ -762,8 +676,8 @@ function buildTimeline(
   if (d.status === "direct_resolution") {
     base.push({
       key: "direct",
-      title: "Direct resolution window (72h)",
-      description: "Buyer & seller try to resolve via chat first",
+      title: "Waiting for your reply",
+      description: "Explain what happened and add any evidence",
       at: undefined,
       state: "active" as const,
     });
@@ -771,8 +685,8 @@ function buildTimeline(
   if (d.status === "escalated" || d.status === "mediating") {
     base.push({
       key: "escalate",
-      title: "Escalated to mediator",
-      description: "SafeSale mediator now reviewing the case",
+      title: "With a SafeSale mediator",
+      description: "The mediator is reviewing both sides",
       at: undefined,
       state: "active" as const,
     });
@@ -781,7 +695,7 @@ function buildTimeline(
     base.push({
       key: "evidence",
       title: "Mediator requested more evidence",
-      description: "24-hour window to respond",
+      description: "Add the photos or details they asked for",
       at: undefined,
       state: "alert" as const,
     });
