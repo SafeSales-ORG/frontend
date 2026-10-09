@@ -10,11 +10,8 @@ import { useSeoMeta } from "@unhead/react";
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
-  type ChangeEvent,
   type ComponentType,
-  type ReactNode,
 } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,8 +19,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/safesale/AppShell";
 import { BrandIcon } from "@/components/safesale/BrandIcon";
 import { AnimatedNumber } from "@/components/safesale/AnimatedNumber";
-import { AnimatePresence, motion } from "motion/react";
-import { ImageSquare, MagnifyingGlass, Package as PackageIcon, RocketLaunch, Storefront, WarningCircle } from "@phosphor-icons/react";
+import { motion } from "motion/react";
+import { FloppyDisk, MagnifyingGlass, Package as PackageIcon, PencilSimple, RocketLaunch, Storefront, WarningCircle } from "@phosphor-icons/react";
+import { FormBlock, ListingPreview, MoneyField, PhotoDropzone } from "@/components/listings/ListingEditorParts";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { listingUrl } from "@/lib/links";
 import { Button } from "@/components/ui/button";
@@ -60,17 +58,14 @@ import {
   Eye,
   ImagePlus,
   Loader2,
-  Lock,
   MessageSquare,
   MoreHorizontal,
   PackageX,
   Pencil,
   Plus,
-  Send,
   Share2,
   ShieldCheck,
   Upload,
-  X,
 } from "lucide-react";
 
 import { XIcon } from "@/components/safesale/BrandIcons";
@@ -876,7 +871,6 @@ function CreateListingSheet({
   const [error, setError] = useState<string | null>(null);
   /** Backend round-trip the publish button waits on. */
   const [isSavingToBackend, setIsSavingToBackend] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Reset state when the sheet closes (small delay so it doesn't flash
   // during the close animation).
@@ -913,13 +907,6 @@ function CreateListingSheet({
     !stillUploading &&
     !isSavingToBackend;
 
-  const [dragging, setDragging] = useState(false);
-
-  const onFilesPicked = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = ""; // allow re-selecting the same file
-    void addFiles(files);
-  };
 
   const addFiles = async (all: File[]) => {
     const files = all.filter((f) => f.type.startsWith("image/"));
@@ -1116,93 +1103,7 @@ function CreateListingSheet({
               <div className="space-y-7">
                 {/* Photos */}
                 <FormBlock step={1} title="Photos" hint="Up to 4. The first one is the cover buyers see.">
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setDragging(true);
-                    }}
-                    onDragLeave={() => setDragging(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setDragging(false);
-                      void addFiles(Array.from(e.dataTransfer.files));
-                    }}
-                    className={cn(
-                      "rounded-2xl border-2 border-dashed p-3 transition-colors",
-                      dragging ? "border-brand bg-brand-pale" : "border-line-strong bg-canvas-soft",
-                    )}
-                  >
-                    {photos.length === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex w-full flex-col items-center gap-3 px-4 py-10 text-center"
-                      >
-                        <BrandIcon icon={ImageSquare} size="lg" />
-                        <span className="font-semibold text-ink">Drag photos here, or tap to choose</span>
-                        <span className="text-sm text-mute">JPG, PNG or WebP · clear, well-lit photos sell faster</span>
-                      </button>
-                    ) : (
-                      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-                        <AnimatePresence initial={false}>
-                          {photos.map((p, i) => (
-                            <motion.div
-                              key={p.key}
-                              layout
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.9 }}
-                              className="relative aspect-square overflow-hidden rounded-xl bg-canvas"
-                            >
-                              <img
-                                src={p.previewUrl}
-                                alt=""
-                                className={cn(
-                                  "h-full w-full object-cover",
-                                  p.status === "uploading" && "opacity-60",
-                                  p.status === "error" && "opacity-40",
-                                )}
-                              />
-                              {i === 0 && p.status !== "error" && (
-                                <span className="absolute bottom-1.5 left-1.5 rounded-full bg-forest px-2 py-0.5 text-[11px] font-semibold text-mint">
-                                  Cover
-                                </span>
-                              )}
-                              {p.status === "uploading" && (
-                                <span aria-label="Processing" className="absolute inset-0 grid place-items-center bg-forest/30 text-canvas">
-                                  <Loader2 className="h-5 w-5 animate-spin" />
-                                </span>
-                              )}
-                              {p.status === "error" && (
-                                <span title={p.errorMessage} className="absolute inset-0 grid place-items-center bg-negative/80 text-xs font-semibold text-canvas">
-                                  Failed
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => removePhoto(p.key)}
-                                aria-label="Remove photo"
-                                className="absolute top-1.5 right-1.5 grid h-7 w-7 place-items-center rounded-full bg-canvas/90 text-body hover:text-ink"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
-                        {photos.length < MAX_PHOTOS && (
-                          <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl bg-canvas text-body transition-colors hover:text-brand"
-                          >
-                            <ImageSquare size={24} weight="duotone" />
-                            <span className="text-xs font-medium">Add</span>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={onFilesPicked} />
+                  <PhotoDropzone photos={photos} max={MAX_PHOTOS} onAdd={(f) => void addFiles(f)} onRemove={removePhoto} />
                 </FormBlock>
 
                 <FormBlock step={2} title="What are you selling?">
@@ -1285,108 +1186,16 @@ function CreateListingSheet({
             </div>
           </div>
 
-          {/* Live preview */}
-          <aside className="hidden min-h-0 flex-col overflow-y-auto bg-mint p-6 lg:flex">
-            <p className="text-sm font-semibold text-forest">Live preview</p>
-            <p className="text-sm text-forest/70">This is what buyers see.</p>
-            <motion.div layout className="mt-5 overflow-hidden rounded-2xl bg-canvas shadow-[var(--shadow-float)]">
-              <div className="relative aspect-square bg-canvas-soft">
-                <AnimatePresence mode="wait">
-                  {cover ? (
-                    <motion.img
-                      key={cover}
-                      src={cover}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                    />
-                  ) : (
-                    <motion.div key="empty" className="grid h-full place-items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                      <ImageSquare size={48} weight="duotone" className="text-line-strong" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              <div className="p-5">
-                <p className={cn("font-semibold", title ? "text-ink" : "text-mute")}>{title || "Your product title"}</p>
-                <div className="mt-4 space-y-1.5 text-sm">
-                  <div className="flex justify-between text-body">
-                    <span>Item</span>
-                    <span className="tabular-nums">{priceNum ? formatNGN(priceNum) : "—"}</span>
-                  </div>
-                  <div className="flex justify-between text-body">
-                    <span>Delivery</span>
-                    <span className="tabular-nums">{feeNum ? formatNGN(feeNum) : "Free"}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-line pt-2 font-semibold text-ink">
-                    <span>Total</span>
-                    <AnimatedNumber value={priceNum + feeNum} format={(n) => formatNGN(Math.round(n))} className="tabular-nums" />
-                  </div>
-                </div>
-                <div className="mt-4 flex h-11 items-center justify-center gap-2 rounded-full bg-forest text-sm font-semibold text-mint">
-                  <Lock className="h-4 w-4" /> Buy with SafeSale
-                </div>
-                <p className="mt-3 text-center text-xs text-mute">Sold by {currentSeller?.name ?? "your shop"}</p>
-              </div>
-            </motion.div>
-            <p className="mt-5 flex items-start gap-2 text-sm text-forest/80">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-              Buyers pay SafeSale first, so they're happy to pay before you ship.
-            </p>
-          </aside>
+          <ListingPreview
+            cover={cover}
+            title={title}
+            priceNGN={priceNum}
+            deliveryFeeNGN={feeNum}
+            sellerName={currentSeller?.name ?? "your shop"}
+          />
         </div>
       </SheetContent>
     </Sheet>
-  );
-}
-
-function FormBlock({ step, title, hint, children }: { step: number; title: string; hint?: string; children: ReactNode }) {
-  return (
-    <section>
-      <div className="mb-3 flex items-center gap-3">
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-forest text-xs font-bold text-mint tabular-nums">
-          {step}
-        </span>
-        <div>
-          <h3 className="font-semibold text-ink">{title}</h3>
-          {hint && <p className="text-sm text-mute">{hint}</p>}
-        </div>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function MoneyField({
-  id,
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-}) {
-  return (
-    <div>
-      <Label htmlFor={id}>{label}</Label>
-      <div className="relative mt-1.5">
-        <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 font-medium text-mute">₦</span>
-        <Input
-          id={id}
-          inputMode="numeric"
-          value={value ? Number(value).toLocaleString("en-NG") : ""}
-          onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, "").slice(0, 9))}
-          placeholder={placeholder}
-          className="pl-8 tabular-nums"
-        />
-      </div>
-    </div>
   );
 }
 
@@ -1406,7 +1215,6 @@ function EditListingSheet({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { mutateAsync: uploadFile } = useUploadFile();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
@@ -1461,9 +1269,7 @@ function EditListingSheet({
     !stillUploading &&
     !saving;
 
-  const onFilesPicked = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = "";
+  const addFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const slots = Math.max(0, MAX_PHOTOS - photos.length);
     const accepted = files.slice(0, slots);
@@ -1544,208 +1350,136 @@ function EditListingSheet({
     }
   };
 
+  const [currentSeller] = useCurrentSeller();
+  const priceNum = Number(price) || 0;
+  const feeNum = Number(deliveryFee) || 0;
+  const cover = photos.find((p) => p.status !== "error")?.previewUrl ?? null;
+
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent
-        side="bottom"
-        className="rounded-t-2xl p-0 sm:left-auto sm:right-0 sm:h-full sm:max-w-xl sm:rounded-none sm:rounded-l-2xl"
-      >
-        <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-border sm:hidden" />
-        <SheetHeader className="px-5 pt-4">
-          <SheetTitle className="text-left text-lg">Edit listing</SheetTitle>
-          <SheetDescription className="text-left">
-            Update any field. Changes save instantly and show on the buyer page.
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="max-h-[75vh] overflow-y-auto px-5 py-4 pb-8 sm:max-h-[calc(100vh-200px)]">
-          <div className="space-y-5">
-            {/* Photos */}
-            <div>
-              <Label>Photos</Label>
-              <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {photos.map((p) => (
-                  <div
-                    key={p.key}
-                    className="relative aspect-square overflow-hidden rounded-xl border border-border bg-surface"
-                  >
-                    <img
-                      src={p.previewUrl}
-                      alt=""
-                      className={cn(
-                        "h-full w-full object-cover",
-                        p.status === "uploading" && "opacity-60",
-                        p.status === "error" && "opacity-40",
-                      )}
-                    />
-                    {p.status === "uploading" && (
-                      <span className="absolute inset-0 grid place-items-center bg-black/20 text-white">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(p.key)}
-                      aria-label="Remove photo"
-                      className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-canvas/85 text-ink-soft hover:text-ink"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
-                {photos.length < MAX_PHOTOS && (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border bg-surface text-ink-soft hover:border-brand hover:text-ink"
-                  >
-                    <Upload className="h-5 w-5" />
-                    <span className="text-xs font-medium">Add photo</span>
-                  </button>
-                )}
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                hidden
-                onChange={onFilesPicked}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="edit-title">Title</Label>
-              <Input
-                id="edit-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value.slice(0, 80))}
-                className="mt-1.5 h-11"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-price">Price (NGN)</Label>
-                <div className="relative mt-1.5">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-ink-soft">
-                    ₦
-                  </span>
-                  <Input
-                    id="edit-price"
-                    inputMode="numeric"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
-                    className="h-11 pl-7"
-                  />
+      <SheetContent side="right" className="w-full gap-0 overflow-hidden p-0 sm:max-w-5xl sm:rounded-l-3xl">
+        <div className="grid h-full min-h-0 lg:grid-cols-[1fr_380px]">
+          <div className="flex min-h-0 flex-col">
+            <SheetHeader className="border-b border-line px-6 pt-6 pb-5">
+              <div className="flex items-center gap-3">
+                <BrandIcon icon={PencilSimple} size="md" />
+                <div>
+                  <SheetTitle className="font-display text-h2 text-ink">Edit listing</SheetTitle>
+                  <SheetDescription className="text-body">Changes show on your shop as soon as you save.</SheetDescription>
                 </div>
               </div>
-              <div>
-                <Label htmlFor="edit-stock">Quantity in stock</Label>
-                <Input
-                  id="edit-stock"
-                  inputMode="numeric"
-                  value={stock}
-                  onChange={(e) => setStock(e.target.value.replace(/[^0-9]/g, ""))}
-                  className="mt-1.5 h-11"
-                />
+            </SheetHeader>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+              <div className="space-y-7">
+                <FormBlock step={1} title="Photos" hint="The first one is the cover buyers see.">
+                  <PhotoDropzone photos={photos} max={MAX_PHOTOS} onAdd={(f) => void addFiles(f)} onRemove={removePhoto} />
+                </FormBlock>
+
+                <FormBlock step={2} title="What are you selling?">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="edit-title">Title</Label>
+                      <Input id="edit-title" className="mt-1.5" value={title} onChange={(e) => setTitle(e.target.value.slice(0, 80))} />
+                    </div>
+                    <div>
+                      <div className="flex items-baseline justify-between">
+                        <Label htmlFor="edit-desc">Description</Label>
+                        <span className="text-xs text-mute tabular-nums">{description.length}/2000</span>
+                      </div>
+                      <Textarea
+                        id="edit-desc"
+                        className="mt-1.5 min-h-32"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
+                      />
+                    </div>
+                  </div>
+                </FormBlock>
+
+                <FormBlock step={3} title="Price and stock" hint="Set stock to 0 to stop new orders.">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    <MoneyField id="edit-price" label="Price" value={price} onChange={setPrice} placeholder="25,000" />
+                    <MoneyField id="edit-delivery-fee" label="Delivery fee" value={deliveryFee} onChange={setDeliveryFee} placeholder="0 = free" />
+                    <div className="col-span-2 sm:col-span-1">
+                      <Label htmlFor="edit-stock">Quantity in stock</Label>
+                      <Input
+                        id="edit-stock"
+                        inputMode="numeric"
+                        className="mt-1.5 tabular-nums"
+                        value={stock}
+                        onChange={(e) => setStock(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+                      />
+                    </div>
+                  </div>
+                </FormBlock>
+
+                <FormBlock step={4} title="Details" hint="Optional — helps buyers decide.">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label htmlFor="edit-category">Category</Label>
+                      <Input id="edit-category" className="mt-1.5" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Fashion" />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-variants">Sizes or options</Label>
+                      <Input
+                        id="edit-variants"
+                        className="mt-1.5"
+                        value={variants}
+                        onChange={(e) => setVariants(e.target.value)}
+                        placeholder="Small, Medium, Large"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label htmlFor="edit-delivery">Delivery</Label>
+                      <Input
+                        id="edit-delivery"
+                        className="mt-1.5"
+                        value={delivery}
+                        onChange={(e) => setDelivery(e.target.value)}
+                        placeholder="Lagos same-day · Nationwide 2–4 days"
+                      />
+                    </div>
+                  </div>
+                </FormBlock>
+
+                {error && (
+                  <p role="alert" className="rounded-xl bg-negative-pale p-3 text-sm text-negative">
+                    {error}
+                  </p>
+                )}
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="edit-delivery-fee">Delivery fee (NGN) — 0 = free</Label>
-              <div className="relative mt-1.5">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-ink-soft">
-                  ₦
-                </span>
-                <Input
-                  id="edit-delivery-fee"
-                  inputMode="numeric"
-                  value={deliveryFee}
-                  onChange={(e) => setDeliveryFee(e.target.value.replace(/[^0-9]/g, ""))}
-                  className="h-11 pl-7"
-                />
-              </div>
+            <div className="flex items-center justify-end gap-2 border-t border-line bg-canvas px-6 py-4">
+              <Button variant="ghost" onClick={onClose} disabled={saving}>
+                Cancel
+              </Button>
+              <Button onClick={onSave} disabled={!canSave} size="lg" className="px-6">
+                {saving ? (
+                  <>
+                    <Loader2 className="animate-spin" /> Saving…
+                  </>
+                ) : stillUploading ? (
+                  <>
+                    <Loader2 className="animate-spin" /> Processing photos…
+                  </>
+                ) : (
+                  <>
+                    <FloppyDisk size={20} weight="fill" /> Save changes
+                  </>
+                )}
+              </Button>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-category">Category</Label>
-                <Input
-                  id="edit-category"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="Fashion"
-                  className="mt-1.5 h-11"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-variants">Variants (comma-separated)</Label>
-                <Input
-                  id="edit-variants"
-                  value={variants}
-                  onChange={(e) => setVariants(e.target.value)}
-                  placeholder="Small, Medium, Large"
-                  className="mt-1.5 h-11"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="edit-delivery">Shipping / delivery</Label>
-              <Input
-                id="edit-delivery"
-                value={delivery}
-                onChange={(e) => setDelivery(e.target.value)}
-                placeholder="Lagos same-day · Nationwide 2–4 days"
-                className="mt-1.5 h-11"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="edit-desc">Description</Label>
-              <Textarea
-                id="edit-desc"
-                value={description}
-                onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
-                className="mt-1.5 min-h-[120px]"
-              />
-            </div>
-
-            {error && (
-              <div className="rounded-lg border border-negative/25 bg-negative-pale p-3 text-sm text-negative">
-                {error}
-              </div>
-            )}
           </div>
-        </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-border bg-canvas px-5 py-4">
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-          <Button
-            onClick={onSave}
-            disabled={!canSave}
-            className="bg-brand text-brand-foreground hover:bg-brand/90"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving…
-              </>
-            ) : stillUploading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Waiting for uploads…
-              </>
-            ) : (
-              <>
-                <Send className="mr-2 h-4 w-4" />
-                Save changes
-              </>
-            )}
-          </Button>
+          <ListingPreview
+            cover={cover}
+            title={title}
+            priceNGN={priceNum}
+            deliveryFeeNGN={feeNum}
+            sellerName={currentSeller?.name ?? "your shop"}
+          />
         </div>
       </SheetContent>
     </Sheet>
