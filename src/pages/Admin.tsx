@@ -46,6 +46,8 @@ import { formatDue, formatNGN, formatRelative } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { apiClient, DEMO_MODE } from "@/lib/api";
 import type { AdminDisputeRow, ApiDisputeStatus, DisputeOutcome } from "@/lib/api";
+import type { DisputeParty } from "@/lib/api/types";
+import { CaseThread } from "@/components/disputes/CaseThread";
 
 /* ----------------------------------------------------------------------- */
 /*                          Dispute display model                          */
@@ -87,6 +89,16 @@ interface DisputeFixture {
   };
   /** The seller's written response, if any. */
   sellerResponse: string | null;
+  /** Whose move it is in the case chat. */
+  waitingOn: DisputeParty[];
+  /** Who wrote last (buyer/seller replies the mediator hasn't answered). */
+  lastFrom: DisputeParty | "system" | null;
+  lastAt: string | null;
+}
+
+/** The mediator has to act: a question was answered, or nobody was asked yet. */
+function needsMediator(d: DisputeFixture): boolean {
+  return d.waitingOn.includes("mediator");
 }
 
 /**
@@ -150,6 +162,9 @@ function adaptRow(row: AdminDisputeRow): DisputeFixture {
         .map((e) => e.url),
     },
     sellerResponse: dispute.sellerResponse ?? null,
+    waitingOn: row.thread?.waitingOn ?? ["mediator"],
+    lastFrom: row.thread?.lastFrom ?? null,
+    lastAt: row.thread?.lastAt ?? null,
   };
 }
 
@@ -162,26 +177,14 @@ type FilterKey = "open" | "evidence" | "mediating" | "all";
 interface FilterSpec {
   key: FilterKey;
   label: string;
-  matches: (s: DisputeQueueStatus) => boolean;
+  matches: (d: DisputeFixture) => boolean;
 }
 
 const FILTERS: FilterSpec[] = [
   { key: "all", label: "All", matches: () => true },
-  {
-    key: "open",
-    label: "Needs decision",
-    matches: (s) => s === "escalated",
-  },
-  {
-    key: "evidence",
-    label: "Waiting for evidence",
-    matches: (s) => s === "evidence_requested",
-  },
-  {
-    key: "mediating",
-    label: "In progress",
-    matches: (s) => s === "mediating",
-  },
+  { key: "open", label: "Your move", matches: needsMediator },
+  { key: "evidence", label: "Waiting on buyer or seller", matches: (d) => !needsMediator(d) },
+  { key: "mediating", label: "New replies", matches: (d) => d.lastFrom === "buyer" || d.lastFrom === "seller" },
 ];
 
 export default function Admin() {
@@ -210,7 +213,7 @@ export default function Admin() {
     const f = FILTERS.find((x) => x.key === filter) ?? FILTERS[0];
     const q = query.trim().toLowerCase();
     return allDisputes.filter((d) => {
-      if (!f.matches(d.status)) return false;
+      if (!f.matches(d)) return false;
       if (!q) return true;
       return (
         d.shortId.toLowerCase().includes(q) ||
@@ -294,11 +297,11 @@ export default function Admin() {
 }
 
 function QueueSummary({ disputes }: { disputes: DisputeFixture[] }) {
-  const needsDecision = disputes.filter((d) => d.status === "escalated").length;
+  const needsDecision = disputes.filter(needsMediator).length;
   const waiting = disputes.length - needsDecision;
   const held = disputes.reduce((sum, d) => sum + d.amountNGN, 0);
   const tiles = [
-    { label: "Need your decision", value: needsDecision, icon: ScalesIcon, cls: "bg-forest text-canvas", tone: "mint" as const },
+    { label: "Your move", value: needsDecision, icon: ScalesIcon, cls: "bg-forest text-canvas", tone: "mint" as const },
     { label: "Waiting on someone", value: waiting, icon: Hourglass, cls: "bg-canvas text-ink", tone: "info" as const },
     { label: "Money held in disputes", value: held, money: true, icon: Money, cls: "bg-mint text-forest", tone: "pale" as const },
   ];
@@ -344,9 +347,9 @@ function DisputeQueue({
 }) {
   const counts: Record<FilterKey, number> = {
     all: allDisputes.length,
-    open: allDisputes.filter((d) => d.status === "escalated").length,
-    evidence: allDisputes.filter((d) => d.status === "evidence_requested").length,
-    mediating: allDisputes.filter((d) => d.status === "mediating").length,
+    open: allDisputes.filter(FILTERS[1].matches).length,
+    evidence: allDisputes.filter(FILTERS[2].matches).length,
+    mediating: allDisputes.filter(FILTERS[3].matches).length,
   };
 
   return (
@@ -418,7 +421,7 @@ function DisputeQueue({
                   <th className="px-4 py-3">Dispute</th>
                   <th className="px-4 py-3">Order / parties</th>
                   <th className="px-4 py-3">Amount</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Whose move</th>
                   <th className="px-4 py-3 text-right">Opened</th>
                 </tr>
               </thead>
@@ -478,7 +481,7 @@ function DisputeRow({
       </td>
       <td className="px-4 py-3 align-middle">
         <div className="flex flex-col items-start gap-1">
-          <StatusBadge status={dispute.status} />
+          <TurnBadge dispute={dispute} />
           <PriorityBadge priority={dispute.priority} />
         </div>
       </td>
@@ -514,7 +517,7 @@ function DisputeMobileCard({
               {dispute.reason}
             </p>
           </div>
-          <StatusBadge status={dispute.status} />
+          <TurnBadge dispute={dispute} />
         </div>
         <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-border pt-3">
           <div className="min-w-0">
@@ -629,7 +632,10 @@ function DisputeDetail({
             />
           </div>
 
-          {/* Full buyer↔seller conversation for context */}
+          {/* The case conversation: ask questions, answer both sides */}
+          <CaseThread disputeId={dispute.id} viewer="mediator" heldNGN={dispute.amountNGN} />
+
+          {/* Earlier buyer↔seller order chat, for context */}
           <ConversationCard orderToken={dispute.orderToken} />
 
 
@@ -782,6 +788,23 @@ function DisputeDetail({
 /*                          Small primitives                               */
 /* ----------------------------------------------------------------------- */
 
+function TurnBadge({ dispute }: { dispute: DisputeFixture }) {
+  if (needsMediator(dispute)) {
+    const replied = dispute.lastFrom === "buyer" || dispute.lastFrom === "seller";
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-forest px-2.5 py-0.5 text-xs font-semibold text-mint">
+        <span className="h-1.5 w-1.5 rounded-full bg-mint" aria-hidden />
+        {replied ? `New reply from ${dispute.lastFrom}` : "Your move"}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full bg-warning-pale px-2.5 py-0.5 text-xs font-semibold text-warning">
+      Waiting on {dispute.waitingOn.join(" and ")}
+    </span>
+  );
+}
+
 function StatusBadge({ status }: { status: DisputeQueueStatus }) {
   const cfg =
     status === "escalated"
@@ -853,7 +876,7 @@ function PartyCard({
         ) : (
           <span className="text-ink-soft">
             {role === "Seller"
-              ? "No response from the seller yet."
+              ? "Their side is in the case chat."
               : "No statement provided."}
           </span>
         )}

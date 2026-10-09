@@ -56,8 +56,13 @@ import type {
   ApiSeller,
   UpdateShopProfileRequest,
   SellerPayout,
+  DisputeParty,
+  DisputeThreadMessage,
+  GetDisputeThreadResponse,
+  PostDisputeMessageRequest,
 } from "./types";
 import { ApiError } from "./errors";
+import { waitingOn } from "@/lib/disputeThread";
 import {
   generateOrderToken,
   marketIsoIn,
@@ -200,6 +205,40 @@ function sellerForListing(listing: ApiListing) {
 }
 
 /* ------------------------------ public API ----------------------------- */
+
+/* --------------------------- dispute threads -------------------------- */
+
+function formatNaira(n: number): string {
+  return `₦${n.toLocaleString("en-NG")}`;
+}
+
+function caseMessage(
+  role: DisputeThreadMessage["authorRole"],
+  name: string,
+  content: string,
+  extra: Partial<DisputeThreadMessage> = {},
+): DisputeThreadMessage {
+  return {
+    id: "msg_" + Math.random().toString(36).slice(2, 10),
+    authorRole: role,
+    authorName: name,
+    content,
+    attachments: [],
+    requestFrom: null,
+    createdAt: marketNow(),
+    ...extra,
+  };
+}
+
+function findDispute(disputeId: string) {
+  const env = marketStore.allOrders().find((e) => e.dispute?.id === disputeId);
+  if (!env || !env.dispute) throw new ApiError("DISPUTE_NOT_FOUND", "Dispute not found.", 404);
+  return env as typeof env & { dispute: ApiDispute };
+}
+
+function authorName(role: DisputeParty, env: ReturnType<typeof findDispute>): string {
+  return role === "buyer" ? env.order.buyerName : role === "seller" ? env.seller.name : "SafeSale mediator";
+}
 
 export const mockApi = {
   /** DEMO mock for POST /api/auth/register. Any valid email/password works. */
@@ -569,6 +608,59 @@ export const mockApi = {
     };
   },
 
+  /**
+   * Demo: there are no credentials to tell people apart, so the page says who
+   * is looking (`as`). The real backend decides from the session / buyer link.
+   */
+  async getDisputeThread(
+    disputeId: string,
+    opts?: { buyerToken?: string; as?: DisputeParty },
+  ): Promise<GetDisputeThreadResponse> {
+    const env = findDispute(disputeId);
+    const messages = marketStore.caseThread(disputeId);
+    return {
+      viewer: opts?.buyerToken ? "buyer" : (opts?.as ?? "seller"),
+      dispute: env.dispute,
+      waitingOn: waitingOn(env.dispute.status === "resolved", messages),
+      messages,
+    };
+  },
+
+  async postDisputeMessage(
+    disputeId: string,
+    req: PostDisputeMessageRequest,
+    opts?: { buyerToken?: string; as?: DisputeParty },
+  ): Promise<{ message: DisputeThreadMessage }> {
+    const env = findDispute(disputeId);
+    if (env.dispute.status === "resolved") throw new ApiError("DISPUTE_ALREADY_RESOLVED", "This case is closed.", 409);
+    const role: DisputeParty = opts?.buyerToken ? "buyer" : (opts?.as ?? "seller");
+    const requestFrom = role === "mediator" ? (req.requestFrom ?? null) : null;
+    const message = caseMessage(role, authorName(role, env), req.content.trim(), {
+      attachments: req.attachments ?? [],
+      requestFrom,
+    });
+    marketStore.addCaseMessages(disputeId, [message]);
+
+    const next = waitingOn(false, marketStore.caseThread(disputeId));
+    let dispute: ApiDispute = env.dispute;
+    if (requestFrom) {
+      dispute = { ...dispute, status: "evidence_requested", evidenceDueAt: marketIsoIn(48 * 60 * 60 * 1000) };
+    } else if (role === "mediator" && dispute.status !== "evidence_requested") {
+      dispute = { ...dispute, status: "mediating" };
+    } else if (dispute.status === "evidence_requested" && next.length === 1 && next[0] === "mediator") {
+      dispute = { ...dispute, status: "mediating", evidenceDueAt: null };
+    }
+    if (role !== "mediator" && message.attachments.length) {
+      const at = message.createdAt;
+      dispute = {
+        ...dispute,
+        evidence: [...(dispute.evidence ?? []), ...message.attachments.map((url) => ({ url, by: role, at }))],
+      };
+    }
+    if (dispute !== env.dispute) marketStore.patchEnvelope(env.order.orderToken, { dispute });
+    return { message };
+  },
+
   async openDispute(
     token: string,
     req: OpenDisputeRequest,
@@ -611,6 +703,17 @@ export const mockApi = {
       order: { ...env.order, status: "disputed", updatedAt: marketNow() },
       dispute,
     })!;
+    const opener: DisputeParty = req.openedBy;
+    marketStore.addCaseMessages(dispute.id, [
+      caseMessage(
+        "system",
+        "SafeSale",
+        `The ${opener} reported a problem. ${formatNaira(env.order.amountNGN)} stays held by SafeSale until a mediator decides. Everyone in this case can see these messages.`,
+      ),
+      caseMessage(opener, opener === "buyer" ? env.order.buyerName : env.seller.name, req.summary ? `${req.reason}\n\n${req.summary}` : req.reason, {
+        attachments: req.evidence ?? [],
+      }),
+    ]);
     return { order: updated.order, dispute };
   },
 
@@ -693,16 +796,28 @@ export const mockApi = {
       order: { ...env.order, updatedAt: at },
       dispute: updatedDispute,
     })!;
+    marketStore.addCaseMessages(disputeId, [
+      caseMessage("seller", env.seller.name, req.message, { attachments: req.evidence ?? [] }),
+    ]);
     return { order: updated.order, dispute: updatedDispute };
   },
 
   async getDisputes(): Promise<GetDisputesResponse> {
-    const rows: AdminDisputeRow[] = marketStore.disputes().map((env) => ({
-      order: env.order,
-      listing: env.listing,
-      seller: env.seller,
-      dispute: env.dispute!,
-    }));
+    const rows: AdminDisputeRow[] = marketStore.disputes().map((env) => {
+      const msgs = marketStore.caseThread(env.dispute!.id);
+      return {
+        order: env.order,
+        listing: env.listing,
+        seller: env.seller,
+        dispute: env.dispute!,
+        thread: {
+          count: msgs.filter((m) => m.authorRole !== "system").length,
+          lastAt: msgs.at(-1)?.createdAt ?? null,
+          lastFrom: msgs.at(-1)?.authorRole ?? null,
+          waitingOn: waitingOn(false, msgs),
+        },
+      };
+    });
     return { disputes: rows };
   },
 
@@ -757,10 +872,20 @@ export const mockApi = {
         releasedAt:
           req.outcome === "refund_buyer" ? env.order.releasedAt : resolvedAt,
         updatedAt: resolvedAt,
+        settlement: { outcome: req.outcome, buyerRefundNGN, sellerReleaseNGN },
       },
       dispute: updatedDispute,
     })!;
 
+    const parts = [
+      buyerRefundNGN > 0 && `${formatNaira(buyerRefundNGN)} back to the buyer`,
+      sellerReleaseNGN > 0 && `${formatNaira(sellerReleaseNGN)} to the seller`,
+    ].filter(Boolean);
+    const decided = { refund_buyer: "refund the buyer in full", release_seller: "pay the seller in full", split: "split the money" }[req.outcome];
+    marketStore.addCaseMessages(disputeId, [
+      caseMessage("mediator", "SafeSale mediator", req.rationale),
+      caseMessage("system", "SafeSale", `Case closed. The mediator decided to ${decided}: ${parts.join(" and ")}.`),
+    ]);
     return { order: updated.order, dispute: updatedDispute };
   },
 };

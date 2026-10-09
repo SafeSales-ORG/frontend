@@ -13,31 +13,20 @@
  * respond endpoint. Mediator *resolution* still happens on `/admin`.
  */
 
-import { useState } from "react";
 import { useSeoMeta } from "@unhead/react";
 import { Link, useParams } from "react-router-dom";
 import { DemoMediatorLink } from "@/components/safesale/DemoMediatorLink";
+import { CaseThread } from "@/components/disputes/CaseThread";
 import { useGoBack } from "@/hooks/useGoBack";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/safesale/AppShell";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { Avatar } from "@/components/safesale/Avatar";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Timeline, type TimelineStep } from "@/components/safesale/Timeline";
 import { useSellerOrders } from "@/hooks/useSellerOrders";
-import { useToast } from "@/hooks/useToast";
-import { apiClient, ApiError, type GetOrderResponse } from "@/lib/api";
-import type { RespondToDisputeRequest } from "@/lib/api/types";
+import { apiClient, type GetOrderResponse } from "@/lib/api";
 import type {
   ApiDispute,
   ApiDisputeStatus,
@@ -361,19 +350,13 @@ function DisputeDetailView({
             </div>
           </section>
 
-          {/* Response form — only when the dispute is still actionable */}
-          {!isResolved ? (
-            <ResponseForm dispute={dispute} orderToken={order.orderToken} />
-          ) : (
-            <section className="rounded-2xl border border-border bg-canvas p-5 lg:col-span-2">
-              <h2 className="text-sm font-semibold text-ink">
-                This dispute has been resolved
-              </h2>
-              <p className="mt-2 text-sm text-ink-soft">
-                The outcome is final. Any payout or refund is processed automatically.
-              </p>
-            </section>
-          )}
+          {/* The case conversation with the buyer and the mediator */}
+          <CaseThread
+            disputeId={dispute.id}
+            viewer="seller"
+            heldNGN={order.amountNGN}
+            className="lg:col-span-2"
+          />
         </div>
 
         {/* Timeline of events */}
@@ -507,133 +490,6 @@ function DisputeStatusBadge({ status }: { status: ApiDisputeStatus }) {
 /* -------------------------------------------------------------------------- */
 /*                              RESPONSE FORM                                 */
 /* -------------------------------------------------------------------------- */
-
-function ResponseForm({
-  dispute,
-  orderToken,
-}: {
-  dispute: ApiDispute;
-  orderToken: string;
-}) {
-  const { toast } = useToast();
-  const qc = useQueryClient();
-  const [stance, setStance] =
-    useState<RespondToDisputeRequest["stance"]>("explain");
-  const [message, setMessage] = useState("");
-
-  const submitLabel =
-    dispute.status === "direct_resolution"
-      ? "Send to buyer"
-      : "Submit to mediator";
-
-  const respond = useMutation({
-    mutationFn: () =>
-      apiClient.respondToDispute(dispute.id, {
-        stance,
-        message: message.trim(),
-      }),
-    onSuccess: () => {
-      // Refresh the dispute detail so the saved response renders.
-      qc.invalidateQueries({
-        queryKey: ["safesale", "order-detail", orderToken],
-      });
-      setMessage("");
-      toast({
-        title: "Response sent",
-        description:
-          dispute.status === "direct_resolution"
-            ? "The buyer can see your reply. Funds stay frozen until you both agree or a mediator decides."
-            : "Your response is with the SafeSale mediator. The outcome will show here.",
-      });
-    },
-    onError: (err: unknown) => {
-      const description =
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "Couldn't send your response. Try again in a moment.";
-      toast({
-        title: "Couldn't send response",
-        description,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const submitting = respond.isPending;
-
-  // If the seller has already responded, show it back to them (read-only)
-  // with the option to add more.
-  return (
-    <section className="rounded-2xl border border-border bg-canvas p-5 lg:col-span-2">
-      <h2 className="text-sm font-semibold text-ink">Your response</h2>
-      {dispute.summary && (
-        <p className="mt-1 text-xs text-ink-soft">
-          Buyer says: "{dispute.summary}"
-        </p>
-      )}
-
-      {dispute.sellerResponse && (
-        <div className="mt-3 rounded-xl border border-border bg-surface-2/30 p-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
-            Your last reply
-          </p>
-          <p className="mt-1 text-sm leading-relaxed text-ink">
-            {dispute.sellerResponse}
-          </p>
-        </div>
-      )}
-
-      <div className="mt-4 space-y-4">
-        <div>
-          <Label>Your stance</Label>
-          <Select
-            value={stance}
-            onValueChange={(v) =>
-              setStance(v as RespondToDisputeRequest["stance"])
-            }
-          >
-            <SelectTrigger className="mt-1.5 h-11">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="explain">I'd like to explain</SelectItem>
-              <SelectItem value="partial">Offer partial refund</SelectItem>
-              <SelectItem value="full">Accept full refund</SelectItem>
-              <SelectItem value="counter">Counter the claim</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label htmlFor="msg">Your message</Label>
-          <Textarea
-            id="msg"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            className="mt-1.5 min-h-[110px]"
-            placeholder={
-              dispute.status === "direct_resolution"
-                ? "Write directly to the buyer. Try to resolve it here before a mediator gets involved."
-                : "Calmly explain what happened. Be specific. Mediators read everything."
-            }
-          />
-        </div>
-
-        <div className="flex gap-3 pt-1">
-          <Button
-            className="h-11 w-full bg-brand text-brand-foreground hover:bg-brand/90"
-            disabled={submitting || message.trim().length === 0}
-            onClick={() => respond.mutate()}
-          >
-            {submitting ? "Sending…" : submitLabel}
-          </Button>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /* -------------------------------------------------------------------------- */
 /*                              HELPERS                                       */

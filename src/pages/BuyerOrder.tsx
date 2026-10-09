@@ -72,6 +72,7 @@ import {
 
 import { Logo } from "@/components/safesale/Logo";
 import { OrderProgress } from "@/components/orders/OrderProgress";
+import { CaseThread } from "@/components/disputes/CaseThread";
 import { Avatar } from "@/components/safesale/Avatar";
 import { HelpDialog } from "@/components/safesale/HelpDialog";
 import { OrderChat } from "@/components/safesale/OrderChat";
@@ -306,6 +307,15 @@ export default function BuyerOrder() {
         className="container mx-auto max-w-3xl space-y-6 px-4 pb-32 pt-6 sm:px-6 lg:pb-12">
         <HeroStatusBlock order={order} dispute={dispute} />
 
+        {dispute && (
+          <CaseThread
+            disputeId={dispute.id}
+            viewer="buyer"
+            buyerToken={token}
+            heldNGN={order.amountNGN}
+          />
+        )}
+
         <div className="grid gap-6 md:grid-cols-2">
           <OrderSummaryCard order={order} listing={listing} />
           <DeliveryDetailsCard order={order} />
@@ -315,7 +325,7 @@ export default function BuyerOrder() {
 
         {/* Order chat is stored in this browser only (no backend yet), so it
             only appears in demo mode. */}
-        {!DEMO_MODE ? null : status === "pending_payment" ? (
+        {!DEMO_MODE || dispute ? null : status === "pending_payment" ? (
           <section className="rounded-2xl border border-dashed border-line-strong bg-canvas p-4 text-center">
             <MessageCircle className="mx-auto h-5 w-5 text-ink-soft" />
             <p className="mt-2 text-sm font-medium text-ink">
@@ -655,7 +665,7 @@ function HeroStatusBlock({ order, dispute }: HeroProps) {
       </div>
 
       <div className="mt-8">
-        <OrderProgress status={order.status} tone="dark" />
+        <OrderProgress status={order.status} tone="dark" disputed={!!dispute || !!order.settlement} />
       </div>
 
       {order.status === "disputed" && dispute && (
@@ -727,6 +737,22 @@ function getHeroConfig(order: ApiOrder, dispute: ApiDispute | null): HeroConfig 
         countdownIso: order.autoReleaseAt ?? undefined,
       };
     case "completed":
+      if (order.settlement && order.settlement.buyerRefundNGN > 0) {
+        return {
+          tone: "ok",
+          Icon: Scale,
+          headline: "The mediator split the payment",
+          subline: `${formatNGN(order.settlement.buyerRefundNGN)} is being refunded to you and ${formatNGN(order.settlement.sellerReleaseNGN)} went to the seller. The reasons are in the case chat below.`,
+        };
+      }
+      if (order.settlement) {
+        return {
+          tone: "ok",
+          Icon: Scale,
+          headline: "The mediator paid the seller",
+          subline: `After reviewing both sides, the mediator released ${amount} to the seller. The reasons are in the case chat below.`,
+        };
+      }
       return {
         tone: "ok",
         Icon: CheckCircle2,
@@ -1254,7 +1280,7 @@ function DisputeSummaryCard({ dispute }: { dispute: ApiDispute | null }) {
       <p className="mt-4 text-xs leading-relaxed text-ink-soft">
         {isResolved
           ? "This dispute is closed. The outcome is shown above."
-          : "A SafeSale mediator is reviewing what you and the seller sent. Check this page for the outcome."}
+          : "Your money stays held while a SafeSale mediator looks at both sides. Use the case chat above to talk to the mediator and the seller."}
       </p>
       {!isResolved && <DemoMediatorLink className="mt-4" />}
     </section>

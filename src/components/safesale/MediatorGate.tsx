@@ -41,7 +41,7 @@ export function MediatorGate({ children }: { children: React.ReactNode }) {
   }
 
   const role = me.data?.user.role;
-  if (role === "MEDIATOR" || role === "ADMIN") return <>{children}</>;
+  if (role === "MEDIATOR") return <>{children}</>;
 
   return <AccessDenied reason="wrong-account" />;
 }

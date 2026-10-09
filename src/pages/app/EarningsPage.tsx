@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useSellerOrders } from "@/hooks/useSellerOrders";
 import type { SellerOrderRow } from "@/lib/api";
 import { formatDate, formatNGN } from "@/lib/format";
+import { isSplit, sellerTakeNGN } from "@/lib/settlement";
 
 const HELD = new Set(["paid", "shipped", "delivered", "disputed"]);
 
@@ -44,8 +45,8 @@ export default function EarningsPage() {
       }
       if (o.status === "completed") {
         released.push(o);
-        total += o.amountNGN;
-        if (new Date(o.releasedAt ?? o.updatedAt).getTime() >= monthStart) month += o.amountNGN;
+        total += sellerTakeNGN(o);
+        if (new Date(o.releasedAt ?? o.updatedAt).getTime() >= monthStart) month += sellerTakeNGN(o);
       }
     }
     released.sort((a, b) => +new Date(b.releasedAt ?? b.updatedAt) - +new Date(a.releasedAt ?? a.updatedAt));
@@ -124,7 +125,10 @@ export default function EarningsPage() {
                           {o.shortId} · {formatDate(o.releasedAt ?? o.updatedAt)}
                         </p>
                       </div>
-                      <p className="font-semibold text-brand tabular-nums">+{formatNGN(o.amountNGN)}</p>
+                      <div className="text-right">
+                        <p className="font-semibold text-brand tabular-nums">+{formatNGN(sellerTakeNGN(o))}</p>
+                        {isSplit(o) && <p className="text-xs text-mute">Split by mediator · of {formatNGN(o.amountNGN)}</p>}
+                      </div>
                     </Link>
                   </StaggerItem>
                 ))}

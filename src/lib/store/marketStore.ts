@@ -31,6 +31,7 @@ import type {
   ApiOrder,
   ApiOrderStatus,
   ApiSeller,
+  DisputeThreadMessage,
 } from "@/lib/api/types";
 import { listings as fixtureListings, sellers as fixtureSellers } from "@/lib/mock";
 
@@ -86,6 +87,8 @@ export interface MarketState {
   reviews: StoreReview[];
   /** Per-order chat threads, keyed by orderToken. */
   messages: Record<string, ChatMessage[]>;
+  /** Dispute case threads (buyer, seller, mediator), keyed by dispute id. */
+  caseThreads: Record<string, DisputeThreadMessage[]>;
 }
 
 // v3: discards pre-fix demo data (corrupted seller links / seed images) and
@@ -217,6 +220,7 @@ function seedState(): MarketState {
     payouts: [],
     reviews: [],
     messages: {},
+    caseThreads: {},
   };
 }
 
@@ -243,6 +247,7 @@ function load(): MarketState {
       payouts: parsed.payouts ?? [],
       reviews: parsed.reviews ?? [],
       messages: parsed.messages ?? {},
+      caseThreads: parsed.caseThreads ?? {},
     };
   } catch {
     return seedState();
@@ -428,6 +433,18 @@ export const marketStore = {
       (e) => e.order.sellerId === sellerId && e.order.status === "completed",
     ).length;
     return { rating, reviewCount, completedOrders };
+  },
+
+  /* --------------------------- case threads ----------------------- */
+
+  caseThread(disputeId: string): DisputeThreadMessage[] {
+    return state.caseThreads[disputeId] ?? [];
+  },
+  addCaseMessages(disputeId: string, msgs: DisputeThreadMessage[]): void {
+    commit({
+      ...state,
+      caseThreads: { ...state.caseThreads, [disputeId]: [...this.caseThread(disputeId), ...msgs] },
+    });
   },
 
   /* ------------------------------ chat ---------------------------- */

@@ -27,6 +27,10 @@ import type {
   CreateSellerRequest,
   CreateSellerResponse,
   GetDisputesResponse,
+  GetDisputeThreadResponse,
+  DisputeParty,
+  PostDisputeMessageRequest,
+  DisputeThreadMessage,
   GetOrderResponse,
   GetSellerOrdersResponse,
   GoogleAuthRequest,
@@ -82,6 +86,14 @@ export interface ApiClient {
   getSellerOrders(npub: string): Promise<GetSellerOrdersResponse>;
   /** POST /api/uploads — store an image, return its URL (inline data URL if storage is off). */
   uploadImage(dataUrl: string, opts?: { buyerToken?: string }): Promise<string>;
+  /** GET /api/disputes/:id/thread — the case conversation (buyer, seller, mediator). */
+  getDisputeThread(disputeId: string, opts?: ThreadViewer): Promise<GetDisputeThreadResponse>;
+  /** POST /api/disputes/:id/thread — add a message to the case. */
+  postDisputeMessage(
+    disputeId: string,
+    req: PostDisputeMessageRequest,
+    opts?: ThreadViewer,
+  ): Promise<{ message: DisputeThreadMessage }>;
   /** GET /api/listings/mine — the signed-in seller's listings, hidden ones included. */
   getMyListings(): Promise<{ listings: ApiListing[] }>;
   /** GET /api/listings — newest active listings across shops. */
@@ -132,6 +144,15 @@ export const API_BACKEND_CONFIGURED: boolean =
  * believable data. Set it back to `false` (or remove it) to use the real
  * Railway backend.
  */
+/**
+ * Who is reading a case thread. The buyer proves it with their order link
+ * token; `as` only matters in demo mode, where there are no real accounts.
+ */
+export interface ThreadViewer {
+  buyerToken?: string;
+  as?: DisputeParty;
+}
+
 export const DEMO_MODE: boolean = import.meta.env.VITE_DEMO_MODE === "true";
 
 export const apiClient: ApiClient =

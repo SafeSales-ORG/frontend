@@ -29,6 +29,7 @@ import type { ApiOrderStatus, SellerOrderRow } from "@/lib/api";
 import { formatNGN, formatRelative } from "@/lib/format";
 import { displayUrl, shopUrl } from "@/lib/links";
 import type { EscrowStatus } from "@/lib/types";
+import { sellerTakeNGN } from "@/lib/settlement";
 
 /** Money held for this seller: paid but not yet released or refunded. */
 const HELD: ReadonlySet<ApiOrderStatus> = new Set<ApiOrderStatus>(["paid", "shipped", "delivered", "disputed"]);
@@ -58,7 +59,7 @@ export default function DashboardHome() {
         heldCount += 1;
       }
       const releasedAt = o.releasedAt ?? o.updatedAt;
-      if (o.status === "completed" && new Date(releasedAt).getTime() >= cutoff) paidOutWeekNGN += o.amountNGN;
+      if (o.status === "completed" && new Date(releasedAt).getTime() >= cutoff) paidOutWeekNGN += sellerTakeNGN(o);
     }
     return { heldNGN, heldCount, paidOutWeekNGN };
   }, [orders, weekAgo]);

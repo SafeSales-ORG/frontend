@@ -25,6 +25,10 @@ import type {
   CreateSellerRequest,
   CreateSellerResponse,
   GetDisputesResponse,
+  GetDisputeThreadResponse,
+  PostDisputeMessageRequest,
+  DisputeThreadMessage,
+  DisputeThreadSummary,
   GetOrderResponse,
   GetSellerOrdersResponse,
   GetShopResponse,
@@ -132,6 +136,7 @@ interface BackendAdminDispute extends ApiDispute {
   order: ApiOrder & { listing: ApiListing };
   seller: ApiSeller;
   listing: ApiListing;
+  thread?: DisputeThreadSummary;
 }
 
 /**
@@ -376,6 +381,26 @@ export const httpApi = {
     );
     return { ...res, order: mapOrderStatus(res.order) };
   },
+  getDisputeThread(disputeId: string, opts?: { buyerToken?: string }): Promise<GetDisputeThreadResponse> {
+    return request<GetDisputeThreadResponse>(
+      "GET",
+      `/api/disputes/${encodeURIComponent(disputeId)}/thread`,
+      undefined,
+      opts?.buyerToken ? { "X-Buyer-Token": opts.buyerToken } : undefined,
+    );
+  },
+  postDisputeMessage(
+    disputeId: string,
+    req: PostDisputeMessageRequest,
+    opts?: { buyerToken?: string },
+  ): Promise<{ message: DisputeThreadMessage }> {
+    return request<{ message: DisputeThreadMessage }>(
+      "POST",
+      `/api/disputes/${encodeURIComponent(disputeId)}/thread`,
+      req,
+      opts?.buyerToken ? { "X-Buyer-Token": opts.buyerToken } : undefined,
+    );
+  },
   async getDisputes(): Promise<GetDisputesResponse> {
     const { disputes } = await request<{ disputes: BackendAdminDispute[] }>(
       "GET",
@@ -383,10 +408,10 @@ export const httpApi = {
     );
     // Flatten the backend's nested shape into the frontend's AdminDisputeRow.
     const rows: AdminDisputeRow[] = disputes.map((d) => {
-      const { order, seller, listing, ...dispute } = d;
+      const { order, seller, listing, thread, ...dispute } = d;
       const { listing: _orderListing, ...orderRest } = order;
       void _orderListing;
-      return { order: mapOrderStatus(orderRest), listing, seller, dispute };
+      return { order: mapOrderStatus(orderRest), listing, seller, dispute, thread };
     });
     return { disputes: rows };
   },

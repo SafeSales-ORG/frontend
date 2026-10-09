@@ -95,6 +95,8 @@ export interface ApiListing {
 export interface ApiOrder {
   id: string;
   shortId: string;
+  /** Present once a dispute on this order has been decided. */
+  settlement?: OrderSettlement | null;
   /**
    * URL-safe secret. This is the buyer's only credential — possession
    * of the token IS the auth. Present in the URL at /order/:token.
@@ -345,6 +347,53 @@ export interface AdminDisputeRow {
   listing: ApiListing;
   seller: ApiSeller;
   dispute: ApiDispute;
+  thread?: DisputeThreadSummary;
+}
+
+/* ----------------------------- case thread ----------------------------- */
+
+export type DisputeParty = "buyer" | "seller" | "mediator";
+export type DisputeRequestTarget = "buyer" | "seller" | "both";
+
+/** One message in a dispute's case thread (seen by buyer, seller and mediator). */
+export interface DisputeThreadMessage {
+  id: string;
+  authorRole: DisputeParty | "system";
+  authorName: string;
+  content: string;
+  attachments: string[];
+  /** Set when the mediator asked someone for information. */
+  requestFrom: DisputeRequestTarget | null;
+  createdAt: string;
+}
+
+export interface GetDisputeThreadResponse {
+  viewer: DisputeParty;
+  dispute: ApiDispute;
+  /** Whose move it is. Empty once the case is closed. */
+  waitingOn: DisputeParty[];
+  messages: DisputeThreadMessage[];
+}
+
+export interface PostDisputeMessageRequest {
+  content: string;
+  attachments?: string[];
+  /** Mediator only. */
+  requestFrom?: DisputeRequestTarget;
+}
+
+export interface DisputeThreadSummary {
+  count: number;
+  lastAt: string | null;
+  lastFrom: DisputeParty | "system" | null;
+  waitingOn: DisputeParty[];
+}
+
+/** How a disputed order's money was divided by the mediator. */
+export interface OrderSettlement {
+  outcome: "refund_buyer" | "release_seller" | "split" | null;
+  buyerRefundNGN: number;
+  sellerReleaseNGN: number;
 }
 
 export interface GetDisputesResponse {

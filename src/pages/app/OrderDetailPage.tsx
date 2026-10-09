@@ -51,6 +51,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/safesale/AppShell";
 import { BrandIcon } from "@/components/safesale/BrandIcon";
 import { OrderProgress } from "@/components/orders/OrderProgress";
+import { isSplit, sellerTakeNGN } from "@/lib/settlement";
 import { MapPinLine } from "@phosphor-icons/react";
 import { motion } from "motion/react";
 import { OrderChat } from "@/components/safesale/OrderChat";
@@ -252,12 +253,19 @@ export default function OrderDetailPage() {
               <h2 className="mt-2 font-display text-h1 text-canvas sm:text-display-md">{statusHeadline(order)}</h2>
             </div>
             <div className="shrink-0 sm:text-right">
-              <p className="text-sm text-canvas/70">{order.status === "completed" ? "Paid out" : "Order total"}</p>
-              <p className="font-display text-h1 text-mint tabular-nums">{formatNGN(order.amountNGN)}</p>
+              <p className="text-sm text-canvas/70">
+                {order.settlement ? "Your share" : order.status === "completed" ? "Paid out" : "Order total"}
+              </p>
+              <p className="font-display text-h1 text-mint tabular-nums">{formatNGN(sellerTakeNGN(order))}</p>
+              {order.settlement && order.settlement.buyerRefundNGN > 0 && (
+                <p className="text-sm text-canvas/70 tabular-nums">
+                  {formatNGN(order.settlement.buyerRefundNGN)} refunded to the buyer
+                </p>
+              )}
             </div>
           </div>
           <div className="mt-8">
-            <OrderProgress status={order.status} tone="dark" />
+            <OrderProgress status={order.status} tone="dark" disputed={!!dispute || !!order.settlement} />
           </div>
         </motion.header>
 
@@ -486,12 +494,17 @@ function HeroCard({
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-ink">
-                Payment released — you got paid
+                {isSplit(order) ? "The mediator split the payment" : "Payment released — you got paid"}
               </h2>
               <p className="mt-1 text-sm text-ink-soft">
-                The buyer released the escrow on{" "}
-                {order.releasedAt ? formatTime(order.releasedAt) : "—"}.{" "}
-                {formatNGN(order.amountNGN)} is on its way to your bank.
+                {order.settlement
+                  ? `A SafeSale mediator decided this dispute on ${order.releasedAt ? formatTime(order.releasedAt) : "—"}. `
+                  : `The buyer released the escrow on ${order.releasedAt ? formatTime(order.releasedAt) : "—"}. `}
+                {formatNGN(sellerTakeNGN(order))} is on its way to your bank
+                {isSplit(order) && order.settlement
+                  ? ` and ${formatNGN(order.settlement.buyerRefundNGN)} goes back to the buyer`
+                  : ""}
+                .
               </p>
             </div>
             <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-brand-soft px-2 py-1 text-xs font-semibold uppercase tracking-wide text-brand-soft-foreground">
@@ -1252,7 +1265,7 @@ function statusHeadline(order: ApiOrder): string {
     case "delivered":
       return `Delivered — waiting for ${buyer} to release`;
     case "completed":
-      return "Paid out to your bank";
+      return isSplit(order) ? "Split by the mediator" : "Paid out to your bank";
     case "disputed":
       return `${buyer} reported a problem`;
     case "refunded":
