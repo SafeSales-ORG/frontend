@@ -28,6 +28,7 @@ import type {
   GetOrderResponse,
   GetSellerOrdersResponse,
   GetShopResponse,
+  MarketplaceListing,
   GoogleAuthRequest,
   GoogleAuthResponse,
   LoginRequest,
@@ -45,6 +46,7 @@ import type {
   SimulatePaymentResponse,
   UpdatePayoutRequest,
   GetMySellerResponse,
+  UpdateShopProfileRequest,
 } from "./types";
 import { ApiError } from "./errors";
 import { getToken } from "@/lib/auth/session";
@@ -169,6 +171,9 @@ export const httpApi = {
     // Updates the caller's own seller; the backend re-checks the account name with the bank.
     return request<void>("PUT", "/api/sellers", req);
   },
+  updateShopProfile(req: UpdateShopProfileRequest): Promise<{ seller: ApiSeller }> {
+    return request<{ seller: ApiSeller }>("PUT", "/api/sellers", req);
+  },
   getMySeller(): Promise<GetMySellerResponse> {
     return request<GetMySellerResponse>("GET", "/api/sellers/me");
   },
@@ -195,6 +200,9 @@ export const httpApi = {
       if (err instanceof ApiError && err.status === 404) return null;
       throw err;
     }
+  },
+  getMarketplace(): Promise<{ listings: MarketplaceListing[] }> {
+    return request<{ listings: MarketplaceListing[] }>("GET", "/api/listings?limit=60");
   },
   getMyListings(): Promise<{ listings: ApiListing[] }> {
     return request<{ listings: ApiListing[] }>("GET", "/api/listings/mine");

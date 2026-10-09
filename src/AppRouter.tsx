@@ -20,6 +20,7 @@ import OrdersPage from "./pages/app/OrdersPage";
 import OrderDetailPage from "./pages/app/OrderDetailPage";
 import EarningsPage from "./pages/app/EarningsPage";
 import DisputePage from "./pages/app/DisputePage";
+import SettingsPage from "./pages/app/SettingsPage";
 
 import NotFound from "./pages/NotFound";
 
@@ -52,6 +53,7 @@ export function AppRouter() {
         <Route path="/app/earnings" element={<SellerGate><EarningsPage /></SellerGate>} />
         <Route path="/app/dispute" element={<SellerGate><DisputePage /></SellerGate>} />
         <Route path="/app/dispute/:id" element={<SellerGate><DisputePage /></SellerGate>} />
+        <Route path="/app/settings" element={<SellerGate><SettingsPage /></SellerGate>} />
 
         {/* Admin / mediator — gated to VITE_MEDIATOR_NPUB only. */}
         <Route

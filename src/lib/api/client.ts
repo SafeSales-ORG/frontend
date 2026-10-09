@@ -18,6 +18,7 @@ import type {
   ApiListing,
   ApiSeller,
   GetShopResponse,
+  MarketplaceListing,
   CreateListingRequest,
   CreateListingResponse,
   CreateOrderRequest,
@@ -45,6 +46,7 @@ import type {
   SimulatePaymentResponse,
   UpdatePayoutRequest,
   GetMySellerResponse,
+  UpdateShopProfileRequest,
 } from "./types";
 
 export interface ApiClient {
@@ -63,6 +65,8 @@ export interface ApiClient {
   createSeller(req: CreateSellerRequest): Promise<CreateSellerResponse>;
   /** PUT /api/sellers — update the caller's own payout details. */
   updatePayout(req: UpdatePayoutRequest): Promise<void>;
+  /** PUT /api/sellers — edit shop name, bio, delivery info or photo. */
+  updateShopProfile(req: UpdateShopProfileRequest): Promise<{ seller: ApiSeller }>;
   /** GET /api/sellers/me — own profile + payout account (masked). */
   getMySeller(): Promise<GetMySellerResponse>;
   /** POST /api/listings — seller publishes a new listing. */
@@ -78,6 +82,8 @@ export interface ApiClient {
   getSellerOrders(npub: string): Promise<GetSellerOrdersResponse>;
   /** GET /api/listings/mine — the signed-in seller's listings, hidden ones included. */
   getMyListings(): Promise<{ listings: ApiListing[] }>;
+  /** GET /api/listings — newest active listings across shops. */
+  getMarketplace(): Promise<{ listings: MarketplaceListing[] }>;
   /** Public shop by handle (null if it doesn't exist). */
   getShop(handle: string): Promise<GetShopResponse | null>;
   /** POST /api/orders — buyer initiates a purchase. */

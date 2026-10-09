@@ -59,6 +59,8 @@ export interface ApiSeller {
   location: string;
   category: string;
   bio?: string | null;
+  /** Free-text delivery info shown on the shop. */
+  delivery?: string | null;
   verified: boolean;
   /** Shop avatar / profile image URL (https). */
   avatarUrl?: string | null;
@@ -432,6 +434,15 @@ export interface UpdatePayoutRequest {
   bankAccountNumber?: string;
 }
 
+/** `PUT /api/sellers` — the public parts of a shop the seller can edit. */
+export interface UpdateShopProfileRequest {
+  name?: string;
+  bio?: string;
+  delivery?: string;
+  /** https or compressed data:image URL. */
+  avatar?: string;
+}
+
 /** Where a seller's payouts go. Only the last 4 digits ever reach the browser. */
 export interface SellerPayout {
   bankCode: string;
@@ -534,6 +545,9 @@ export interface LoginRequest {
  * account's stable id + verified email (obtained by the frontend from the
  * Google Identity SDK) and returns a JWT session.
  */
+/** A marketplace card: a listing plus its shop's public profile. */
+export type MarketplaceListing = ApiListing & { seller: ApiSeller };
+
 /** `GET /api/sellers/:handle` + `GET /api/listings?seller=` — a public shop. */
 export interface GetShopResponse {
   seller: ApiSeller;

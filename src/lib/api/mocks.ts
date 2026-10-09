@@ -32,6 +32,7 @@ import type {
   GetOrderResponse,
   GetSellerOrdersResponse,
   GetShopResponse,
+  MarketplaceListing,
   GoogleAuthRequest,
   GoogleAuthResponse,
   LoginRequest,
@@ -52,6 +53,8 @@ import type {
   SimulatePaymentResponse,
   UpdatePayoutRequest,
   GetMySellerResponse,
+  ApiSeller,
+  UpdateShopProfileRequest,
   SellerPayout,
 } from "./types";
 import { ApiError } from "./errors";
@@ -289,6 +292,18 @@ export const mockApi = {
     );
   },
 
+  async updateShopProfile(req: UpdateShopProfileRequest): Promise<{ seller: ApiSeller }> {
+    const current = demoSessionSeller();
+    const seller = marketStore.upsertSeller({
+      ...current,
+      ...(req.name !== undefined && { name: req.name }),
+      ...(req.bio !== undefined && { bio: req.bio }),
+      ...(req.delivery !== undefined && { delivery: req.delivery }),
+      ...(req.avatar !== undefined && { avatarUrl: req.avatar }),
+    });
+    return { seller };
+  },
+
   async getMySeller(): Promise<GetMySellerResponse> {
     const seller = demoSessionSeller();
     const payout = readDemoPayouts()[seller.id] ?? {
@@ -349,6 +364,19 @@ export const mockApi = {
   async getListing(id: string): Promise<{ listing: ApiListing } | null> {
     const listing = marketStore.getListing(id);
     return listing ? { listing } : null;
+  },
+
+  async getMarketplace(): Promise<{ listings: MarketplaceListing[] }> {
+    const listings = marketStore
+      .listAllListings()
+      .filter((l) => l.active !== false && l.inStock > 0)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 60)
+      .flatMap((l) => {
+        const seller = marketStore.getSellerById(l.sellerId);
+        return seller ? [{ ...l, seller }] : [];
+      });
+    return { listings };
   },
 
   async getMyListings(): Promise<{ listings: ApiListing[] }> {
