@@ -162,7 +162,7 @@ export default function BuyerOrder() {
   const [disputeSubmitted, setDisputeSubmitted] = useState(false);
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
   const [evidenceUploading, setEvidenceUploading] = useState(false);
-  const { mutateAsync: uploadFile } = useUploadFile();
+  const { mutateAsync: uploadFile } = useUploadFile({ buyerToken: token });
   const evidenceInputRef = useRef<HTMLInputElement>(null);
 
   const onEvidencePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {

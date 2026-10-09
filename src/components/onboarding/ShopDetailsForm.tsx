@@ -81,7 +81,9 @@ export function ShopDetailsForm({
       onSuccess(seller);
     } catch (err) {
       setError(
-        err instanceof ApiError && err.code === "BACKEND_UNREACHABLE"
+        err instanceof ApiError && err.status === 409 && /handle/i.test(err.message)
+          ? `@${handle} is already taken. Try adding your city or a number, like @${handle}_lagos.`
+          : err instanceof ApiError && err.code === "BACKEND_UNREACHABLE"
           ? "We couldn't reach SafeSale. Check your connection and try again."
           : err instanceof Error
             ? err.message

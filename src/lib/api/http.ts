@@ -67,6 +67,7 @@ async function request<T>(
   method: "GET" | "POST" | "PATCH" | "PUT",
   path: string,
   body?: unknown,
+  extraHeaders?: Record<string, string>,
 ): Promise<T> {
   const url = getBaseUrl() + path;
 
@@ -77,6 +78,7 @@ async function request<T>(
   if (body) headers["Content-Type"] = "application/json";
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  Object.assign(headers, extraHeaders);
 
   let res: Response;
   try {
@@ -203,6 +205,21 @@ export const httpApi = {
   },
   getMarketplace(): Promise<{ listings: MarketplaceListing[] }> {
     return request<{ listings: MarketplaceListing[] }>("GET", "/api/listings?limit=60");
+  },
+  async uploadImage(dataUrl: string, opts?: { buyerToken?: string }): Promise<string> {
+    try {
+      const res = await request<{ url: string }>(
+        "POST",
+        "/api/uploads",
+        { dataUrl },
+        opts?.buyerToken ? { "X-Buyer-Token": opts.buyerToken } : undefined,
+      );
+      return res.url;
+    } catch (err) {
+      // Server without storage configured: keep the photo inline (legacy).
+      if (err instanceof ApiError && err.code === "STORAGE_NOT_CONFIGURED") return dataUrl;
+      throw err;
+    }
   },
   getMyListings(): Promise<{ listings: ApiListing[] }> {
     return request<{ listings: ApiListing[] }>("GET", "/api/listings/mine");

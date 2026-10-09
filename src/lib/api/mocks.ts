@@ -366,6 +366,11 @@ export const mockApi = {
     return listing ? { listing } : null;
   },
 
+  /** Demo: no server — the compressed data URL is the image. */
+  async uploadImage(dataUrl: string): Promise<string> {
+    return dataUrl;
+  },
+
   async getMarketplace(): Promise<{ listings: MarketplaceListing[] }> {
     const listings = marketStore
       .listAllListings()

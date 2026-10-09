@@ -80,6 +80,8 @@ export interface ApiClient {
   getListing(id: string): Promise<{ listing: ApiListing; seller?: ApiSeller | null } | null>;
   /** GET /api/orders/seller/:npub — seller dashboard orders feed. */
   getSellerOrders(npub: string): Promise<GetSellerOrdersResponse>;
+  /** POST /api/uploads — store an image, return its URL (inline data URL if storage is off). */
+  uploadImage(dataUrl: string, opts?: { buyerToken?: string }): Promise<string>;
   /** GET /api/listings/mine — the signed-in seller's listings, hidden ones included. */
   getMyListings(): Promise<{ listings: ApiListing[] }>;
   /** GET /api/listings — newest active listings across shops. */

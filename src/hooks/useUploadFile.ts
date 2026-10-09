@@ -1,19 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api";
 
 /**
- * Turn a chosen image file into a small, self-contained `data:` URL the app
- * can store and render directly — no external image host.
- *
- * The backend has NO `/api/upload` route yet (see PROGRESS.md), and its listing
- * `images[].url` field accepts any valid URL — including `data:` URLs. So in
- * BOTH demo and real mode we downscale + JPEG-compress the image in the browser
- * (a 3 MB photo becomes ~50–120 KB) and embed that data URL. This keeps demo
- * mode inside its localStorage budget and lets real listings carry their image
- * without a dedicated upload endpoint. Swap back to a POST /api/upload once the
- * backend adds one (larger images, real CDN URLs).
- *
- * Returns NIP-94-style tags: `[["url", <url>], ["x", ""]]`, so existing
- * callers that do `const [[_, url]] = await uploadFile(file)` keep working.
+ * Browser-side image compression: a 3 MB photo becomes a ~50–120 KB JPEG
+ * data URL, which is then uploaded (see `useUploadFile` below).
  */
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -61,7 +51,13 @@ async function downscaleToDataUrl(
   });
 }
 
-export function useUploadFile() {
+/**
+ * Compress an image in the browser, then upload it (`POST /api/uploads`).
+ * Returns `[["url", url], …]` tags. In demo mode, or when the server has no
+ * storage configured, the URL is the compressed data URL itself.
+ * Buyers uploading dispute evidence pass their order's `buyerToken`.
+ */
+export function useUploadFile(opts?: { buyerToken?: string }) {
   return useMutation({
     mutationFn: async (file: File): Promise<string[][]> => {
       if (!file.type.startsWith("image/")) {
@@ -70,11 +66,8 @@ export function useUploadFile() {
       if (file.size > 8 * 1024 * 1024) {
         throw new Error("Image is too large (max 8 MB)");
       }
-
-      // Downscale + compress to a small JPEG data URL. Works offline (demo) and
-      // against the real backend (which accepts data: URLs and has no upload
-      // route). The result is small enough to persist and to POST inline.
-      const url = await downscaleToDataUrl(file);
+      const dataUrl = await downscaleToDataUrl(file);
+      const url = await apiClient.uploadImage(dataUrl, { buyerToken: opts?.buyerToken });
       return [
         ["url", url],
         ["x", ""],
