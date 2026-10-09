@@ -1,53 +1,21 @@
 /**
- * Seller Earnings — `/app/earnings`.
+ * Seller earnings — `/app/earnings`.
  *
- * Designed and ported directly from spec — no Stitch round-trip on
- * this screen (cost more than the layout it produced for the other
- * pages). Same visual contract as #2 / #3 / #4: semantic tokens,
- * lucide icons only, mobile-first.
- *
- * Data source: 100 % `useSellerOrders()` — the same TanStack cache
- * the dashboard and the orders list use, so all three surfaces agree
- * at all times. Backend has no dedicated `/api/earnings` endpoint yet
- * (per PROGRESS.md "Still on mock data" + PRD delta #8). When it
- * lands, the aggregation done here in JavaScript moves to a single
- * `apiClient.getEarnings()` call; the UI doesn't change.
- *
- * What the page surfaces (every number derived from real orders):
- *
- *   - Released (lifetime)  — sum of amountNGN across `completed` orders
- *   - Locked in escrow     — sum of amountNGN across `paid` orders
- *   - This month           — sum of amountNGN across `completed` orders
- *                            where releasedAt ≥ first of current month
- *   - Pending shipment     — count of orders still in `paid`
- *   - Payout history       — completed orders, newest first, in NGN
- *
- * What's intentionally *NOT* on this page:
- *
- *   - Sparkline / weekly chart. Earlier stub had a fabricated 7-day
- *     array; we don't have real time-series data and inventing one
- *     would be a fake-stat in the same category as the old TrustStrip
- *     numbers. Dropped.
- *
- *   - Bank account "on file." The backend Seller schema supports
- *     `bankName`, `bankAccount`, `bankHolder` but nothing reads/writes
- *     them on this page yet. Showing a fake "GTB ****2841" row in the
- *     meantime is lying. Replaced with an honest empty-state card.
+ * There is no balance to withdraw: when escrow is released, SafeSale pays
+ * the seller's bank account automatically. This page shows what's held,
+ * what's been paid out, and where payouts go.
  */
 
 import { useSeoMeta } from "@unhead/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Banknote, Landmark, Loader2, Lock, Pencil } from "lucide-react";
 
 import { AppShell } from "@/components/safesale/AppShell";
-import { EscrowStatusPill } from "@/components/safesale/EscrowStatus";
+import { AnimatedNumber } from "@/components/safesale/AnimatedNumber";
 import { ListingThumb } from "@/components/safesale/ListingThumb";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -56,700 +24,250 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  ArrowDownCircle,
-  ArrowRight,
-  Building2,
-  Check,
-  CheckCircle2,
-  Clock,
-  Pencil,
-  ShieldCheck,
-  TrendingUp,
-  Wallet,
-} from "lucide-react";
-import { NIGERIAN_BANKS, bankNameFromCode } from "@/lib/nigeria";
-import type { CurrentSeller } from "@/hooks/useCurrentSeller";
-
-import { useCurrentSeller } from "@/hooks/useCurrentSeller";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useSellerOrders } from "@/hooks/useSellerOrders";
-import { useSellerEarningsLive, useCashOut } from "@/hooks/useMarket";
 import { useToast } from "@/hooks/useToast";
-import { apiClient } from "@/lib/api";
-import type { SellerOrderRow } from "@/lib/api";
-import { formatNGN, formatRelative } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { apiClient, type SellerOrderRow } from "@/lib/api";
+import { ApiError } from "@/lib/api/errors";
+import type { SellerPayout } from "@/lib/api/types";
+import { formatDate, formatNGN } from "@/lib/format";
+import { NIGERIAN_BANKS, bankNameFromCode } from "@/lib/nigeria";
 
-/* ----------------------------------------------------------------------- */
-/*                                Page                                     */
-/* ----------------------------------------------------------------------- */
+const HELD = new Set(["paid", "shipped", "delivered", "disputed"]);
+const MY_SELLER_KEY = ["safesale", "my-seller"] as const;
 
 export default function EarningsPage() {
   useSeoMeta({ title: "Earnings — SafeSale" });
-
-  const [seller, setSeller] = useCurrentSeller();
   const { orders, isLoading } = useSellerOrders();
-  const { toast } = useToast();
+  const [monthStart] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+  });
 
-  // Live escrow earnings — Locked vs Available, summed across all of this
-  // seller's orders and updated the instant an order changes state.
-  const earnings = useSellerEarningsLive();
-  const cashOut = useCashOut();
-
-  const stats = useMemo(() => computeStats(orders), [orders]);
-  const completed = useMemo(
-    () =>
-      orders
-        .filter((o) => o.status === "completed")
-        .sort((a, b) => +new Date(b.releasedAt ?? b.updatedAt) - +new Date(a.releasedAt ?? a.updatedAt)),
-    [orders],
-  );
-
-  const canCashOut = earnings.availableNGN > 0;
-  const onCashOut = () => {
-    if (!canCashOut) {
-      toast({
-        title: "Nothing to cash out yet",
-        description:
-          "Funds become available once a buyer confirms delivery or a dispute resolves in your favour.",
-      });
-      return;
+  const { held, heldCount, monthNGN, totalNGN, paidOut } = useMemo(() => {
+    let heldSum = 0;
+    let heldN = 0;
+    let month = 0;
+    let total = 0;
+    const released: SellerOrderRow[] = [];
+    for (const o of orders) {
+      if (HELD.has(o.status)) {
+        heldSum += o.amountNGN;
+        heldN += 1;
+      }
+      if (o.status === "completed") {
+        released.push(o);
+        total += o.amountNGN;
+        if (new Date(o.releasedAt ?? o.updatedAt).getTime() >= monthStart) month += o.amountNGN;
+      }
     }
-    const ngn = earnings.availableNGN;
-    cashOut(ngn);
-    toast({
-      title: "Cash-out initiated",
-      description: `${formatNGN(ngn)} is on its way to your bank. Allow 1–2 business days.`,
-    });
-  };
+    released.sort((a, b) => +new Date(b.releasedAt ?? b.updatedAt) - +new Date(a.releasedAt ?? a.updatedAt));
+    return { held: heldSum, heldCount: heldN, monthNGN: month, totalNGN: total, paidOut: released };
+  }, [orders, monthStart]);
 
   return (
-    <AppShell
-      title="Earnings"
-      subtitle="Every released order — Naira in escrow, paid straight to your bank."
-    >
-      <div className="space-y-6">
-        {/* 1. Hero — available balance + working cash-out, locked alongside */}
-        <section className="grid gap-4 sm:grid-cols-2">
-          {/* Available to withdraw */}
-          <div className="overflow-hidden rounded-2xl border border-brand/20 bg-brand-soft/60 p-5 sm:p-6">
-            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-brand-soft-foreground">
-              <Wallet className="h-3.5 w-3.5" aria-hidden /> Available to cash out
-            </p>
-            <div className="mt-1 flex flex-wrap items-baseline gap-2">
-              {isLoading ? (
-                <Skeleton className="h-9 w-40" />
-              ) : (
-                <>
-                  <p className="text-3xl font-semibold tracking-tight text-ink tabular-nums sm:text-4xl">
-                    {formatNGN(earnings.availableNGN)}
-                  </p>
-                </>
-              )}
-            </div>
-            
-            <Button
-              type="button"
-              onClick={onCashOut}
-              disabled={!canCashOut}
-              size="lg"
-              className="mt-4 h-11 w-full rounded-lg bg-brand text-sm font-semibold text-brand-foreground hover:bg-brand/90 disabled:opacity-50"
-            >
-              <ArrowDownCircle className="mr-2 h-4 w-4" aria-hidden />
-              {!canCashOut ? "Nothing to cash out yet" : "Cash out to Naira"}
-            </Button>
-            {earnings.paidOutNGN > 0 && (
-              <p className="mt-2 text-xs text-ink-soft tabular-nums">
-                {formatNGN(earnings.paidOutNGN)} cashed out so far
-              </p>
-            )}
+    <AppShell title="Earnings" subtitle="Money held for you, and what's been paid to your bank">
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
+        <div className="rounded-xl bg-forest p-6 text-canvas">
+          <p className="flex items-center gap-2 text-sm font-medium text-mint">
+            <Lock className="h-4 w-4" aria-hidden /> Held in escrow
+          </p>
+          <AnimatedNumber value={held} format={(n) => formatNGN(Math.round(n))} className="mt-4 block text-display-md tabular-nums" />
+          <p className="mt-2 text-sm text-canvas/70">
+            {heldCount === 0
+              ? "Nothing waiting right now."
+              : `Across ${heldCount} order${heldCount === 1 ? "" : "s"}. Released when buyers confirm delivery.`}
+          </p>
+        </div>
+        <Figure label="Paid out this month" value={monthNGN} />
+        <Figure label="Paid out in total" value={totalNGN} />
+      </div>
+
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.4fr]">
+        <div className="space-y-4">
+          <PayoutAccountCard />
+          <div className="rounded-xl bg-canvas p-6">
+            <h3 className="text-h3 text-ink">How payouts work</h3>
+            <ul className="mt-4 space-y-3 text-sm text-body">
+              <li>There's nothing to withdraw — we pay your bank automatically.</li>
+              <li>An order pays out when the buyer confirms delivery, or 7 days after you ship if they don't report a problem.</li>
+              <li>If a buyer reports a problem, the money waits until a mediator decides.</li>
+            </ul>
           </div>
+        </div>
 
-          {/* Locked in escrow */}
-          <div className="overflow-hidden rounded-2xl border border-border bg-canvas p-5 sm:p-6">
-            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-ink-soft">
-              <ShieldCheck className="h-3.5 w-3.5 text-warning" aria-hidden /> Locked in escrow
-            </p>
-            <div className="mt-1 flex flex-wrap items-baseline gap-2">
-              {isLoading ? (
-                <Skeleton className="h-9 w-40" />
-              ) : (
-                <>
-                  <p className="text-3xl font-semibold tracking-tight text-warning tabular-nums sm:text-4xl">
-                    {formatNGN(earnings.lockedNGN)}
-                  </p>
-                </>
-              )}
-            </div>
-            <p className="mt-3 text-xs leading-relaxed text-ink-soft">
-              Held safely until the buyer confirms delivery, the order
-              auto-completes, or a dispute resolves in your favour. You can't
-              withdraw this yet — that's the buyer's protection.
-            </p>
-          </div>
-        </section>
-
-        {/* 2. Stats grid */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard
-            icon={ShieldCheck}
-            label="Released (lifetime)"
-            value={isLoading ? null : formatNGN(earnings.releasedNGN)}
-            sub={null}
-            footnote={
-              stats.toShipCount > 0
-                ? `${stats.toShipCount} order${stats.toShipCount === 1 ? "" : "s"} still to ship`
-                : "All caught up"
-            }
-            footnoteTone={stats.toShipCount > 0 ? "warn" : "ok"}
-          />
-          <StatCard
-            icon={TrendingUp}
-            label="This month"
-            value={isLoading ? null : formatNGN(stats.monthNGN)}
-            sub={null}
-            footnote={
-              stats.monthCount > 0
-                ? `${stats.monthCount} release${stats.monthCount === 1 ? "" : "s"}`
-                : "No releases yet this month"
-            }
-          />
-          <StatCard
-            icon={CheckCircle2}
-            label="Completed orders"
-            value={isLoading ? null : String(stats.completedCount)}
-            sub={isLoading ? null : "all time"}
-            footnote={
-              stats.completedCount > 0
-                ? `Latest · ${formatRelative(completed[0]?.releasedAt ?? completed[0]?.updatedAt ?? "")}`
-                : "When buyers release, they show up here"
-            }
-          />
-        </section>
-
-        {/* 3. Bank-on-file panel — add / edit payout bank */}
-        <BankPanel seller={seller} onSave={setSeller} />
-
-        {/* 4. Payout history (=completed orders) */}
-        <section className="overflow-hidden rounded-2xl border border-border bg-canvas">
-          <header className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
-                Payout history
-              </p>
-              <p className="mt-0.5 text-xs text-ink-soft">
-                Every order the buyer released. Newest first.
-              </p>
-            </div>
-            <Link
-              to="/app/orders"
-              className="inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
-            >
-              All orders <ArrowRight className="h-3 w-3" aria-hidden />
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-h3 text-ink">Payout history</h3>
+            <Link to="/app/orders" className="text-sm font-medium text-brand hover:underline">
+              All orders
             </Link>
-          </header>
-
-          {isLoading ? (
-            <PayoutSkeleton />
-          ) : !seller ? (
-            <EmptyNotSignedUp />
-          ) : completed.length === 0 ? (
-            <EmptyNoPayouts toShipCount={stats.toShipCount} />
-          ) : (
-            <>
-              {/* Desktop table */}
-              <div className="hidden overflow-x-auto sm:block">
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b border-border bg-canvas text-xs font-medium uppercase tracking-wider text-ink-soft">
-                    <tr>
-                      <th className="px-4 py-3">Order</th>
-                      <th className="px-4 py-3">Buyer</th>
-                      <th className="px-4 py-3 text-right">Amount</th>
-                      <th className="px-4 py-3">Released</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {completed.map((o) => (
-                      <PayoutRow key={o.orderToken} order={o} />
-                    ))}
-                  </tbody>
-                </table>
+          </div>
+          <div className="overflow-hidden rounded-xl bg-canvas">
+            {isLoading ? (
+              <div className="space-y-3 p-5">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <Skeleton key={i} className="h-11 w-full" />
+                ))}
               </div>
-
-              {/* Mobile stacked cards */}
-              <ul className="divide-y divide-border sm:hidden">
-                {completed.map((o) => (
-                  <PayoutMobile key={o.orderToken} order={o} />
+            ) : paidOut.length === 0 ? (
+              <div className="px-6 py-12 text-center">
+                <Banknote className="mx-auto h-6 w-6 text-mute" aria-hidden />
+                <p className="mt-3 font-medium text-ink">No payouts yet</p>
+                <p className="mt-1 text-sm text-body">Your first payout shows here when a buyer confirms delivery.</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-line">
+                {paidOut.map((o) => (
+                  <li key={o.orderToken}>
+                    <Link
+                      to={`/app/orders/${o.orderToken}`}
+                      className="flex items-center gap-4 px-5 py-4 hover:bg-canvas-soft"
+                    >
+                      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md bg-canvas-soft">
+                        <ListingThumb image={o.listing.images[0]} alt="" size={44} fill />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-ink">{o.listing.title}</p>
+                        <p className="text-sm text-mute">
+                          {o.shortId} · {formatDate(o.releasedAt ?? o.updatedAt)}
+                        </p>
+                      </div>
+                      <p className="font-semibold text-brand tabular-nums">+{formatNGN(o.amountNGN)}</p>
+                    </Link>
+                  </li>
                 ))}
               </ul>
-            </>
-          )}
+            )}
+          </div>
         </section>
-
-        {/* 5. Footnote — how released funds are held */}
-        <p className="px-1 text-xs italic leading-relaxed text-ink-soft">
-          Released funds are yours — paid out in Naira to your Nigerian bank
-          account whenever you like.
-        </p>
       </div>
     </AppShell>
   );
 }
 
-/* ----------------------------------------------------------------------- */
-/*                            Aggregation                                  */
-/* ----------------------------------------------------------------------- */
-
-interface Stats {
-  releasedNGN: number;
-  lockedNGN: number;
-  monthNGN: number;
-  monthCount: number;
-  completedCount: number;
-  toShipCount: number;
-}
-
-function computeStats(orders: SellerOrderRow[]): Stats {
-  const firstOfMonthMs = (() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-  })();
-
-  let releasedNGN = 0;
-  let lockedNGN = 0;
-  let monthNGN = 0;
-  let monthCount = 0;
-  let completedCount = 0;
-  let toShipCount = 0;
-
-  for (const o of orders) {
-    if (o.status === "completed") {
-      releasedNGN += o.amountNGN;
-      completedCount += 1;
-
-      const releasedAt = o.releasedAt ? Date.parse(o.releasedAt) : null;
-      if (releasedAt && releasedAt >= firstOfMonthMs) {
-        monthNGN += o.amountNGN;
-        monthCount += 1;
-      }
-    } else if (o.status === "paid") {
-      lockedNGN += o.amountNGN;
-      toShipCount += 1;
-    }
-  }
-
-  return {
-    releasedNGN,
-    lockedNGN,
-    monthNGN,
-    monthCount,
-    completedCount,
-    toShipCount,
-  };
-}
-
-/* ----------------------------------------------------------------------- */
-/*                            Subcomponents                                */
-/* ----------------------------------------------------------------------- */
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  footnote,
-  footnoteTone,
-}: {
-  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
-  label: string;
-  value: string | null;
-  sub: string | null;
-  footnote: string;
-  footnoteTone?: "warn" | "ok";
-}) {
+function Figure({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-border bg-canvas p-5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
-          {label}
-        </p>
-        <Icon className="h-4 w-4 text-ink-soft" aria-hidden />
-      </div>
-      <div className="mt-2 min-h-[2rem]">
-        {value === null ? (
-          <Skeleton className="h-6 w-32" />
-        ) : (
-          <p className="text-xl font-semibold tabular-nums text-ink">{value}</p>
-        )}
-      </div>
-      <div className="mt-0.5 min-h-[1rem]">
-        {sub === null ? (
-          <Skeleton className="h-3 w-20" />
-        ) : (
-          <p className="text-xs tabular-nums text-ink-soft">{sub}</p>
-        )}
-      </div>
-      <p
-        className={
-          "mt-3 border-t border-border pt-3 text-xs " +
-          (footnoteTone === "warn"
-            ? "text-warning"
-            : footnoteTone === "ok"
-              ? "text-brand-soft-foreground"
-              : "text-ink-soft")
-        }
-      >
-        {footnote}
-      </p>
+    <div className="flex flex-col justify-between rounded-xl bg-canvas p-6">
+      <p className="text-sm text-mute">{label}</p>
+      <AnimatedNumber value={value} format={(n) => formatNGN(Math.round(n))} className="mt-4 block text-h1 text-ink tabular-nums" />
     </div>
   );
 }
 
-function BankPanel({
-  seller,
-  onSave,
-}: {
-  seller: CurrentSeller | null;
-  onSave: (next: CurrentSeller) => void;
-}) {
-  const { toast } = useToast();
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [bankCode, setBankCode] = useState("");
-  const [accountNumber, setAccountNumber] = useState(seller?.bankAccount ?? "");
-  const [accountName, setAccountName] = useState(seller?.bankHolder ?? "");
-  const hasBank = !!seller?.bankName && !!seller?.bankAccount;
-
-  // Backend `PUT /api/sellers` needs a NIBSS bankCode + a 9–10 digit account;
-  // it derives the account holder name via the Nomba lookup.
-  const bankValid =
-    bankCode.trim().length >= 3 && /^\d{9,10}$/.test(accountNumber.trim());
-  const valid = bankValid;
-
-  const openDialog = () => {
-    setBankCode("");
-    setAccountNumber(seller?.bankAccount ?? "");
-    setAccountName(seller?.bankHolder ?? "");
-    setOpen(true);
-  };
-
-  const save = async () => {
-    if (!valid || !seller) return;
-    setSaving(true);
-    try {
-      await apiClient.updatePayout({
-        bankCode: bankCode.trim(),
-        bankAccountNumber: accountNumber.trim(),
-      });
-      onSave({
-        ...seller,
-        bankName: bankNameFromCode(bankCode.trim()),
-        bankAccount: accountNumber.trim(),
-        bankHolder: accountName.trim() || seller.bankHolder,
-      });
-      setOpen(false);
-      toast({
-        title: "Payout details saved",
-        description: "You can now cash out to Naira.",
-      });
-    } catch (err) {
-      toast({
-        title: "Couldn't save payout details",
-        description:
-          err instanceof Error
-            ? err.message
-            : "Please check your details and try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const hasAny = hasBank;
+function PayoutAccountCard() {
+  const { data, isLoading } = useQuery({ queryKey: MY_SELLER_KEY, queryFn: () => apiClient.getMySeller() });
+  const [editing, setEditing] = useState(false);
+  const payout = data?.payout;
+  const hasAccount = !!payout?.bankCode;
 
   return (
-    <section
-      className={cn(
-        "rounded-2xl border bg-canvas p-5 sm:p-6",
-        hasAny ? "border-border" : "border-dashed border-border",
-      )}
-    >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <div
-          className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-            hasAny ? "bg-brand-soft text-brand" : "bg-surface text-ink-soft",
-          )}
-        >
-          {hasAny ? <Check className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
-        </div>
-        <div className="flex-1">
-          {hasAny ? (
-            <>
-              <p className="text-sm font-semibold text-ink">Payout details added</p>
-              {hasBank && (
-                <p className="mt-1 text-sm text-ink-soft">
-                  {seller?.bankName} ·{" "}
-                  <span className="tabular-nums">
-                    ****{(seller?.bankAccount ?? "").slice(-4)}
-                  </span>{" "}
-                  · {seller?.bankHolder}
-                </p>
-              )}
-              
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-semibold text-ink">
-                No payout details on file yet
+    <div className="rounded-xl bg-canvas p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-pale text-brand">
+            <Landmark className="h-5 w-5" aria-hidden />
+          </span>
+          <div>
+            <p className="text-sm text-mute">Payouts go to</p>
+            {isLoading ? (
+              <Skeleton className="mt-1 h-5 w-40" />
+            ) : hasAccount ? (
+              <p className="font-semibold text-ink">
+                {payout.bankName ?? bankNameFromCode(payout.bankCode)} ••••{payout.accountNumberLast4}
               </p>
-              <p className="mt-1 text-sm text-ink-soft">
-                Add a Nigerian bank account to cash out to Naira.
-              </p>
-            </>
-          )}
+            ) : (
+              <p className="font-semibold text-ink">No account added</p>
+            )}
+            {payout?.accountName && <p className="text-sm text-body">{payout.accountName}</p>}
+          </div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={openDialog}
-          disabled={!seller}
-          className="shrink-0"
-        >
-          {hasAny ? (
-            <>
-              <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit payout
-            </>
-          ) : (
-            "Add payout details"
-          )}
+        <Button variant="outline" size="sm" onClick={() => setEditing(true)} disabled={isLoading}>
+          <Pencil /> {hasAccount ? "Change" : "Add"}
         </Button>
       </div>
+      {editing && <PayoutDialog current={payout} onClose={() => setEditing(false)} />}
+    </div>
+  );
+}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{hasAny ? "Edit payout details" : "Add payout details"}</DialogTitle>
-            <DialogDescription>
-              Where we send your earnings. Add a bank account for Naira. You can update this any time.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Bank</Label>
-              <Select value={bankCode} onValueChange={setBankCode}>
-                <SelectTrigger className="mt-1.5 h-11">
-                  <SelectValue placeholder="Select your bank" />
-                </SelectTrigger>
-                <SelectContent>
-                  {NIGERIAN_BANKS.map((b) => (
-                    <SelectItem key={b.code} value={b.code}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="acct-no">Account number</Label>
-              <Input
-                id="acct-no"
-                inputMode="numeric"
-                value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
-                placeholder="0123456789"
-                className="mt-1.5 h-11 tabular-nums"
-              />
-              {accountNumber.length > 0 && accountNumber.length < 9 && (
-                <p className="mt-1 text-xs text-warning">
-                  Account number is 9–10 digits.
-                </p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="acct-name">Account name</Label>
-              <Input
-                id="acct-name"
-                value={accountName}
-                onChange={(e) => setAccountName(e.target.value)}
-                placeholder="As it appears on your bank account"
-                className="mt-1.5 h-11"
-              />
-            </div>
+function PayoutDialog({ current, onClose }: { current?: SellerPayout; onClose: () => void }) {
+  const [bankCode, setBankCode] = useState(current?.bankCode ?? "");
+  const [accountNumber, setAccountNumber] = useState("");
+  const qc = useQueryClient();
+  const { toast } = useToast();
 
-            
+  const save = useMutation({
+    mutationFn: () => apiClient.updatePayout({ bankCode, bankAccountNumber: accountNumber }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: MY_SELLER_KEY });
+      toast({ title: "Payout account updated" });
+      onClose();
+    },
+  });
+  const error =
+    save.error instanceof ApiError || save.error instanceof Error ? save.error.message : null;
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Payout account</DialogTitle>
+          <DialogDescription>We'll check the account name with your bank before saving it.</DialogDescription>
+        </DialogHeader>
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (bankCode && accountNumber.length === 10) save.mutate();
+          }}
+        >
+          <div>
+            <Label htmlFor="payout-bank">Bank</Label>
+            <Select value={bankCode} onValueChange={setBankCode}>
+              <SelectTrigger id="payout-bank" className="mt-1.5 w-full">
+                <SelectValue placeholder="Choose your bank" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                {NIGERIAN_BANKS.map((b) => (
+                  <SelectItem key={b.code} value={b.code}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+          <div>
+            <Label htmlFor="payout-account">Account number</Label>
+            <Input
+              id="payout-account"
+              inputMode="numeric"
+              className="mt-1.5 tabular-nums tracking-wider"
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
+              placeholder="10 digits"
+            />
+          </div>
+          {error && <p className="rounded-md bg-negative-pale px-3.5 py-2.5 text-sm text-negative">{error}</p>}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button
-              onClick={save}
-              disabled={!valid || saving}
-              className="bg-brand text-brand-foreground hover:bg-brand/90"
-            >
-              {saving ? "Saving..." : "Save payout details"}
+            <Button type="submit" disabled={!bankCode || accountNumber.length !== 10 || save.isPending}>
+              {save.isPending ? (
+                <>
+                  <Loader2 className="animate-spin" /> Checking…
+                </>
+              ) : (
+                "Save account"
+              )}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </section>
-  );
-}
-
-function PayoutRow({ order }: { order: SellerOrderRow }) {
-  return (
-    <tr className="hover:bg-surface">
-      <td className="px-4 py-3 align-middle">
-        <div className="flex items-center gap-3">
-          <ListingThumb
-            image={order.listing.images[0]}
-            alt={order.listing.title}
-            size={40}
-          />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-ink">
-              {order.listing.title}
-            </p>
-            <p className="mt-0.5 font-mono text-xs tabular-nums text-ink-soft">
-              {order.shortId}
-            </p>
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3 align-middle">
-        <p className="truncate text-sm text-ink">{order.buyerName}</p>
-        <p className="mt-0.5 truncate text-xs text-ink-soft">
-          {order.buyerCity}
-        </p>
-      </td>
-      <td className="px-4 py-3 align-middle text-right">
-        <p className="text-sm font-semibold tabular-nums text-ink">
-          {formatNGN(order.amountNGN)}
-        </p>
-      </td>
-      <td className="px-4 py-3 align-middle">
-        <div className="flex items-center gap-2">
-          <EscrowStatusPill status={order.status} size="sm" />
-          <span className="text-xs text-ink-soft">
-            {formatRelative(order.releasedAt ?? order.updatedAt)}
-          </span>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-function PayoutMobile({ order }: { order: SellerOrderRow }) {
-  return (
-    <li className="px-4 py-4">
-      <div className="flex items-center gap-3">
-        <ListingThumb
-          image={order.listing.images[0]}
-          alt={order.listing.title}
-          size={40}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-ink">
-            {order.listing.title}
-          </p>
-          <p className="mt-0.5 font-mono text-xs tabular-nums text-ink-soft">
-            {order.shortId}
-          </p>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-sm font-semibold tabular-nums text-ink">
-            {formatNGN(order.amountNGN)}
-          </p>
-        </div>
-      </div>
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <p className="text-xs text-ink-soft">
-          {order.buyerName}, {order.buyerCity}
-        </p>
-        <span className="text-xs text-ink-soft">
-          {formatRelative(order.releasedAt ?? order.updatedAt)}
-        </span>
-      </div>
-    </li>
-  );
-}
-
-/* ----------------------------------------------------------------------- */
-/*                            Empty / loading                              */
-/* ----------------------------------------------------------------------- */
-
-function PayoutSkeleton() {
-  return (
-    <ul className="divide-y divide-border">
-      {[0, 1, 2].map((i) => (
-        <li key={i} className="px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-10 w-10 rounded-xl" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-4 w-2/3" />
-              <Skeleton className="h-3 w-1/3" />
-            </div>
-            <div className="shrink-0 space-y-2 text-right">
-              <Skeleton className="ml-auto h-4 w-16" />
-              <Skeleton className="ml-auto h-3 w-12" />
-            </div>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function EmptyNotSignedUp() {
-  return (
-    <div className="border-t border-border p-10 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-surface text-ink-soft">
-        <Wallet className="h-6 w-6" aria-hidden />
-      </div>
-      <p className="mt-4 text-base font-semibold text-ink">
-        Finish signing up to see your payouts
-      </p>
-      <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
-        You'll see every released order here once your seller profile is
-        live.
-      </p>
-      <Link
-        to="/onboarding"
-        className="mt-5 inline-flex h-11 items-center rounded-lg bg-brand px-4 text-sm font-semibold text-brand-foreground hover:bg-brand/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-      >
-        Complete signup
-      </Link>
-    </div>
-  );
-}
-
-function EmptyNoPayouts({ toShipCount }: { toShipCount: number }) {
-  return (
-    <div className="border-t border-border p-10 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-surface text-ink-soft">
-        <Clock className="h-6 w-6" aria-hidden />
-      </div>
-      <p className="mt-4 text-base font-semibold text-ink">No payouts yet</p>
-      <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
-        {toShipCount > 0
-          ? `You have ${toShipCount} order${toShipCount === 1 ? "" : "s"} locked in escrow. Mark them shipped, the buyer releases, and the money lands here.`
-          : "When a buyer releases their first payment, it'll appear here. Share your listing link to bring in your first sale."}
-      </p>
-      <Link
-        to="/app/orders"
-        className="mt-5 inline-flex h-11 items-center rounded-lg border border-border bg-canvas px-4 text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-      >
-        Go to orders
-      </Link>
-    </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

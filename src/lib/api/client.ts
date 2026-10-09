@@ -44,6 +44,7 @@ import type {
   ShipOrderResponse,
   SimulatePaymentResponse,
   UpdatePayoutRequest,
+  GetMySellerResponse,
 } from "./types";
 
 export interface ApiClient {
@@ -62,6 +63,8 @@ export interface ApiClient {
   createSeller(req: CreateSellerRequest): Promise<CreateSellerResponse>;
   /** PUT /api/sellers — update the caller's own payout details. */
   updatePayout(req: UpdatePayoutRequest): Promise<void>;
+  /** GET /api/sellers/me — own profile + payout account (masked). */
+  getMySeller(): Promise<GetMySellerResponse>;
   /** POST /api/listings — seller publishes a new listing. */
   createListing(req: CreateListingRequest): Promise<CreateListingResponse>;
   /** PATCH /api/listings/:id — edit a listing or toggle stock. */

@@ -428,8 +428,22 @@ export interface CreateSellerResponse {
 export interface UpdatePayoutRequest {
   /** NIBSS bank code (e.g. "058"). Matches the backend `PUT /api/sellers`. */
   bankCode?: string;
-  /** 9–10 digit account number. */
+  /** 10-digit NUBAN account number. */
   bankAccountNumber?: string;
+}
+
+/** Where a seller's payouts go. Only the last 4 digits ever reach the browser. */
+export interface SellerPayout {
+  bankCode: string;
+  bankName: string | null;
+  accountName: string | null;
+  accountNumberLast4: string;
+}
+
+/** `GET /api/sellers/me` */
+export interface GetMySellerResponse {
+  seller: ApiSeller;
+  payout: SellerPayout;
 }
 
 /* -------------------------- listing endpoints ------------------------- */

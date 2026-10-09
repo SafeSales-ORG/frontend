@@ -44,6 +44,7 @@ import type {
   ShipOrderResponse,
   SimulatePaymentResponse,
   UpdatePayoutRequest,
+  GetMySellerResponse,
 } from "./types";
 import { ApiError } from "./errors";
 import { getToken } from "@/lib/auth/session";
@@ -165,9 +166,11 @@ export const httpApi = {
     return request<CreateSellerResponse>("POST", "/api/sellers", req);
   },
   updatePayout(req: UpdatePayoutRequest): Promise<void> {
-    // Backend updates the caller's OWN seller via the JWT at PUT /api/sellers
-    // (no `:id`); it re-runs the Nomba lookup to refresh the account name.
+    // Updates the caller's own seller; the backend re-checks the account name with the bank.
     return request<void>("PUT", "/api/sellers", req);
+  },
+  getMySeller(): Promise<GetMySellerResponse> {
+    return request<GetMySellerResponse>("GET", "/api/sellers/me");
   },
   createListing(req: CreateListingRequest): Promise<CreateListingResponse> {
     return request<CreateListingResponse>("POST", "/api/listings", req);

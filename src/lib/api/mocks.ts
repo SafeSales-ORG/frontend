@@ -51,6 +51,8 @@ import type {
   ShipOrderResponse,
   SimulatePaymentResponse,
   UpdatePayoutRequest,
+  GetMySellerResponse,
+  SellerPayout,
 } from "./types";
 import { ApiError } from "./errors";
 import {
@@ -61,6 +63,42 @@ import {
   type OrderEnvelope,
 } from "@/lib/store/marketStore";
 import { getSession } from "@/lib/auth/session";
+import { bankNameFromCode } from "@/lib/nigeria";
+
+/* Demo payout accounts — kept in this browser, last 4 digits only. */
+const DEMO_PAYOUTS_KEY = "safesale:demo:payouts";
+
+function readDemoPayouts(): Record<string, SellerPayout> {
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_PAYOUTS_KEY) ?? "{}") as Record<string, SellerPayout>;
+  } catch {
+    return {};
+  }
+}
+
+function saveDemoPayout(sellerId: string, bankCode: string, accountNumber: string): void {
+  const all = readDemoPayouts();
+  all[sellerId] = {
+    bankCode,
+    bankName: bankCode ? bankNameFromCode(bankCode) : null,
+    accountName: "Demo Account Holder",
+    accountNumberLast4: accountNumber.slice(-4),
+  };
+  try {
+    localStorage.setItem(DEMO_PAYOUTS_KEY, JSON.stringify(all));
+  } catch {
+    /* storage unavailable — demo only */
+  }
+}
+
+/** The seller record for the signed-in demo user, or a 401/404 ApiError. */
+function demoSessionSeller() {
+  const session = getSession();
+  if (!session) throw new ApiError("UNAUTHORIZED", "Not signed in.", 401);
+  const seller = session.user.nostrNpub ? marketStore.getSellerByNpub(session.user.nostrNpub) : undefined;
+  if (!seller) throw new ApiError("NOT_FOUND", "Seller profile not found.", 404);
+  return seller;
+}
 
 /* ------------------------------ mock auth ----------------------------- */
 
@@ -224,6 +262,7 @@ export const mockApi = {
       // demo (re-opening a shop on the same key just signs you back in).
       return { seller: existing };
     }
+    saveDemoPayout(`seller_${req.npub.slice(5, 21)}`, req.bankCode, req.bankAccountNumber);
     const seller = marketStore.upsertSeller({
       id: `seller_${req.npub.slice(5, 21)}`,
       npub: req.npub,
@@ -240,13 +279,25 @@ export const mockApi = {
     return { seller };
   },
 
-  async updatePayout(
-    _req: UpdatePayoutRequest,
-  ): Promise<void> {
-    // Demo: payout preference is reflected via the local seller record
-    // (`useCurrentSeller`), which the Earnings page updates directly. There's
-    // no separate persistence to do here, so this is a no-op.
-    return;
+  async updatePayout(req: UpdatePayoutRequest): Promise<void> {
+    const seller = demoSessionSeller();
+    const current = readDemoPayouts()[seller.id];
+    saveDemoPayout(
+      seller.id,
+      req.bankCode ?? current?.bankCode ?? "",
+      req.bankAccountNumber ?? `000000${current?.accountNumberLast4 ?? "0000"}`,
+    );
+  },
+
+  async getMySeller(): Promise<GetMySellerResponse> {
+    const seller = demoSessionSeller();
+    const payout = readDemoPayouts()[seller.id] ?? {
+      bankCode: "",
+      bankName: null,
+      accountName: null,
+      accountNumberLast4: "",
+    };
+    return { seller, payout };
   },
 
   async createListing(
