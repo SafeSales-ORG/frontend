@@ -65,8 +65,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <div className="min-h-screen bg-surface px-4 py-16">
-        <div className="mx-auto max-w-md rounded-2xl border border-border bg-white p-10 text-center shadow-sm">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-800">
+        <div className="mx-auto max-w-md rounded-2xl border border-border bg-canvas p-10 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-warning-pale text-warning">
             <AlertTriangle className="h-6 w-6" aria-hidden />
           </div>
           <h1 className="mt-4 text-xl font-semibold text-ink">
@@ -93,7 +93,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <summary className="cursor-pointer text-xs font-medium text-ink-soft hover:text-ink">
                 Developer detail (dev mode only)
               </summary>
-              <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-surface p-3 text-[11px] leading-snug text-ink-soft">
+              <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-surface p-3 text-xs leading-snug text-ink-soft">
                 {this.state.error.name}: {this.state.error.message}
                 {this.state.error.stack ? `\n${this.state.error.stack}` : ""}
               </pre>

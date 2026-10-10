@@ -22,7 +22,6 @@ import {
   type StoreReview,
 } from "@/lib/store/marketStore";
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
-import { nip19 } from "nostr-tools";
 
 /** Subscribe to the whole market state. */
 export function useMarketState(): MarketState {
@@ -33,15 +32,6 @@ export function useMarketState(): MarketState {
   );
 }
 
-function npubToHex(npub: string): string | undefined {
-  try {
-    const d = nip19.decode(npub);
-    return d.type === "npub" ? (d.data as string) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 /** All identifiers that could refer to the logged-in seller's orders. */
 function sellerIdentifiers(seller: {
   id: string;
@@ -49,8 +39,6 @@ function sellerIdentifiers(seller: {
 } | null): string[] {
   if (!seller) return [];
   const ids = [seller.id, seller.npub];
-  const hex = npubToHex(seller.npub);
-  if (hex) ids.push(hex);
   // The store seller may have its own id; resolve via npub too.
   const stored = marketStore.getSellerByNpub(seller.npub);
   if (stored) ids.push(stored.id, stored.pubkey);

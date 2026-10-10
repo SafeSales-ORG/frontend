@@ -52,12 +52,12 @@ const HELP_ITEMS: HelpItem[] = [
   {
     icon: Lock,
     q: "When does the seller get paid?",
-    a: "Funds move from “Locked” to “Available” the moment the buyer releases payment (or a dispute resolves in the seller's favour). Sellers cash out their available balance to their bank at any time.",
+    a: "As soon as the buyer releases payment — or 7 days after shipping if no problem is reported, or when a dispute is decided in the seller's favour — the money is paid straight to the seller's bank account.",
   },
   {
     icon: Truck,
     q: "How do I ship an order?",
-    a: "Open the order from your dashboard once it shows as Paid. Add a tracking number and carrier (optional but recommended) and mark it shipped. The buyer is notified instantly and by email, and can then release payment when it arrives.",
+    a: "Open the order from your dashboard once it shows as Paid. Add a tracking number and courier if you have them (optional) and mark it shipped. The buyer sees the update on their order page and releases payment when it arrives.",
   },
   {
     icon: Scale,
@@ -67,7 +67,7 @@ const HELP_ITEMS: HelpItem[] = [
   {
     icon: Undo2,
     q: "How do refunds work?",
-    a: "If a dispute resolves in the buyer's favour, the locked funds are refunded and the order is marked Refunded. The buyer is notified by email with the outcome.",
+    a: "If a dispute resolves in the buyer's favour, the locked funds are refunded and the order is marked Refunded. The outcome shows on the buyer's order page.",
   },
 ];
 
@@ -100,7 +100,7 @@ export function HelpDialog({
             return (
               <div
                 key={item.q}
-                className="overflow-hidden rounded-xl border border-border bg-white"
+                className="overflow-hidden rounded-xl border border-border bg-canvas"
               >
                 <button
                   type="button"
@@ -135,7 +135,7 @@ export function HelpDialog({
           <div className="flex-1">
             <p className="text-sm font-semibold text-ink">Still need help?</p>
             <p className="text-xs text-ink-soft">
-              Our team usually replies within minutes.
+              Send us a message and we'll get back to you.
             </p>
           </div>
           <div className="flex gap-2">

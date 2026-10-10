@@ -1,139 +1,55 @@
 import { cn } from "@/lib/utils";
 import type { EscrowStatus } from "@/lib/types";
-import {
-  CheckCircle2,
-  Clock,
-  ShieldCheck,
-  Truck,
-  PackageCheck,
-  AlertTriangle,
-  Undo2,
-} from "lucide-react";
 
-interface StyleSpec {
-  label: string;
-  dot: string;
-  bg: string;
-  text: string;
-  ring: string;
-  Icon: React.ComponentType<{ className?: string }>;
-}
+/**
+ * The one mapping from escrow status to label + colour (DESIGN.md →
+ * "Escrow status language"). Use it everywhere a status is shown.
+ */
+type Tone = "neutral" | "brand" | "info" | "warning" | "muted";
 
-const styles: Record<EscrowStatus, StyleSpec> = {
-  pending_payment: {
-    label: "Pending payment",
-    dot: "bg-amber-500",
-    bg: "bg-amber-50",
-    text: "text-amber-800",
-    ring: "ring-amber-200/70",
-    Icon: Clock,
-  },
-  paid: {
-    label: "Payment locked",
-    dot: "bg-brand",
-    bg: "bg-brand-soft",
-    text: "text-brand-soft-foreground",
-    ring: "ring-emerald-200/70",
-    Icon: ShieldCheck,
-  },
-  shipped: {
-    label: "Shipped",
-    dot: "bg-sky-500",
-    bg: "bg-sky-50",
-    text: "text-sky-800",
-    ring: "ring-sky-200/70",
-    Icon: Truck,
-  },
-  delivered: {
-    label: "Delivered",
-    dot: "bg-indigo-500",
-    bg: "bg-indigo-50",
-    text: "text-indigo-800",
-    ring: "ring-indigo-200/70",
-    Icon: PackageCheck,
-  },
-  completed: {
-    label: "Completed",
-    dot: "bg-emerald-600",
-    bg: "bg-emerald-50",
-    text: "text-emerald-800",
-    ring: "ring-emerald-200/70",
-    Icon: CheckCircle2,
-  },
-  released: {
-    label: "Released",
-    dot: "bg-emerald-600",
-    bg: "bg-emerald-50",
-    text: "text-emerald-800",
-    ring: "ring-emerald-200/70",
-    Icon: CheckCircle2,
-  },
-  disputed: {
-    label: "Dispute open",
-    dot: "bg-rose-500",
-    bg: "bg-rose-50",
-    text: "text-rose-800",
-    ring: "ring-rose-200/70",
-    Icon: AlertTriangle,
-  },
-  resolved: {
-    label: "Resolved",
-    dot: "bg-slate-500",
-    bg: "bg-slate-100",
-    text: "text-slate-700",
-    ring: "ring-slate-200/70",
-    Icon: CheckCircle2,
-  },
-  refunded: {
-    label: "Refunded",
-    dot: "bg-slate-500",
-    bg: "bg-slate-100",
-    text: "text-slate-700",
-    ring: "ring-slate-200/70",
-    Icon: Undo2,
-  },
-  expired: {
-    label: "Expired",
-    dot: "bg-slate-400",
-    bg: "bg-slate-100",
-    text: "text-slate-600",
-    ring: "ring-slate-200/70",
-    Icon: Clock,
-  },
+const STATUS: Record<EscrowStatus, { label: string; tone: Tone }> = {
+  pending_payment: { label: "Awaiting payment", tone: "neutral" },
+  paid: { label: "Held in escrow", tone: "brand" },
+  shipped: { label: "Shipped", tone: "info" },
+  delivered: { label: "Delivered", tone: "info" },
+  completed: { label: "Paid out", tone: "brand" },
+  released: { label: "Paid out", tone: "brand" },
+  disputed: { label: "In dispute", tone: "warning" },
+  resolved: { label: "Resolved", tone: "neutral" },
+  refunded: { label: "Refunded", tone: "neutral" },
+  expired: { label: "Expired", tone: "muted" },
+};
+
+const TONE: Record<Tone, { pill: string; dot: string }> = {
+  neutral: { pill: "bg-canvas-sunken text-body", dot: "bg-body" },
+  brand: { pill: "bg-brand-pale text-brand-ink", dot: "bg-brand" },
+  info: { pill: "bg-info-pale text-info", dot: "bg-info" },
+  warning: { pill: "bg-warning-pale text-warning", dot: "bg-warning" },
+  muted: { pill: "bg-canvas-sunken text-mute", dot: "bg-mute" },
 };
 
 interface PillProps {
   status: EscrowStatus;
   className?: string;
   size?: "sm" | "md";
+  /** Kept for call-site compatibility; badges always use a dot now. */
   withIcon?: boolean;
 }
 
-export function EscrowStatusPill({
-  status,
-  className,
-  size = "md",
-  withIcon = true,
-}: PillProps) {
-  const s = styles[status];
-  const { Icon } = s;
+export function EscrowStatusPill({ status, className, size = "md" }: PillProps) {
+  const { label, tone } = STATUS[status];
+  const t = TONE[tone];
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full font-medium ring-1 ring-inset",
-        s.bg,
-        s.text,
-        s.ring,
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
-        className
+        "inline-flex items-center gap-1.5 rounded-full font-medium whitespace-nowrap",
+        t.pill,
+        size === "sm" ? "px-2 py-0.5 text-xs" : "px-2.5 py-1 text-xs",
+        className,
       )}
     >
-      {withIcon ? (
-        <Icon className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} />
-      ) : (
-        <span className={cn("h-1.5 w-1.5 rounded-full", s.dot)} />
-      )}
-      {s.label}
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", t.dot)} aria-hidden />
+      {label}
     </span>
   );
 }

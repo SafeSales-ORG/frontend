@@ -186,3 +186,21 @@ export interface PayoutEntry {
   bankRef: string;
   at: string;
 }
+
+/** A listing as shown in the seller's own dashboard. */
+export interface MyListing {
+  id: string;
+  title: string;
+  summary?: string;
+  description: string;
+  priceNGN: number;
+  images: string[];
+  category?: string;
+  inStock: number;
+  delivery?: string;
+  /** Delivery fee in NGN (0 = free). */
+  deliveryFee?: number;
+  /** Unix seconds. */
+  publishedAt: number;
+  variants?: string[];
+}

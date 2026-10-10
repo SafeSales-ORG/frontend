@@ -6,31 +6,29 @@ export const NIGERIAN_STATES = [
   "Taraba", "Yobe", "Zamfara",
 ];
 
-/**
- * Nigerian banks with their NIBSS codes. `code` is what the backend forwards to
- * Nomba (`bankCode`); `name` is the display label.
- */
+/** Banks and fintechs sellers can be paid into. `code` is the NIBSS bank code. */
 export const NIGERIAN_BANKS: { code: string; name: string }[] = [
   { code: "044", name: "Access Bank" },
-  { code: "050", name: "Ecobank Nigeria" },
-  { code: "070", name: "Fidelity Bank Nigeria" },
+  { code: "023", name: "Citibank" },
+  { code: "050", name: "Ecobank" },
+  { code: "070", name: "Fidelity Bank" },
   { code: "011", name: "First Bank of Nigeria" },
-  { code: "214", name: "First City Monument Bank" },
-  { code: "058", name: "Guaranty Trust Bank" },
+  { code: "214", name: "First City Monument Bank (FCMB)" },
+  { code: "058", name: "Guaranty Trust Bank (GTBank)" },
   { code: "030", name: "Heritage Bank" },
+  { code: "301", name: "Jaiz Bank" },
   { code: "082", name: "Keystone Bank" },
-  { code: "999992", name: "Opay" },
-  { code: "50211", name: "Kuda Bank" },
-  { code: "999991", name: "Palmpay" },
-  { code: "50515", name: "Moniepoint" },
+  { code: "50211", name: "Kuda Microfinance Bank" },
+  { code: "50515", name: "Moniepoint MFB" },
+  { code: "999992", name: "OPay" },
+  { code: "999991", name: "PalmPay" },
   { code: "076", name: "Polaris Bank" },
   { code: "101", name: "Providus Bank" },
   { code: "221", name: "Stanbic IBTC Bank" },
-  { code: "068", name: "Standard Chartered Bank" },
+  { code: "068", name: "Standard Chartered" },
   { code: "232", name: "Sterling Bank" },
-  { code: "100", name: "SunTrust Bank Nigeria" },
-  { code: "032", name: "Union Bank of Nigeria" },
-  { code: "033", name: "United Bank for Africa" },
+  { code: "032", name: "Union Bank" },
+  { code: "033", name: "United Bank for Africa (UBA)" },
   { code: "215", name: "Unity Bank" },
   { code: "035", name: "Wema Bank" },
   { code: "057", name: "Zenith Bank" },

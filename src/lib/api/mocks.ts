@@ -31,6 +31,8 @@ import type {
   GetDisputesResponse,
   GetOrderResponse,
   GetSellerOrdersResponse,
+  GetShopResponse,
+  MarketplaceListing,
   GoogleAuthRequest,
   GoogleAuthResponse,
   LoginRequest,
@@ -50,8 +52,22 @@ import type {
   ShipOrderResponse,
   SimulatePaymentResponse,
   UpdatePayoutRequest,
+  GetMySellerResponse,
+  ApiSeller,
+  UpdateShopProfileRequest,
+  SellerPayout,
+  DisputeParty,
+  DisputeThreadMessage,
+  AdminOverview,
+  AdminOrderRow,
+  AdminSellerRow,
+  AdminRefund,
+  ApiOrderStatus,
+  GetDisputeThreadResponse,
+  PostDisputeMessageRequest,
 } from "./types";
 import { ApiError } from "./errors";
+import { waitingOn } from "@/lib/disputeThread";
 import {
   generateOrderToken,
   marketIsoIn,
@@ -60,6 +76,42 @@ import {
   type OrderEnvelope,
 } from "@/lib/store/marketStore";
 import { getSession } from "@/lib/auth/session";
+import { bankNameFromCode } from "@/lib/nigeria";
+
+/* Demo payout accounts — kept in this browser, last 4 digits only. */
+const DEMO_PAYOUTS_KEY = "safesale:demo:payouts";
+
+function readDemoPayouts(): Record<string, SellerPayout> {
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_PAYOUTS_KEY) ?? "{}") as Record<string, SellerPayout>;
+  } catch {
+    return {};
+  }
+}
+
+function saveDemoPayout(sellerId: string, bankCode: string, accountNumber: string): void {
+  const all = readDemoPayouts();
+  all[sellerId] = {
+    bankCode,
+    bankName: bankCode ? bankNameFromCode(bankCode) : null,
+    accountName: "Demo Account Holder",
+    accountNumberLast4: accountNumber.slice(-4),
+  };
+  try {
+    localStorage.setItem(DEMO_PAYOUTS_KEY, JSON.stringify(all));
+  } catch {
+    /* storage unavailable — demo only */
+  }
+}
+
+/** The seller record for the signed-in demo user, or a 401/404 ApiError. */
+function demoSessionSeller() {
+  const session = getSession();
+  if (!session) throw new ApiError("UNAUTHORIZED", "Not signed in.", 401);
+  const seller = session.user.nostrNpub ? marketStore.getSellerByNpub(session.user.nostrNpub) : undefined;
+  if (!seller) throw new ApiError("NOT_FOUND", "Seller profile not found.", 404);
+  return seller;
+}
 
 /* ------------------------------ mock auth ----------------------------- */
 
@@ -159,6 +211,80 @@ function sellerForListing(listing: ApiListing) {
 
 /* ------------------------------ public API ----------------------------- */
 
+/* ---------------------------- admin helpers ---------------------------- */
+
+const ADMIN_HELD = new Set<ApiOrderStatus>(["paid", "shipped", "delivered", "disputed"]);
+
+function adminOrderRow(e: ReturnType<typeof marketStore.allOrders>[number]): AdminOrderRow {
+  return {
+    ...e.order,
+    seller: { id: e.seller.id, name: e.seller.name, handle: e.seller.handle },
+    listingTitle: e.listing.title,
+    disputeId: e.dispute?.id ?? null,
+  };
+}
+
+/** Demo refunds: every decided dispute that sent money back to the buyer. */
+function adminRefundsFromStore(): AdminRefund[] {
+  return marketStore
+    .allOrders()
+    .filter((e) => (e.order.settlement?.buyerRefundNGN ?? 0) > 0)
+    .map((e) => {
+      const paid = marketStore.refundPaid(e.order.orderToken);
+      return {
+        id: "ref_" + e.order.orderToken.slice(0, 10),
+        status: paid ? "succeeded" : "manual",
+        amountNGN: e.order.settlement!.buyerRefundNGN,
+        reference: paid?.reference ?? null,
+        createdAt: e.order.refundedAt ?? e.order.updatedAt,
+        paidAt: paid?.at ?? null,
+        order: {
+          shortId: e.order.shortId,
+          orderToken: e.order.orderToken,
+          buyerName: e.order.buyerName,
+          buyerPhone: e.order.buyerPhone || null,
+          buyerEmail: e.order.buyerEmail ?? null,
+          sellerName: e.seller.name,
+          disputeId: e.dispute?.id ?? null,
+        },
+      };
+    });
+}
+
+/* --------------------------- dispute threads -------------------------- */
+
+function formatNaira(n: number): string {
+  return `₦${n.toLocaleString("en-NG")}`;
+}
+
+function caseMessage(
+  role: DisputeThreadMessage["authorRole"],
+  name: string,
+  content: string,
+  extra: Partial<DisputeThreadMessage> = {},
+): DisputeThreadMessage {
+  return {
+    id: "msg_" + Math.random().toString(36).slice(2, 10),
+    authorRole: role,
+    authorName: name,
+    content,
+    attachments: [],
+    requestFrom: null,
+    createdAt: marketNow(),
+    ...extra,
+  };
+}
+
+function findDispute(disputeId: string) {
+  const env = marketStore.allOrders().find((e) => e.dispute?.id === disputeId);
+  if (!env || !env.dispute) throw new ApiError("DISPUTE_NOT_FOUND", "Dispute not found.", 404);
+  return env as typeof env & { dispute: ApiDispute };
+}
+
+function authorName(role: DisputeParty, env: ReturnType<typeof findDispute>): string {
+  return role === "buyer" ? env.order.buyerName : role === "seller" ? env.seller.name : "SafeSale mediator";
+}
+
 export const mockApi = {
   /** DEMO mock for POST /api/auth/register. Any valid email/password works. */
   async register(req: RegisterRequest): Promise<AuthResponse> {
@@ -223,6 +349,7 @@ export const mockApi = {
       // demo (re-opening a shop on the same key just signs you back in).
       return { seller: existing };
     }
+    saveDemoPayout(`seller_${req.npub.slice(5, 21)}`, req.bankCode, req.bankAccountNumber);
     const seller = marketStore.upsertSeller({
       id: `seller_${req.npub.slice(5, 21)}`,
       npub: req.npub,
@@ -239,13 +366,37 @@ export const mockApi = {
     return { seller };
   },
 
-  async updatePayout(
-    _req: UpdatePayoutRequest,
-  ): Promise<void> {
-    // Demo: payout preference is reflected via the local seller record
-    // (`useCurrentSeller`), which the Earnings page updates directly. There's
-    // no separate persistence to do here, so this is a no-op.
-    return;
+  async updatePayout(req: UpdatePayoutRequest): Promise<void> {
+    const seller = demoSessionSeller();
+    const current = readDemoPayouts()[seller.id];
+    saveDemoPayout(
+      seller.id,
+      req.bankCode ?? current?.bankCode ?? "",
+      req.bankAccountNumber ?? `000000${current?.accountNumberLast4 ?? "0000"}`,
+    );
+  },
+
+  async updateShopProfile(req: UpdateShopProfileRequest): Promise<{ seller: ApiSeller }> {
+    const current = demoSessionSeller();
+    const seller = marketStore.upsertSeller({
+      ...current,
+      ...(req.name !== undefined && { name: req.name }),
+      ...(req.bio !== undefined && { bio: req.bio }),
+      ...(req.delivery !== undefined && { delivery: req.delivery }),
+      ...(req.avatar !== undefined && { avatarUrl: req.avatar }),
+    });
+    return { seller };
+  },
+
+  async getMySeller(): Promise<GetMySellerResponse> {
+    const seller = demoSessionSeller();
+    const payout = readDemoPayouts()[seller.id] ?? {
+      bankCode: "",
+      bankName: null,
+      accountName: null,
+      accountNumberLast4: "",
+    };
+    return { seller, payout };
   },
 
   async createListing(
@@ -297,6 +448,45 @@ export const mockApi = {
   async getListing(id: string): Promise<{ listing: ApiListing } | null> {
     const listing = marketStore.getListing(id);
     return listing ? { listing } : null;
+  },
+
+  /** Demo: no server — the compressed data URL is the image. */
+  async uploadImage(dataUrl: string): Promise<string> {
+    return dataUrl;
+  },
+
+  async getMarketplace(): Promise<{ listings: MarketplaceListing[] }> {
+    const listings = marketStore
+      .listAllListings()
+      .filter((l) => l.active !== false && l.inStock > 0)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 60)
+      .flatMap((l) => {
+        const seller = marketStore.getSellerById(l.sellerId);
+        return seller ? [{ ...l, seller }] : [];
+      });
+    return { listings };
+  },
+
+  async getMyListings(): Promise<{ listings: ApiListing[] }> {
+    const session = getSession();
+    if (!session) throw new ApiError("UNAUTHORIZED", "Not signed in.", 401);
+    const seller = session.user.nostrNpub ? marketStore.getSellerByNpub(session.user.nostrNpub) : undefined;
+    if (!seller) return { listings: [] };
+    const listings = marketStore
+      .listingsForSeller(seller.id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { listings };
+  },
+
+  async getShop(handle: string): Promise<GetShopResponse | null> {
+    const wanted = handle.toLowerCase();
+    const seller = Object.values(marketStore.getSnapshot().sellersByNpub).find(
+      (s) => s.handle.toLowerCase() === wanted,
+    );
+    if (!seller) return null;
+    const listings = marketStore.listingsForSeller(seller.id).filter((l) => l.active !== false);
+    return { seller, listings };
   },
 
   async getSellerOrders(npub: string): Promise<GetSellerOrdersResponse> {
@@ -357,8 +547,6 @@ export const mockApi = {
       orderToken: token,
       listingId: listing.id,
       sellerId: listing.sellerId,
-      buyerNpub: req.buyerNpub,
-      buyerPubkey: `buyer-pk-${token.slice(0, 8)}`,
       buyerName: req.buyerName,
       buyerPhone: req.buyerPhone,
       buyerEmail: req.buyerEmail ?? null,
@@ -372,7 +560,7 @@ export const mockApi = {
       deliveryFee: listing.deliveryFee ?? 0,
       amountNGN: totalNGN,
       status: "pending_payment",
-      nombaPaymentRef: null,
+      paymentRef: null,
       trackingNumber: null,
       carrier: null,
       shippedAt: null,
@@ -465,6 +653,147 @@ export const mockApi = {
     };
   },
 
+  /* ---------------------------- admin console --------------------------- */
+
+  async getAdminOverview(): Promise<AdminOverview> {
+    const all = marketStore.allOrders();
+    const weekAgo = Date.now() - 7 * 86_400_000;
+    const byStatus: AdminOverview["ordersByStatus"] = {};
+    for (const e of all) byStatus[e.order.status] = (byStatus[e.order.status] ?? 0) + 1;
+    const held = all.filter((e) => ADMIN_HELD.has(e.order.status)).reduce((n, e) => n + e.order.amountNGN, 0);
+    const paidOutWeek = all
+      .filter((e) => e.order.status === "completed" && new Date(e.order.releasedAt ?? e.order.updatedAt).getTime() >= weekAgo)
+      .reduce((n, e) => n + (e.order.settlement?.sellerReleaseNGN ?? e.order.amountNGN), 0);
+    const sellerIds = new Set(all.map((e) => e.seller.id));
+    const shops = Object.values(marketStore.getSnapshot().sellersById).filter((s) => sellerIds.has(s.id) || !s.id.startsWith("sel_"));
+    const refunds = adminRefundsFromStore().filter((r) => r.status !== "succeeded");
+    return {
+      heldNGN: held,
+      paidOutWeekNGN: paidOutWeek,
+      ordersByStatus: byStatus,
+      totalOrders: all.length,
+      sellers: shops.length,
+      newSellersWeek: shops.filter((s) => new Date(s.createdAt).getTime() >= weekAgo).length,
+      activeListings: marketStore.listAllListings().filter((l) => l.active !== false && l.inStock > 0).length,
+      openDisputes: marketStore.disputes().length,
+      refundsToPay: { count: refunds.length, amountNGN: refunds.reduce((n, r) => n + r.amountNGN, 0) },
+      failedPayouts: 0,
+      recentOrders: all.slice(0, 8).map(adminOrderRow),
+    };
+  },
+
+  async getAdminOrders(params?: { status?: ApiOrderStatus; q?: string }): Promise<{ orders: AdminOrderRow[] }> {
+    const q = params?.q?.trim().toLowerCase();
+    const orders = marketStore
+      .allOrders()
+      .filter((e) => !params?.status || e.order.status === params.status)
+      .filter(
+        (e) =>
+          !q ||
+          [e.order.shortId, e.order.buyerName, e.seller.name, e.seller.handle, e.listing.title].some((v) =>
+            v.toLowerCase().includes(q),
+          ),
+      )
+      .map(adminOrderRow);
+    return { orders };
+  },
+
+  async getAdminSellers(): Promise<{ sellers: AdminSellerRow[] }> {
+    const all = marketStore.allOrders();
+    const sellers = Object.values(marketStore.getSnapshot().sellersById).map((s) => {
+      const mine = all.filter((e) => e.seller.id === s.id);
+      return {
+        id: s.id,
+        name: s.name,
+        handle: s.handle,
+        email: null,
+        verified: !!s.verified,
+        bankName: null,
+        accountNumberLast4: "",
+        listings: marketStore.listingsForSeller(s.id).length,
+        orders: mine.length,
+        heldNGN: mine.filter((e) => ADMIN_HELD.has(e.order.status)).reduce((n, e) => n + e.order.amountNGN, 0),
+        paidOutNGN: mine
+          .filter((e) => e.order.status === "completed")
+          .reduce((n, e) => n + (e.order.settlement?.sellerReleaseNGN ?? e.order.amountNGN), 0),
+        disputes: mine.filter((e) => e.order.status === "disputed").length,
+        createdAt: s.createdAt,
+      };
+    });
+    sellers.sort((a, b) => b.orders - a.orders || b.createdAt.localeCompare(a.createdAt));
+    return { sellers };
+  },
+
+  async getAdminRefunds(): Promise<{ refunds: AdminRefund[] }> {
+    return { refunds: adminRefundsFromStore() };
+  },
+
+  async markRefundPaid(id: string, reference: string): Promise<{ ok: true }> {
+    const refund = adminRefundsFromStore().find((r) => r.id === id);
+    if (!refund) throw new ApiError("NOT_FOUND", "Refund not found.", 404);
+    if (refund.status === "succeeded") throw new ApiError("CONFLICT", "This refund was already recorded as paid.", 409);
+    marketStore.markRefundPaid(refund.order.orderToken, reference);
+    if (refund.order.disputeId) {
+      marketStore.addCaseMessages(refund.order.disputeId, [
+        caseMessage("system", "SafeSale", `SafeSale sent the buyer's refund of ${formatNaira(refund.amountNGN)}.`),
+      ]);
+    }
+    return { ok: true };
+  },
+
+  /**
+   * Demo: there are no credentials to tell people apart, so the page says who
+   * is looking (`as`). The real backend decides from the session / buyer link.
+   */
+  async getDisputeThread(
+    disputeId: string,
+    opts?: { buyerToken?: string; as?: DisputeParty },
+  ): Promise<GetDisputeThreadResponse> {
+    const env = findDispute(disputeId);
+    const messages = marketStore.caseThread(disputeId);
+    return {
+      viewer: opts?.buyerToken ? "buyer" : (opts?.as ?? "seller"),
+      dispute: env.dispute,
+      waitingOn: waitingOn(env.dispute.status === "resolved", messages),
+      messages,
+    };
+  },
+
+  async postDisputeMessage(
+    disputeId: string,
+    req: PostDisputeMessageRequest,
+    opts?: { buyerToken?: string; as?: DisputeParty },
+  ): Promise<{ message: DisputeThreadMessage }> {
+    const env = findDispute(disputeId);
+    if (env.dispute.status === "resolved") throw new ApiError("DISPUTE_ALREADY_RESOLVED", "This case is closed.", 409);
+    const role: DisputeParty = opts?.buyerToken ? "buyer" : (opts?.as ?? "seller");
+    const requestFrom = role === "mediator" ? (req.requestFrom ?? null) : null;
+    const message = caseMessage(role, authorName(role, env), req.content.trim(), {
+      attachments: req.attachments ?? [],
+      requestFrom,
+    });
+    marketStore.addCaseMessages(disputeId, [message]);
+
+    const next = waitingOn(false, marketStore.caseThread(disputeId));
+    let dispute: ApiDispute = env.dispute;
+    if (requestFrom) {
+      dispute = { ...dispute, status: "evidence_requested", evidenceDueAt: marketIsoIn(48 * 60 * 60 * 1000) };
+    } else if (role === "mediator" && dispute.status !== "evidence_requested") {
+      dispute = { ...dispute, status: "mediating" };
+    } else if (dispute.status === "evidence_requested" && next.length === 1 && next[0] === "mediator") {
+      dispute = { ...dispute, status: "mediating", evidenceDueAt: null };
+    }
+    if (role !== "mediator" && message.attachments.length) {
+      const at = message.createdAt;
+      dispute = {
+        ...dispute,
+        evidence: [...(dispute.evidence ?? []), ...message.attachments.map((url) => ({ url, by: role, at }))],
+      };
+    }
+    if (dispute !== env.dispute) marketStore.patchEnvelope(env.order.orderToken, { dispute });
+    return { message };
+  },
+
   async openDispute(
     token: string,
     req: OpenDisputeRequest,
@@ -507,6 +836,17 @@ export const mockApi = {
       order: { ...env.order, status: "disputed", updatedAt: marketNow() },
       dispute,
     })!;
+    const opener: DisputeParty = req.openedBy;
+    marketStore.addCaseMessages(dispute.id, [
+      caseMessage(
+        "system",
+        "SafeSale",
+        `The ${opener} reported a problem. ${formatNaira(env.order.amountNGN)} stays held by SafeSale until a mediator decides. Everyone in this case can see these messages.`,
+      ),
+      caseMessage(opener, opener === "buyer" ? env.order.buyerName : env.seller.name, req.summary ? `${req.reason}\n\n${req.summary}` : req.reason, {
+        attachments: req.evidence ?? [],
+      }),
+    ]);
     return { order: updated.order, dispute };
   },
 
@@ -528,7 +868,7 @@ export const mockApi = {
       status: "shipped",
       shippedAt,
       // Auto-release 3 days after shipment if the buyer takes no action.
-      autoReleaseAt: marketIsoIn(3 * 24 * 60 * 60 * 1000),
+      autoReleaseAt: marketIsoIn(7 * 24 * 60 * 60 * 1000),
       trackingNumber: req.trackingNumber ?? null,
       carrier: req.carrier ?? null,
     })!;
@@ -589,16 +929,28 @@ export const mockApi = {
       order: { ...env.order, updatedAt: at },
       dispute: updatedDispute,
     })!;
+    marketStore.addCaseMessages(disputeId, [
+      caseMessage("seller", env.seller.name, req.message, { attachments: req.evidence ?? [] }),
+    ]);
     return { order: updated.order, dispute: updatedDispute };
   },
 
   async getDisputes(): Promise<GetDisputesResponse> {
-    const rows: AdminDisputeRow[] = marketStore.disputes().map((env) => ({
-      order: env.order,
-      listing: env.listing,
-      seller: env.seller,
-      dispute: env.dispute!,
-    }));
+    const rows: AdminDisputeRow[] = marketStore.disputes().map((env) => {
+      const msgs = marketStore.caseThread(env.dispute!.id);
+      return {
+        order: env.order,
+        listing: env.listing,
+        seller: env.seller,
+        dispute: env.dispute!,
+        thread: {
+          count: msgs.filter((m) => m.authorRole !== "system").length,
+          lastAt: msgs.at(-1)?.createdAt ?? null,
+          lastFrom: msgs.at(-1)?.authorRole ?? null,
+          waitingOn: waitingOn(false, msgs),
+        },
+      };
+    });
     return { disputes: rows };
   },
 
@@ -653,10 +1005,20 @@ export const mockApi = {
         releasedAt:
           req.outcome === "refund_buyer" ? env.order.releasedAt : resolvedAt,
         updatedAt: resolvedAt,
+        settlement: { outcome: req.outcome, buyerRefundNGN, sellerReleaseNGN },
       },
       dispute: updatedDispute,
     })!;
 
+    const parts = [
+      buyerRefundNGN > 0 && `${formatNaira(buyerRefundNGN)} back to the buyer`,
+      sellerReleaseNGN > 0 && `${formatNaira(sellerReleaseNGN)} to the seller`,
+    ].filter(Boolean);
+    const decided = { refund_buyer: "refund the buyer in full", release_seller: "pay the seller in full", split: "split the money" }[req.outcome];
+    marketStore.addCaseMessages(disputeId, [
+      caseMessage("mediator", "SafeSale mediator", req.rationale),
+      caseMessage("system", "SafeSale", `Case closed. The mediator decided to ${decided}: ${parts.join(" and ")}.`),
+    ]);
     return { order: updated.order, dispute: updatedDispute };
   },
 };

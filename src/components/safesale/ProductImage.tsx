@@ -84,7 +84,7 @@ export function ProductImage({ image, className, rounded = "rounded-xl", label =
         <rect width="200" height="200" fill="white" opacity="0.04" />
       </svg>
       {label && (
-        <span className="absolute bottom-2 left-2 rounded-md bg-white/70 px-2 py-0.5 text-[10px] font-medium text-ink-soft backdrop-blur-sm">
+        <span className="absolute bottom-2 left-2 rounded-md bg-canvas/70 px-2 py-0.5 text-xs font-medium text-ink-soft backdrop-blur-sm">
           {image.label}
         </span>
       )}

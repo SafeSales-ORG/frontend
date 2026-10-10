@@ -59,6 +59,8 @@ export interface ApiSeller {
   location: string;
   category: string;
   bio?: string | null;
+  /** Free-text delivery info shown on the shop. */
+  delivery?: string | null;
   verified: boolean;
   /** Shop avatar / profile image URL (https). */
   avatarUrl?: string | null;
@@ -93,6 +95,8 @@ export interface ApiListing {
 export interface ApiOrder {
   id: string;
   shortId: string;
+  /** Present once a dispute on this order has been decided. */
+  settlement?: OrderSettlement | null;
   /**
    * URL-safe secret. This is the buyer's only credential — possession
    * of the token IS the auth. Present in the URL at /order/:token.
@@ -101,11 +105,6 @@ export interface ApiOrder {
 
   listingId: string;
   sellerId: string;
-
-  /** Bech32 of the buyer's one-time Nostr key (order identity / DM target). */
-  buyerNpub: string;
-  /** Hex form of the same key. */
-  buyerPubkey: string;
 
   buyerName: string;
   buyerPhone: string;
@@ -126,7 +125,8 @@ export interface ApiOrder {
   status: ApiOrderStatus;
 
   /** Nomba transaction reference, set once the pay-in webhook confirms. */
-  nombaPaymentRef?: string | null;
+  /** Payment provider reference for the buyer's pay-in. */
+  paymentRef?: string | null;
 
   trackingNumber?: string | null;
   carrier?: string | null;
@@ -221,8 +221,6 @@ export interface MockListingHint {
 export interface CreateOrderRequest {
   /** cuid from `GET /api/listings/:id`. */
   listingId: string;
-  /** Bech32 of the buyer's one-time Nostr key (generated in browser). */
-  buyerNpub: string;
   buyerName: string;
   buyerPhone: string;
   buyerEmail?: string;
@@ -349,6 +347,112 @@ export interface AdminDisputeRow {
   listing: ApiListing;
   seller: ApiSeller;
   dispute: ApiDispute;
+  thread?: DisputeThreadSummary;
+}
+
+/* ----------------------------- case thread ----------------------------- */
+
+export type DisputeParty = "buyer" | "seller" | "mediator";
+export type DisputeRequestTarget = "buyer" | "seller" | "both";
+
+/** One message in a dispute's case thread (seen by buyer, seller and mediator). */
+export interface DisputeThreadMessage {
+  id: string;
+  authorRole: DisputeParty | "system";
+  authorName: string;
+  content: string;
+  attachments: string[];
+  /** Set when the mediator asked someone for information. */
+  requestFrom: DisputeRequestTarget | null;
+  createdAt: string;
+}
+
+export interface GetDisputeThreadResponse {
+  viewer: DisputeParty;
+  dispute: ApiDispute;
+  /** Whose move it is. Empty once the case is closed. */
+  waitingOn: DisputeParty[];
+  messages: DisputeThreadMessage[];
+}
+
+export interface PostDisputeMessageRequest {
+  content: string;
+  attachments?: string[];
+  /** Mediator only. */
+  requestFrom?: DisputeRequestTarget;
+}
+
+export interface DisputeThreadSummary {
+  count: number;
+  lastAt: string | null;
+  lastFrom: DisputeParty | "system" | null;
+  waitingOn: DisputeParty[];
+}
+
+/* ------------------------------ admin console ------------------------------ */
+
+/** An order as the SafeSale admin sees it (any seller). */
+export interface AdminOrderRow extends ApiOrder {
+  seller: { id: string; name: string; handle: string };
+  listingTitle: string;
+  disputeId: string | null;
+}
+
+export interface AdminOverview {
+  heldNGN: number;
+  paidOutWeekNGN: number;
+  ordersByStatus: Partial<Record<ApiOrderStatus, number>>;
+  totalOrders: number;
+  sellers: number;
+  newSellersWeek: number;
+  activeListings: number;
+  openDisputes: number;
+  refundsToPay: { count: number; amountNGN: number };
+  failedPayouts: number;
+  recentOrders: AdminOrderRow[];
+}
+
+export interface AdminSellerRow {
+  id: string;
+  name: string;
+  handle: string;
+  email: string | null;
+  verified: boolean;
+  bankName: string | null;
+  accountNumberLast4: string;
+  listings: number;
+  orders: number;
+  heldNGN: number;
+  /** What the shop actually received (a mediator's split only pays its share). */
+  paidOutNGN: number;
+  disputes: number;
+  createdAt: string;
+}
+
+/** A refund owed to a buyer after a dispute (paid by hand, then recorded). */
+export interface AdminRefund {
+  id: string;
+  status: "manual" | "failed" | "succeeded";
+  amountNGN: number;
+  reference: string | null;
+  createdAt: string;
+  paidAt: string | null;
+  order: {
+    shortId: string;
+    orderToken: string;
+    buyerName: string;
+    buyerPhone: string | null;
+    buyerEmail: string | null;
+    sellerName: string;
+    disputeId: string | null;
+  };
+}
+
+/** How a disputed order's money was divided by the mediator. */
+export interface OrderSettlement {
+  outcome: "refund_buyer" | "release_seller" | "split" | null;
+  buyerRefundNGN: number;
+  sellerReleaseNGN: number;
 }
 
 export interface GetDisputesResponse {
@@ -434,8 +538,31 @@ export interface CreateSellerResponse {
 export interface UpdatePayoutRequest {
   /** NIBSS bank code (e.g. "058"). Matches the backend `PUT /api/sellers`. */
   bankCode?: string;
-  /** 9–10 digit account number. */
+  /** 10-digit NUBAN account number. */
   bankAccountNumber?: string;
+}
+
+/** `PUT /api/sellers` — the public parts of a shop the seller can edit. */
+export interface UpdateShopProfileRequest {
+  name?: string;
+  bio?: string;
+  delivery?: string;
+  /** https or compressed data:image URL. */
+  avatar?: string;
+}
+
+/** Where a seller's payouts go. Only the last 4 digits ever reach the browser. */
+export interface SellerPayout {
+  bankCode: string;
+  bankName: string | null;
+  accountName: string | null;
+  accountNumberLast4: string;
+}
+
+/** `GET /api/sellers/me` */
+export interface GetMySellerResponse {
+  seller: ApiSeller;
+  payout: SellerPayout;
 }
 
 /* -------------------------- listing endpoints ------------------------- */
@@ -526,7 +653,19 @@ export interface LoginRequest {
  * account's stable id + verified email (obtained by the frontend from the
  * Google Identity SDK) and returns a JWT session.
  */
+/** A marketplace card: a listing plus its shop's public profile. */
+export type MarketplaceListing = ApiListing & { seller: ApiSeller };
+
+/** `GET /api/sellers/:handle` + `GET /api/listings?seller=` — a public shop. */
+export interface GetShopResponse {
+  seller: ApiSeller;
+  listings: ApiListing[];
+}
+
 export interface GoogleAuthRequest {
+  /** Google OAuth access token — the backend verifies it with Google. */
+  accessToken: string;
+  /** Used only by the demo-mode mock to key a stable session. */
   email: string;
   googleId: string;
 }
@@ -550,6 +689,8 @@ export interface MeResponse {
     email: string;
     authProvider: string;
     emailVerified: boolean;
+    /** "USER" for sellers/buyers, "MEDIATOR" for the SafeSale mediator. */
+    role?: "USER" | "MEDIATOR" | "ADMIN";
     nostrNpub: string | null;
     createdAt: string;
     seller: MeSeller | null;

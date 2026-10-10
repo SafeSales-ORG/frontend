@@ -1,25 +1,11 @@
 /**
- * `useCurrentSeller` — the logged-in seller's SafeSale profile.
- *
- * Stored separately from the Nostr session (`useCurrentUser`) because
- * it carries SafeSale-specific data the backend gave us at signup:
- *
- *   - `id` — the Prisma cuid the backend uses as `sellerId`
- *   - `npub` — the seller's bech32 public key (also stored by Nostrify)
- *   - `handle` — the URL-safe SafeSale handle
- *   - `name` — display name
+ * `useCurrentSeller` — the logged-in seller's SafeSale profile, as returned
+ * by the backend at signup (`id`, `npub` — the backend's public seller id —
+ * `handle`, `name`).
  *
  * Persisted to `localStorage` under `safesale:seller` so the dashboard
- * works across reloads without an extra `GET /api/sellers/:handle`
- * round-trip. Cleared on logout (see `clearSeller`).
- *
- * Why this and not `useAuthor()`? `useAuthor` queries Nostr for kind 0
- * profile metadata. SafeSale's seller record is on a Postgres DB,
- * keyed by npub; the two will rhyme but the SafeSale handle isn't a
- * Nostr concept and shouldn't be tied to relay availability.
- *
- * Set by `Onboarding.tsx` after a successful `apiClient.createSeller`.
- * Reset to `null` when the user logs out.
+ * works across reloads. Set by `Onboarding.tsx` after
+ * `apiClient.createSeller`; cleared on logout.
  */
 
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -27,7 +13,7 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 export interface CurrentSeller {
   /** Backend-assigned cuid; matches `Order.sellerId`. */
   id: string;
-  /** Bech32 npub — `useCurrentUser().pubkey`'s npub form. */
+  /** Backend public seller id (used in seller-scoped API routes). */
   npub: string;
   /** SafeSale handle (lowercased, no `@`). */
   handle: string;

@@ -1,22 +1,15 @@
-// NOTE: This file should normally not be modified unless you are adding a new provider.
-// To add new routes, edit the AppRouter.tsx file.
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createHead, UnheadProvider } from '@unhead/react/client';
 import { InferSeoMetaPlugin } from 'unhead/plugins';
-import { Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import NostrProvider from '@/components/NostrProvider';
-import { NostrSync } from '@/components/NostrSync';
+import { MotionConfig } from 'motion/react';
 import { MarketSync } from '@/components/MarketSync';
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { NostrLoginProvider } from '@nostrify/react/login';
-import { AppProvider } from '@/components/AppProvider';
-import { AppConfig } from '@/contexts/AppContext';
-import { APP_RELAYS } from '@/lib/appRelays';
 import { ErrorBoundary } from '@/components/safesale/ErrorBoundary';
 import AppRouter from './AppRouter';
+import { GOOGLE_CLIENT_ID, GOOGLE_SIGN_IN_ENABLED } from '@/lib/config';
 
 const head = createHead({
   plugins: [
@@ -34,51 +27,32 @@ const queryClient = new QueryClient({
   },
 });
 
-const defaultConfig: AppConfig = {
-  theme: "light",
-  relayMetadata: APP_RELAYS,
-  blossomServerMetadata: {
-    servers: [
-      'https://blossom.ditto.pub/',
-      'https://blossom.dreamith.to/',
-      'https://blossom.primal.net/',
-    ],
-    updatedAt: 0,
-  },
-  useAppBlossomServers: true,
-};
-
-/**
- * Google OAuth Client ID — set VITE_GOOGLE_CLIENT_ID in your .env.
- * The GoogleOAuthProvider still mounts (silently no-ops) when the var
- * is absent so the app doesn't crash in demo / mock mode.
- */
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
+/** Google's provider only mounts when sign-in is configured (see lib/config). */
+function GoogleProvider({ children }: { children: ReactNode }) {
+  if (!GOOGLE_SIGN_IN_ENABLED) return <>{children}</>;
+  return <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>{children}</GoogleOAuthProvider>;
+}
 
 export function App() {
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <UnheadProvider head={head}>
-        <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig}>
+    <GoogleProvider>
+      {/* Animations are skipped for people who ask their OS to reduce motion. */}
+      <MotionConfig reducedMotion="user">
+        <UnheadProvider head={head}>
           <QueryClientProvider client={queryClient}>
-            <NostrLoginProvider storageKey='nostr:login'>
-              <NostrProvider>
-                <NostrSync />
-                <MarketSync />
-                <TooltipProvider>
-                  <Toaster />
-                  <ErrorBoundary>
-                    <Suspense>
-                      <AppRouter />
-                    </Suspense>
-                  </ErrorBoundary>
-                </TooltipProvider>
-              </NostrProvider>
-            </NostrLoginProvider>
+            <MarketSync />
+            <TooltipProvider>
+              <Toaster />
+              <ErrorBoundary>
+                <Suspense>
+                  <AppRouter />
+                </Suspense>
+              </ErrorBoundary>
+            </TooltipProvider>
           </QueryClientProvider>
-        </AppProvider>
-      </UnheadProvider>
-    </GoogleOAuthProvider>
+        </UnheadProvider>
+      </MotionConfig>
+    </GoogleProvider>
   );
 }
 

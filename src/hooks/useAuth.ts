@@ -41,8 +41,8 @@ export function useAuth() {
   );
 
   const loginWithGoogle = useCallback(
-    async (email: string, googleId: string): Promise<AuthSession> => {
-      const s = await apiClient.googleAuth({ email, googleId });
+    async (accessToken: string, email: string, googleId: string): Promise<AuthSession> => {
+      const s = await apiClient.googleAuth({ accessToken, email, googleId });
       setSession(s);
       return s;
     },

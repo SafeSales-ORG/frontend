@@ -35,7 +35,7 @@ export function SellerGate({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="grid min-h-screen place-items-center bg-surface px-6 py-12">
-      <div className="max-w-md rounded-2xl border border-border bg-white p-10 text-center shadow-sm">
+      <div className="max-w-md rounded-2xl border border-border bg-canvas p-10 text-center shadow-sm">
         <Logo />
         <div className="mx-auto mt-8 flex h-12 w-12 items-center justify-center rounded-full bg-surface text-ink-soft">
           {isAuthed ? <Store className="h-6 w-6" /> : <Lock className="h-6 w-6" />}

@@ -1,6 +1,8 @@
 import { useSeoMeta } from "@unhead/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Logo } from "@/components/safesale/Logo";
 import { Button } from "@/components/ui/button";
@@ -9,21 +11,16 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar } from "@/components/safesale/Avatar";
 import { EscrowShield } from "@/components/safesale/EscrowShield";
-import { Countdown } from "@/components/safesale/Countdown";
 import { useListing } from "@/hooks/useListing";
-import { useAuthor } from "@/hooks/useAuthor";
 import { getSeller as getFixtureSeller } from "@/lib/mock";
 import {
   apiClient,
   ApiError,
-  DEMO_MODE,
   type ApiOrder,
   type GetOrderResponse,
 } from "@/lib/api";
 import { formatNGN } from "@/lib/format";
-import { genUserName } from "@/lib/genUserName";
 import { useToast } from "@/hooks/useToast";
-import { generateBuyerKey, persistBuyerKey } from "@/lib/buyerKey";
 import {
   ShieldCheck,
   ChevronLeft,
@@ -32,12 +29,11 @@ import {
   CheckCircle2,
   ArrowRight,
   Lock,
-  ImageDown,
   Link2 as LinkIcon,
   MapPin,
-  Phone,
   Bookmark,
   Truck,
+  Landmark,
 } from "lucide-react";
 import {
   Select,
@@ -48,6 +44,7 @@ import {
 } from "@/components/ui/select";
 import { NIGERIAN_STATES } from "@/lib/nigeria";
 import { cn, sanitizeUrl } from "@/lib/utils";
+import { celebrate } from "@/lib/celebrate";
 
 type Step = "details" | "instructions" | "waiting" | "detected" | "secured";
 
@@ -55,18 +52,15 @@ export default function Checkout() {
   const { id = "" } = useParams<{ id: string }>();
   const { data: listing, isLoading: listingLoading } = useListing(id);
   const sellerPubkey = listing?.sellerPubkey;
-  const author = useAuthor(sellerPubkey);
   const fixtureSeller = sellerPubkey ? getFixtureSeller(sellerPubkey) : undefined;
-  const sellerName =
-    author.data?.metadata?.name ??
-    fixtureSeller?.name ??
-    (sellerPubkey ? genUserName(sellerPubkey) : "Seller");
+  const sellerName = listing?.sellerName ?? fixtureSeller?.name ?? "Seller";
   const sellerAvatarSeed = fixtureSeller?.avatarSeed ?? sellerPubkey ?? "seller";
   const sellerRating = fixtureSeller?.rating;
   const sellerReviews = fixtureSeller?.reviews;
   const sellerVerified = fixtureSeller?.verified ?? false;
 
   const navigate = useNavigate();
+  const goBack = useGoBack(`/buy/${id}`);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -78,7 +72,6 @@ export default function Checkout() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [contactMethod, setContactMethod] = useState<"email" | "phone">("email");
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
 
@@ -99,7 +92,6 @@ export default function Checkout() {
     accountNumber: string;
     bankName: string;
     accountName: string;
-    expiresAt: string;
     payInError: string | null;
   } | null>(null);
   const [creating, setCreating] = useState(false);
@@ -165,6 +157,7 @@ export default function Checkout() {
       }
       detectedTimerRef.current = window.setTimeout(() => {
         setStep("secured");
+        celebrate();
         detectedTimerRef.current = null;
       }, 1500);
     }
@@ -179,10 +172,8 @@ export default function Checkout() {
     };
   }, []);
 
-  const contactValid =
-    contactMethod === "email"
-      ? /.+@.+\..+/.test(email)
-      : phone.trim().length >= 10; // WhatsApp number usually 10-11 digits
+  // Email receives the order link; the phone number is for the seller's delivery.
+  const contactValid = /.+@.+\..+/.test(email) && phone.replace(/\D/g, "").length >= 10;
 
   const valid =
     name.trim().length > 1 &&
@@ -190,21 +181,8 @@ export default function Checkout() {
     address.trim().length > 4 &&
     city.trim().length > 1;
 
-  // Placeholder pay-in details used briefly before createOrder returns
-  // a real account. Computed via useState initializer (the one place a
-  // hook is allowed to call Date.now()), and stable for the lifetime
-  // of the page so the Countdown doesn't reset across re-renders.
-  const [placeholderPayTo] = useState<{
-    accountNumber: string;
-    bankName: string;
-    accountName: string;
-    expiresAt: string;
-  }>(() => ({
-    accountNumber: "—",
-    bankName: "—",
-    accountName: "SafeSale Escrow",
-    expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(),
-  }));
+  // Shown briefly before createOrder returns the real pay-in account.
+  const placeholderPayTo = { accountNumber: "—", bankName: "—", accountName: "SafeSale Escrow" };
 
   // ------------------------------------------------------------------
   //  Loading + not-found gates
@@ -234,22 +212,9 @@ export default function Checkout() {
   //  Order creation — fires when the user taps "Continue to payment"
   //  on the instructions screen.
   //
-  //  1. Generate a one-time Nostr keypair in the browser for the buyer.
-  //     The nsec is persisted to `localStorage` under
-  //     `safesale:buyer:<orderToken>`; the npub identifies the buyer's
-  //     order for backend notifications.
-  //  2. Send the corresponding npub to the backend along with the
-  //     buyer's name / phone / city / address (the real backend
-  //     requires these fields — see `routes/orders.ts::CreateOrderSchema`).
-  //  3. Store the `CreateOrderResponse` (orderToken + Nomba pay-in
-  //     bank details) so the Instructions step can render them.
-  //
-  //  KEY ORDER MATTERS: we generate-and-persist the keypair BEFORE
-  //  awaiting createOrder so that if the user refreshes mid-call (or
-  //  the network drops) we don't end up with a token on the backend
-  //  pointing at an npub whose nsec was never written to disk.
-  //  Worst case: an orphan key under a token that doesn't exist. Best
-  //  case: success. Either way the release flow is never blocked.
+  //  Sends the buyer's name / phone / city / address to the backend
+  //  (see backend `routes/orders.ts::CreateOrderSchema`) and stores the
+  //  returned orderToken + pay-in bank details for the Instructions step.
   // ------------------------------------------------------------------
 
   const handleIssueAccount = async () => {
@@ -257,25 +222,17 @@ export default function Checkout() {
     setCreating(true);
     setCreateError(null);
     try {
-      // Step 1: pre-generate a tentative token-less key? No — we don't
-      // have the token yet. The backend generates it. So we generate
-      // the key first, then create the order with the resulting npub,
-      // then persist the nsec under the returned token in a single
-      // tick once we have it.
-      const tentativeKey = generateBuyerKey("__pending__");
       const res = await apiClient.createOrder({
         listingId: listing.id,
-        buyerNpub: tentativeKey.npub,
         buyerName: name.trim(),
         buyerPhone: phone.trim(),
         buyerEmail: email.trim() || undefined,
         buyerCity: city.trim(),
         buyerAddress: address.trim() || undefined,
-        contactMethod,
+        contactMethod: "email",
         variant: listing.tags?.[0],
         // Bridge: hand the mock client the listing data so it can
         // accept orders for listings it didn't ship with as fixtures
-        // (e.g. anything the seller just published to Nostr).
         // The real backend silently ignores this — its DB already
         // has the listing from the seller's POST /api/listings.
         _listingHint: {
@@ -299,27 +256,12 @@ export default function Checkout() {
         },
       });
 
-      // Re-persist the keypair under the real orderToken, then drop
-      // the tentative entry. This atomic-feeling swap guarantees that
-      // `getBuyerKey(orderToken)` works the moment the buyer arrives
-      // at /order/:token.
-      persistBuyerKey(res.orderToken, {
-        nsec: tentativeKey.nsec,
-        npub: tentativeKey.npub,
-      });
-      try {
-        localStorage.removeItem("safesale:buyer:__pending__");
-      } catch {
-        // best-effort cleanup
-      }
-
       setCreatedOrder({
         orderToken: res.orderToken,
         shortId: res.shortId,
         accountNumber: res.payIn?.bankAccountNumber ?? "—",
         bankName: res.payIn?.bankName ?? "—",
         accountName: res.payIn?.bankAccountName ?? "SafeSale Escrow",
-        expiresAt: res.payIn?.expiresAt ?? placeholderPayTo.expiresAt,
         payInError: res.payInError ?? null,
       });
     } catch (err) {
@@ -344,20 +286,11 @@ export default function Checkout() {
   //  Confirm transfer sent — moves to the "waiting" step, then locks the
   //  payment in escrow.
   //
-  //  Two modes:
-  //   - Mock mode (no VITE_API_URL): the mock client transitions the
-  //     order to paid ~5s after createOrder on its own, so we
-  //     just show "waiting" and let the polling effect advance the UI.
-  //   - Real backend (VITE_API_URL set): in production the Nomba pay-in
-  //     webhook flips the order to paid. For demos the bank rail isn't
-  //     wired, so we trigger the transition ourselves via the demo-only
-  //     POST /api/orders/:token/simulate-payment (apiClient.confirmPayment).
-  //     WITHOUT this the order sits in pending_payment and the buyer's
-  //     "I've sent the transfer" spinner never resolves.
-  //
-  //  simulate-payment is idempotent (a second hit returns the existing
-  //  paid order), so we retry a few times with backoff to ride out a
-  //  transient backend hiccup.
+  //  In production the payment provider's webhook marks the order paid;
+  //  apiClient.confirmPayment just re-reads it (or, on a staging backend
+  //  with simulation on, marks it paid). Either way the polling effect
+  //  advances waiting → detected → secured once status leaves
+  //  pending_payment. Retries ride out transient network errors.
   // ------------------------------------------------------------------
 
   const handleConfirmTransferSent = async () => {
@@ -377,19 +310,12 @@ export default function Checkout() {
     const backoffMs = [1500, 3000, 5000];
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        await apiClient.confirmPayment(createdOrder.orderToken);
+        const { order } = await apiClient.confirmPayment(createdOrder.orderToken);
         await queryClient.invalidateQueries({
           queryKey: ["safesale", "order", createdOrder.orderToken],
         });
-        toast({ title: "Payment confirmed ✓" });
-        // Demo-only: surface the email the backend would send at this exact
-        // point (payment confirmed → Resend "order secured" + tracking link).
-        // No real email is sent in demo mode; this just makes the step visible.
-        if (DEMO_MODE && email.trim()) {
-          toast({
-            title: "📧 Order email sent",
-            description: `Tracking link sent to ${email.trim()} (simulated in demo).`,
-          });
+        if (order.status !== "pending_payment") {
+          toast({ title: "Payment received. Your money is held in escrow." });
         }
         return;
       } catch (err) {
@@ -417,20 +343,13 @@ export default function Checkout() {
   // The bank-transfer (pay-in) details come from the API response. In
   // real mode Nomba issues them; in mock mode the mock client makes
   // them up. Either way they're per-order and survive across polls.
-  const payTo: {
-    accountNumber: string;
-    bankName: string;
-    accountName: string;
-    expiresAt: string;
-  } = createdOrder
+  const payTo = createdOrder
     ? {
         accountNumber: createdOrder.accountNumber,
         bankName: createdOrder.bankName,
         accountName: createdOrder.accountName,
-        expiresAt: createdOrder.expiresAt,
       }
     : placeholderPayTo;
-  const payExpiresAt = createdOrder?.expiresAt ?? payTo.expiresAt;
 
   const heroImage = sanitizeUrl(listing.images[0]);
   // Buyer pays item + delivery into escrow — the full, known-up-front total.
@@ -441,26 +360,35 @@ export default function Checkout() {
     <div className="min-h-screen bg-surface">
       <header className="border-b border-border/60 bg-background/85 backdrop-blur">
         <div className="container flex h-14 items-center justify-between">
-          <Link
-            to={`/buy/${listing.id}`}
+          <button
+            type="button"
+            onClick={goBack}
             className="inline-flex items-center gap-1 text-xs font-medium text-ink-soft hover:text-ink"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
             Back
-          </Link>
+          </button>
           <Logo />
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-soft-foreground">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-soft-foreground">
             <ShieldCheck className="h-3 w-3" />
             Secure
           </span>
         </div>
       </header>
 
-      <main className="container max-w-2xl pb-12 pt-6">
+      <main className="container max-w-5xl pt-6 pb-16">
         <StepBar step={step} />
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr,320px]">
-          <div className="space-y-5">
+        <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_360px]">
+          <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={step}
+            className="space-y-5"
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+          >
             {step === "details" && (
               <DetailsForm
                 name={name}
@@ -469,8 +397,6 @@ export default function Checkout() {
                 setPhone={setPhone}
                 email={email}
                 setEmail={setEmail}
-                contactMethod={contactMethod}
-                setContactMethod={setContactMethod}
                 city={city}
                 setCity={setCity}
                 address={address}
@@ -483,7 +409,6 @@ export default function Checkout() {
               <Instructions
                 amount={total}
                 payTo={payTo}
-                expiresAt={payExpiresAt}
                 onConfirm={handleConfirmTransferSent}
                 pending={creating}
                 hasAccount={!!createdOrder}
@@ -492,22 +417,19 @@ export default function Checkout() {
               />
             )}
             {step === "waiting" && (
-              <WaitingPayment
-                amount={total}
-                expiresAt={payExpiresAt}
-              />
+              <WaitingPayment amount={total} />
             )}
             {step === "detected" && <Detected amount={total} />}
             {step === "secured" && createdOrder && (
               <Secured
                 amount={total}
                 orderToken={createdOrder.orderToken}
-                contactMethod={contactMethod}
-                contactValue={contactMethod === "email" ? email : phone}
+                contactValue={email}
                 onContinue={() => navigate(`/order/${createdOrder.orderToken}`)}
               />
             )}
-          </div>
+          </motion.div>
+          </AnimatePresence>
 
           {/* Order summary - sidebar */}
           <aside className="space-y-4 lg:sticky lg:top-20 lg:h-min">
@@ -551,7 +473,7 @@ export default function Checkout() {
                   {formatNGN(total)}
                 </span>
               </div>
-              <p className="mt-2 text-[11px] text-ink-soft">
+              <p className="mt-2 text-xs text-ink-soft">
                 The full amount — item + delivery — is locked in escrow. No
                 extra delivery charges after you pay.
               </p>
@@ -571,7 +493,7 @@ export default function Checkout() {
                 )}
               </div>
               {sellerVerified && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-medium text-brand-soft-foreground">
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand-soft-foreground">
                   <ShieldCheck className="h-3 w-3" /> Verified
                 </span>
               )}
@@ -604,7 +526,7 @@ function StepBar({ step }: { step: Step }) {
           <div key={l.key} className="flex flex-1 items-center gap-2">
             <span
               className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold",
+                "flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
                 active
                   ? "bg-brand text-brand-foreground"
                   : "bg-secondary text-ink-soft"
@@ -642,8 +564,6 @@ function DetailsForm(props: {
   setPhone: (v: string) => void;
   email: string;
   setEmail: (v: string) => void;
-  contactMethod: "email" | "phone";
-  setContactMethod: (m: "email" | "phone") => void;
   city: string;
   setCity: (v: string) => void;
   address: string;
@@ -661,71 +581,24 @@ function DetailsForm(props: {
           placeholder="Jane Adekola"
         />
 
-        {/* Contact method — chooses where we send the order link */}
-        <div>
-          <Label>How should we send your order link?</Label>
-          <p className="mt-1 text-xs text-ink-soft">
-            Your order link is your only way back to this order. We'll send it
-            here so you can return any time.
-          </p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {(["email", "phone"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => props.setContactMethod(m)}
-                className={cn(
-                  "rounded-md border px-3 py-2.5 text-sm font-medium transition-colors",
-                  props.contactMethod === m
-                    ? "border-brand bg-brand-soft text-brand-soft-foreground"
-                    : "border-border bg-white text-ink-soft hover:text-ink"
-                )}
-              >
-                {m === "email" ? "Email" : "SMS to phone"}
-              </button>
-            ))}
-          </div>
-          <div className="mt-3">
-            {props.contactMethod === "email" ? (
-              <Field
-                label="Email address"
-                value={props.email}
-                onChange={props.setEmail}
-                placeholder="jane@example.com"
-                type="email"
-              />
-            ) : (
-              <Field
-                label="WhatsApp number"
-                value={props.phone}
-                onChange={props.setPhone}
-                placeholder="0803 555 0142"
-                type="tel"
-              />
-            )}
-          </div>
-        </div>
+        <Field
+          label="Email address"
+          hint="We'll send your private order link here after you pay."
+          value={props.email}
+          onChange={props.setEmail}
+          placeholder="jane@example.com"
+          type="email"
+        />
+        <Field
+          label="Phone number"
+          hint="The seller uses this to arrange delivery."
+          value={props.phone}
+          onChange={props.setPhone}
+          placeholder="0803 555 0142"
+          type="tel"
+        />
 
-        {/* The other contact field, optional, for the seller to reach them */}
-        {props.contactMethod === "email" ? (
-          <Field
-            label="WhatsApp number (for delivery updates)"
-            value={props.phone}
-            onChange={props.setPhone}
-            placeholder="0803 555 0142"
-            type="tel"
-          />
-        ) : (
-          <Field
-            label="Email (optional, for backup)"
-            value={props.email}
-            onChange={props.setEmail}
-            placeholder="jane@example.com"
-            type="email"
-          />
-        )}
-
-        <div className="grid gap-4 sm:grid-cols-[1fr,1.5fr]">
+        <div className="grid gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="checkout-city" className="flex items-center gap-2">
               <MapPin className="h-3.5 w-3.5" /> City (State)
@@ -749,12 +622,6 @@ function DetailsForm(props: {
           />
         </div>
         
-        <div className="rounded-lg border border-amber-200/60 bg-amber-50/50 p-3">
-          <p className="flex items-center gap-2 text-[11px] font-medium text-amber-800">
-            <Phone className="h-3.5 w-3.5" />
-            WhatsApp number is mandatory for delivery updates.
-          </p>
-        </div>
       </div>
 
       <Button
@@ -772,7 +639,6 @@ function DetailsForm(props: {
 function Instructions({
   amount,
   payTo,
-  expiresAt,
   onConfirm,
   pending,
   hasAccount,
@@ -784,9 +650,7 @@ function Instructions({
     accountNumber: string;
     bankName: string;
     accountName: string;
-    expiresAt: string;
   };
-  expiresAt: string;
   onConfirm: () => void;
   pending: boolean;
   /** True once createOrder has returned and we have real account details. */
@@ -809,14 +673,14 @@ function Instructions({
     return (
       <Card
         title="Pay to escrow"
-        subtitle="Generate a unique bank account to send your payment to. It expires in 24 hours."
+        subtitle="We'll give you bank details for this order only. Transfer the exact amount to them."
       >
         <div className="mt-1 rounded-xl border border-border bg-surface p-4 text-sm text-ink-soft">
           Your money is held in escrow — the seller cannot touch it until
           you confirm delivery.
         </div>
         {error && (
-          <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+          <div className="mt-3 rounded-lg border border-negative/25 bg-negative-pale p-3 text-sm text-negative">
             {error}
           </div>
         )}
@@ -844,13 +708,7 @@ function Instructions({
 
   return (
     <Card title="Transfer to escrow" subtitle="Send the exact amount. Your money is held safely until you confirm delivery.">
-      <div className="mt-1 rounded-xl border border-amber-200/60 bg-amber-50/70 px-4 py-3 text-amber-900">
-        <p className="inline-flex items-center gap-1.5 text-xs">
-          <Countdown targetIso={expiresAt} prefix="Account expires in" />
-        </p>
-      </div>
-
-      <ul className="mt-4 space-y-2 text-sm">
+      <ul className="mt-2 space-y-2 text-sm">
         <PayRow label="Bank" value={payTo.bankName} onCopy={() => copy(payTo.bankName)} />
         <PayRow label="Account number" value={payTo.accountNumber} onCopy={() => copy(payTo.accountNumber)} highlight />
         <PayRow label="Account name" value={payTo.accountName} onCopy={() => copy(payTo.accountName)} />
@@ -862,38 +720,24 @@ function Instructions({
         />
       </ul>
 
-      <div className="mt-5 rounded-xl border border-emerald-200/60 bg-brand-soft/50 p-4">
-        <div className="flex items-start gap-3">
-          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
-          <div className="text-xs leading-relaxed text-ink-soft">
-            <p className="text-sm font-medium text-ink">
-              This is a SafeSale escrow account
-            </p>
-            <p className="mt-1">
-              The seller cannot access your money. It's released only when you
-              confirm delivery — or refunded if anything goes wrong.
-            </p>
-          </div>
+      <div className="mt-5 flex items-start gap-3 rounded-lg bg-brand-pale p-4 text-brand-ink">
+        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+        <div className="text-sm">
+          <p className="font-semibold">This account belongs to SafeSale, not the seller</p>
+          <p className="mt-1">
+            The seller can't touch your money. It's released when you confirm delivery. If something is
+            wrong, report it first and a mediator decides.
+          </p>
         </div>
       </div>
 
-      <p className="mt-2 text-[11px] italic text-ink-soft">
-        Your payment is held in SafeSale escrow and only released when you
-        confirm delivery — or refunded if anything goes wrong.
-      </p>
-
       {error && (
-        <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+        <div className="mt-3 rounded-lg border border-negative/25 bg-negative-pale p-3 text-sm text-negative">
           {error}
         </div>
       )}
 
-      <Button
-        size="lg"
-        onClick={onConfirm}
-        disabled={pending}
-        className="mt-5 h-12 w-full rounded-lg bg-brand text-base font-semibold text-brand-foreground hover:bg-brand/90 disabled:opacity-60"
-      >
+      <Button size="lg" onClick={onConfirm} disabled={pending} className="mt-5 w-full">
         {pending ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -903,8 +747,8 @@ function Instructions({
           <>I've sent the transfer</>
         )}
       </Button>
-      <p className="mt-2 text-center text-[11px] text-ink-soft">
-        We usually detect bank transfers within 60 seconds.
+      <p className="mt-2 text-center text-xs text-ink-soft">
+        This page updates as soon as your transfer arrives.
       </p>
     </Card>
   );
@@ -924,12 +768,12 @@ function PayRow({
   return (
     <li
       className={cn(
-        "flex items-center justify-between rounded-lg border border-border bg-white px-3 py-2.5",
+        "flex items-center justify-between rounded-lg border border-border bg-canvas px-3 py-2.5",
         highlight && "bg-surface-2/30"
       )}
     >
       <div>
-        <p className="text-[10px] font-medium uppercase tracking-wider text-ink-soft">
+        <p className="text-xs font-medium uppercase tracking-wider text-ink-soft">
           {label}
         </p>
         <p className="text-sm font-semibold text-ink tabular-nums">{value}</p>
@@ -944,21 +788,29 @@ function PayRow({
   );
 }
 
-function WaitingPayment({ amount, expiresAt }: { amount: number; expiresAt: string }) {
+function WaitingPayment({ amount }: { amount: number }) {
   return (
     <Card
       title="Waiting for your payment"
       subtitle="As soon as the transfer arrives, we'll lock it in escrow for your protection."
     >
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-white px-6 py-10 text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-brand" />
-        <p className="mt-4 text-sm font-medium text-ink">Listening for your transfer…</p>
-        <p className="mt-1 text-xs text-ink-soft">
-          {formatNGN(amount)} expected
-        </p>
-        <div className="mt-4 inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-[11px] font-medium text-ink-soft">
-          <Countdown targetIso={expiresAt} prefix="Auto-cancels in" />
+      <div className="flex flex-col items-center justify-center rounded-lg bg-canvas-soft px-6 py-12 text-center">
+        <div className="relative grid h-20 w-20 place-items-center">
+          {[0, 1].map((i) => (
+            <motion.span
+              key={i}
+              className="absolute inset-0 rounded-full border-2 border-brand"
+              initial={{ scale: 0.6, opacity: 0.6 }}
+              animate={{ scale: 1.4, opacity: 0 }}
+              transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.9, ease: "easeOut" }}
+            />
+          ))}
+          <span className="grid h-14 w-14 place-items-center rounded-full bg-forest text-mint">
+            <Landmark className="h-6 w-6" aria-hidden />
+          </span>
         </div>
+        <p className="mt-5 font-semibold text-ink">Listening for your transfer…</p>
+        <p className="mt-1 text-sm text-body tabular-nums">{formatNGN(amount)} expected</p>
       </div>
     </Card>
   );
@@ -966,16 +818,18 @@ function WaitingPayment({ amount, expiresAt }: { amount: number; expiresAt: stri
 
 function Detected({ amount }: { amount: number }) {
   return (
-    <Card title="Payment detected" subtitle="Verifying & moving into escrow…">
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-200/70 bg-brand-soft/50 px-6 py-10 text-center">
-        <span className="relative inline-flex">
-          <span className="absolute inset-0 rounded-full bg-brand/20 animate-lock-pulse" />
-          <CheckCircle2 className="relative h-12 w-12 text-brand" />
-        </span>
-        <p className="mt-4 text-base font-semibold text-ink">
-          {formatNGN(amount)} received
-        </p>
-        <p className="mt-1 text-sm text-ink-soft">Locking it in escrow now…</p>
+    <Card title="Payment detected" subtitle="Moving it into escrow…">
+      <div className="flex flex-col items-center justify-center rounded-lg bg-brand-pale px-6 py-12 text-center">
+        <motion.span
+          initial={{ scale: 0.4, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 18 }}
+          className="grid h-14 w-14 place-items-center rounded-full bg-forest text-mint"
+        >
+          <CheckCircle2 className="h-7 w-7" aria-hidden />
+        </motion.span>
+        <p className="mt-5 text-h3 text-ink tabular-nums">{formatNGN(amount)} received</p>
+        <p className="mt-1 text-sm text-body">Locking it in escrow now…</p>
       </div>
     </Card>
   );
@@ -984,35 +838,30 @@ function Detected({ amount }: { amount: number }) {
 function Secured({
   amount,
   orderToken,
-  contactMethod,
   contactValue,
   onContinue,
 }: {
   amount: number;
   orderToken: string;
-  contactMethod: "email" | "phone";
   contactValue: string;
   onContinue: () => void;
 }) {
   const { toast } = useToast();
-  const orderLink = `safesale.app/order/${orderToken}`;
+  const orderLink = `${window.location.origin}/order/${orderToken}`;
   return (
-    <div className="space-y-4 animate-slide-up">
-      <div className="rounded-2xl border border-emerald-200/60 bg-white p-6 shadow-[0_24px_60px_-30px_rgba(15,42,30,0.15)]">
+    <div className="space-y-4 ">
+      <div>
         <EscrowShield
           amount={formatNGN(amount)}
-          caption="Your seller has been notified and is preparing your order."
+          caption="The seller can now see your payment and ship your order."
         />
       </div>
 
-      {/* SAVE YOUR LINK — the critical bit. Without this URL the buyer
-          has no way back to their escrow. Per PRD, the link is
-          *displayed on screen with a clear instruction to bookmark or
-          screenshot it*; email/SMS delivery is a future backend job
-          (Termii + Resend), not promised here until it's actually wired. */}
-      <div className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-5">
+      {/* The buyer has no account: this link is their only way back. It's
+          also emailed, but we still ask them to save it here. */}
+      <div className="rounded-2xl border border-warning/25 bg-warning-pale p-5">
         <div className="flex items-start gap-3">
-          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-pale text-warning">
             <Bookmark className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
@@ -1020,20 +869,14 @@ function Secured({
               Save your order link now
             </p>
             <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-              This is your only way back to this order — you don't have an
-              account. <span className="font-medium text-ink">Bookmark it, screenshot it, or copy it to your{" "}
-              {contactMethod === "email" ? "email drafts" : "WhatsApp chat"}</span>
-              {contactValue && (
-                <>
-                  {" "}({contactValue})
-                </>
-              )}{" "}
-              before leaving this page.
+              It's your only way back to this order. We've also emailed it
+              {contactValue ? <> to <span className="font-medium text-ink">{contactValue}</span></> : null}, but
+              bookmark or copy it before you leave this page.
             </p>
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center rounded-lg border border-amber-200 bg-white overflow-hidden">
+        <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center rounded-lg border border-warning/25 bg-canvas overflow-hidden">
           <div className="flex flex-1 items-center gap-2 px-3 py-2.5 font-mono text-xs text-ink min-w-0 break-all">
             <LinkIcon className="h-3.5 w-3.5 shrink-0 text-ink-soft" />
             <span className="break-all select-all">{orderLink}</span>
@@ -1043,22 +886,17 @@ function Secured({
               navigator.clipboard?.writeText(orderLink);
               toast({ title: "Order link copied" });
             }}
-            className="inline-flex items-center justify-center gap-1 border-t sm:border-t-0 sm:border-l border-amber-200 px-4 py-2.5 sm:py-0 text-xs font-semibold text-amber-800 hover:bg-amber-100/60 transition-colors bg-amber-50/40 sm:bg-transparent shrink-0"
+            className="inline-flex items-center justify-center gap-1 border-t sm:border-t-0 sm:border-l border-warning/25 px-4 py-2.5 sm:py-0 text-xs font-semibold text-warning hover:bg-warning-pale transition-colors bg-warning-pale sm:bg-transparent shrink-0"
           >
             <Copy className="h-3.5 w-3.5" /> Copy Link
           </button>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <SaveAction icon={Copy} label="Copy the link" />
-          <SaveAction icon={Bookmark} label="Bookmark this page" />
-          <SaveAction icon={ImageDown} label="Screenshot it" />
-        </div>
       </div>
 
       {/* What happens next */}
-      <div className="rounded-2xl border border-border bg-white p-5">
-        <p className="text-sm font-semibold text-ink">What happens next?</p>
+      <div className="rounded-lg bg-canvas p-5">
+        <p className="font-semibold text-ink">What happens next</p>
         <ol className="mt-3 space-y-2 text-sm text-ink-soft">
           <li className="flex items-start gap-2">
             <Lock className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
@@ -1066,46 +904,18 @@ function Secured({
           </li>
           <li className="flex items-start gap-2">
             <Truck className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-            <span>Seller ships your order with a tracking number.</span>
+            <span>The seller ships your order. You'll see tracking on your order page if they add it.</span>
           </li>
           <li className="flex items-start gap-2">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-            <span>You confirm delivery — seller gets paid in seconds.</span>
+            <span>You confirm it arrived and the seller is paid. If it doesn't, report a problem first.</span>
           </li>
         </ol>
       </div>
 
-      <Button
-        onClick={onContinue}
-        size="lg"
-        className="h-12 w-full rounded-lg bg-brand text-base font-semibold text-brand-foreground hover:bg-brand/90"
-      >
-        Open my order page <ArrowRight className="ml-1 h-4 w-4" />
+      <Button onClick={onContinue} size="lg" className="w-full">
+        Open my order page <ArrowRight />
       </Button>
-    </div>
-  );
-}
-
-function SaveAction({
-  icon: Icon,
-  label,
-  done,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  done?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex flex-col items-center gap-1 rounded-lg border bg-white px-2 py-2 text-center",
-        done ? "border-emerald-200 bg-brand-soft/40" : "border-amber-200"
-      )}
-    >
-      <Icon className={cn("h-4 w-4", done ? "text-brand" : "text-amber-700")} />
-      <span className={cn("text-[10px] font-medium", done ? "text-brand-soft-foreground" : "text-ink")}>
-        {label}
-      </span>
     </div>
   );
 }
@@ -1120,7 +930,7 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_8px_24px_-16px_rgba(15,42,30,0.12)] animate-slide-up">
+    <div className="rounded-2xl border border-border bg-canvas p-5 ">
       <h2 className="text-base font-semibold tracking-tight text-ink sm:text-lg">
         {title}
       </h2>
@@ -1132,27 +942,37 @@ function Card({
 
 function Field({
   label,
+  hint,
   value,
   onChange,
   placeholder,
   type = "text",
 }: {
   label: string;
+  hint?: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
 }) {
+  const id = useId();
   return (
     <div>
-      <Label>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       <Input
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         type={type}
-        className="mt-1.5 h-11"
+        aria-describedby={hint ? `${id}-hint` : undefined}
+        className="mt-1.5"
       />
+      {hint && (
+        <p id={`${id}-hint`} className="mt-1.5 text-sm text-mute">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
@@ -1174,13 +994,15 @@ function Row({ k, v, sub }: { k: string; v: string; sub?: boolean }) {
 }
 
 function Footnote() {
+  const support = import.meta.env.VITE_SUPPORT_EMAIL;
+  if (!support) return null;
   return (
-    <p className="px-1 text-[11px] leading-relaxed text-ink-soft">
-      Need help? Message{" "}
-      <a href="#" className="text-brand hover:underline">
-        SafeSale support
-      </a>{" "}
-      any time. Our team responds within minutes.
+    <p className="px-1 text-sm text-mute">
+      Questions about paying?{" "}
+      <a href={`mailto:${support}`} className="font-medium text-brand hover:underline">
+        Email SafeSale support
+      </a>
+      .
     </p>
   );
 }
@@ -1195,9 +1017,9 @@ function CheckoutSkeleton() {
           <Skeleton className="h-4 w-14" />
         </div>
       </header>
-      <main className="container max-w-2xl pb-12 pt-6">
+      <main className="container max-w-5xl pt-6 pb-16">
         <Skeleton className="h-6 w-1/2" />
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr,320px]">
+        <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-5">
             <Skeleton className="h-64 w-full rounded-2xl" />
             <Skeleton className="h-12 w-full rounded-lg" />
