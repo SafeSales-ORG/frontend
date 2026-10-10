@@ -389,6 +389,65 @@ export interface DisputeThreadSummary {
   waitingOn: DisputeParty[];
 }
 
+/* ------------------------------ admin console ------------------------------ */
+
+/** An order as the SafeSale admin sees it (any seller). */
+export interface AdminOrderRow extends ApiOrder {
+  seller: { id: string; name: string; handle: string };
+  listingTitle: string;
+  disputeId: string | null;
+}
+
+export interface AdminOverview {
+  heldNGN: number;
+  paidOutWeekNGN: number;
+  ordersByStatus: Partial<Record<ApiOrderStatus, number>>;
+  totalOrders: number;
+  sellers: number;
+  newSellersWeek: number;
+  activeListings: number;
+  openDisputes: number;
+  refundsToPay: { count: number; amountNGN: number };
+  failedPayouts: number;
+  recentOrders: AdminOrderRow[];
+}
+
+export interface AdminSellerRow {
+  id: string;
+  name: string;
+  handle: string;
+  email: string | null;
+  verified: boolean;
+  bankName: string | null;
+  accountNumberLast4: string;
+  listings: number;
+  orders: number;
+  heldNGN: number;
+  /** What the shop actually received (a mediator's split only pays its share). */
+  paidOutNGN: number;
+  disputes: number;
+  createdAt: string;
+}
+
+/** A refund owed to a buyer after a dispute (paid by hand, then recorded). */
+export interface AdminRefund {
+  id: string;
+  status: "manual" | "failed" | "succeeded";
+  amountNGN: number;
+  reference: string | null;
+  createdAt: string;
+  paidAt: string | null;
+  order: {
+    shortId: string;
+    orderToken: string;
+    buyerName: string;
+    buyerPhone: string | null;
+    buyerEmail: string | null;
+    sellerName: string;
+    disputeId: string | null;
+  };
+}
+
 /** How a disputed order's money was divided by the mediator. */
 export interface OrderSettlement {
   outcome: "refund_buyer" | "release_seller" | "split" | null;

@@ -26,6 +26,11 @@ import type {
   CreateSellerResponse,
   GetDisputesResponse,
   GetDisputeThreadResponse,
+  AdminOverview,
+  AdminOrderRow,
+  AdminSellerRow,
+  AdminRefund,
+  ApiOrderStatus,
   PostDisputeMessageRequest,
   DisputeThreadMessage,
   DisputeThreadSummary,
@@ -149,6 +154,8 @@ const STATUS_MAP: Record<string, string> = {
   funded: "paid",
   released: "completed",
 };
+/** Frontend status → backend enum, for query parameters. */
+const BACKEND_STATUS: Record<string, string> = { paid: "funded", completed: "released" };
 function mapOrderStatus<T extends { status?: string } | null | undefined>(
   order: T,
 ): T {
@@ -380,6 +387,31 @@ export const httpApi = {
       req,
     );
     return { ...res, order: mapOrderStatus(res.order) };
+  },
+  async getAdminOverview(): Promise<AdminOverview> {
+    const res = await request<AdminOverview>("GET", "/api/admin/overview");
+    const byStatus: AdminOverview["ordersByStatus"] = {};
+    for (const [k, v] of Object.entries(res.ordersByStatus)) {
+      const key = (STATUS_MAP[k] ?? k) as ApiOrderStatus;
+      byStatus[key] = v;
+    }
+    return { ...res, ordersByStatus: byStatus, recentOrders: res.recentOrders.map(mapOrderStatus) };
+  },
+  async getAdminOrders(params?: { status?: ApiOrderStatus; q?: string }): Promise<{ orders: AdminOrderRow[] }> {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set("status", BACKEND_STATUS[params.status] ?? params.status);
+    if (params?.q) qs.set("q", params.q);
+    const res = await request<{ orders: AdminOrderRow[] }>("GET", `/api/admin/orders${qs.size ? `?${qs}` : ""}`);
+    return { orders: res.orders.map(mapOrderStatus) };
+  },
+  getAdminSellers(): Promise<{ sellers: AdminSellerRow[] }> {
+    return request("GET", "/api/admin/sellers");
+  },
+  getAdminRefunds(): Promise<{ refunds: AdminRefund[] }> {
+    return request("GET", "/api/admin/refunds");
+  },
+  markRefundPaid(id: string, reference: string): Promise<{ ok: true }> {
+    return request("POST", `/api/admin/refunds/${encodeURIComponent(id)}/mark-paid`, { reference });
   },
   getDisputeThread(disputeId: string, opts?: { buyerToken?: string }): Promise<GetDisputeThreadResponse> {
     return request<GetDisputeThreadResponse>(

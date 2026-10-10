@@ -28,6 +28,11 @@ import type {
   CreateSellerResponse,
   GetDisputesResponse,
   GetDisputeThreadResponse,
+  AdminOverview,
+  AdminOrderRow,
+  AdminSellerRow,
+  AdminRefund,
+  ApiOrderStatus,
   DisputeParty,
   PostDisputeMessageRequest,
   DisputeThreadMessage,
@@ -86,6 +91,16 @@ export interface ApiClient {
   getSellerOrders(npub: string): Promise<GetSellerOrdersResponse>;
   /** POST /api/uploads — store an image, return its URL (inline data URL if storage is off). */
   uploadImage(dataUrl: string, opts?: { buyerToken?: string }): Promise<string>;
+  /** GET /api/admin/overview — platform totals for the SafeSale admin. */
+  getAdminOverview(): Promise<AdminOverview>;
+  /** GET /api/admin/orders — every order, newest first. */
+  getAdminOrders(params?: { status?: ApiOrderStatus; q?: string }): Promise<{ orders: AdminOrderRow[] }>;
+  /** GET /api/admin/sellers — every shop with its numbers. */
+  getAdminSellers(): Promise<{ sellers: AdminSellerRow[] }>;
+  /** GET /api/admin/refunds — refunds owed to buyers. */
+  getAdminRefunds(): Promise<{ refunds: AdminRefund[] }>;
+  /** POST /api/admin/refunds/:id/mark-paid — record a refund sent by hand. */
+  markRefundPaid(id: string, reference: string): Promise<{ ok: true }>;
   /** GET /api/disputes/:id/thread — the case conversation (buyer, seller, mediator). */
   getDisputeThread(disputeId: string, opts?: ThreadViewer): Promise<GetDisputeThreadResponse>;
   /** POST /api/disputes/:id/thread — add a message to the case. */

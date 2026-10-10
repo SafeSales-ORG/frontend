@@ -89,6 +89,8 @@ export interface MarketState {
   messages: Record<string, ChatMessage[]>;
   /** Dispute case threads (buyer, seller, mediator), keyed by dispute id. */
   caseThreads: Record<string, DisputeThreadMessage[]>;
+  /** Buyer refunds the admin recorded as sent, keyed by orderToken. */
+  refundsPaid: Record<string, { reference: string; at: string }>;
 }
 
 // v3: discards pre-fix demo data (corrupted seller links / seed images) and
@@ -221,6 +223,7 @@ function seedState(): MarketState {
     reviews: [],
     messages: {},
     caseThreads: {},
+    refundsPaid: {},
   };
 }
 
@@ -248,6 +251,7 @@ function load(): MarketState {
       reviews: parsed.reviews ?? [],
       messages: parsed.messages ?? {},
       caseThreads: parsed.caseThreads ?? {},
+      refundsPaid: parsed.refundsPaid ?? {},
     };
   } catch {
     return seedState();
@@ -433,6 +437,15 @@ export const marketStore = {
       (e) => e.order.sellerId === sellerId && e.order.status === "completed",
     ).length;
     return { rating, reviewCount, completedOrders };
+  },
+
+  /* ----------------------------- refunds -------------------------- */
+
+  refundPaid(orderToken: string): { reference: string; at: string } | undefined {
+    return state.refundsPaid[orderToken];
+  },
+  markRefundPaid(orderToken: string, reference: string): void {
+    commit({ ...state, refundsPaid: { ...state.refundsPaid, [orderToken]: { reference, at: nowIso() } } });
   },
 
   /* --------------------------- case threads ----------------------- */

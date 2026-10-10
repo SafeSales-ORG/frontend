@@ -22,7 +22,7 @@ import { useSeoMeta } from "@unhead/react";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { MediatorShell } from "@/components/safesale/MediatorShell";
+import { AdminShell } from "@/components/safesale/AdminShell";
 import { BrandIcon } from "@/components/safesale/BrandIcon";
 import { AnimatedNumber } from "@/components/safesale/AnimatedNumber";
 import { Stagger, StaggerItem } from "@/components/motion";
@@ -40,6 +40,7 @@ import {
   Search,
 } from "lucide-react";
 
+import { useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/useToast";
 import { useMessagesLive } from "@/hooks/useMarket";
 import { formatDue, formatNGN, formatRelative } from "@/lib/format";
@@ -187,14 +188,23 @@ const FILTERS: FilterSpec[] = [
   { key: "mediating", label: "New replies", matches: (d) => d.lastFrom === "buyer" || d.lastFrom === "seller" },
 ];
 
-export default function Admin() {
+export default function AdminDisputes() {
   useSeoMeta({ title: "Mediator dashboard — SafeSale" });
 
   const { toast } = useToast();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<FilterKey>("all");
   const [query, setQuery] = useState("");
-  const [activeId, setActiveId] = useState<string | null>(null);
+  // The open case lives in the URL (?case=…) so other admin pages can link to it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeId = searchParams.get("case");
+  const setActiveId = (id: string | null) =>
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (id) next.set("case", id);
+      else next.delete("case");
+      return next;
+    });
 
   // Live dispute queue from the order store. Polls so a dispute a buyer
   // opens mid-demo appears here within a few seconds.
@@ -261,9 +271,9 @@ export default function Admin() {
   };
 
   return (
-    <MediatorShell
-      title="Dispute queue"
-      subtitle="Review both sides and decide. The buyer's and seller's order pages update immediately."
+    <AdminShell
+      title="Disputes"
+      subtitle="Talk to both sides in the case chat, then decide. Money stays held until you do."
     >
       <div className="space-y-6">
         {DEMO_MODE && (
@@ -292,7 +302,7 @@ export default function Admin() {
           />
         )}
       </div>
-    </MediatorShell>
+    </AdminShell>
   );
 }
 

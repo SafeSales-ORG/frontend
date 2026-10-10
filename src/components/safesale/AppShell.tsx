@@ -1,18 +1,15 @@
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { useState, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { Loader2, LogOut, ShieldCheck } from "lucide-react";
 import { GearSix, House, Package, Receipt, Scales, Wallet, type Icon } from "@phosphor-icons/react";
 
 import { Logo, LogoMark } from "./Logo";
-import { Avatar } from "./Avatar";
 import { HelpDialog } from "./HelpDialog";
+import { LogoutDialog } from "./LogoutDialog";
 import { AccountMenu } from "./AccountMenu";
 import { PageTransition } from "@/components/motion";
 import { HeaderSearch } from "@/components/dashboard/HeaderSearch";
 import { NotificationsMenu } from "@/components/dashboard/NotificationsMenu";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
 import { useAuth } from "@/hooks/useAuth";
 import { useSellerOrders } from "@/hooks/useSellerOrders";
@@ -27,13 +24,22 @@ interface Props {
   action?: ReactNode;
 }
 
-const mobileTabs = [
+const baseTabs = [
   { to: "/app", icon: House, label: "Home", end: true },
   { to: "/app/listings", icon: Package, label: "Listings" },
   { to: "/app/orders", icon: Receipt, label: "Orders" },
   { to: "/app/earnings", icon: Wallet, label: "Earnings" },
-  { to: "/app/dispute", icon: Scales, label: "Disputes" },
 ];
+
+/** The fifth tab is Disputes only for sellers who have one; otherwise Settings. */
+function mobileTabsFor(hasDisputes: boolean) {
+  return [
+    ...baseTabs,
+    hasDisputes
+      ? { to: "/app/dispute", icon: Scales, label: "Disputes" }
+      : { to: "/app/settings", icon: GearSix, label: "Settings" },
+  ];
+}
 
 interface NavItem {
   to: string;
@@ -43,7 +49,7 @@ interface NavItem {
   badge?: string;
 }
 
-function sidebarGroups(activeDisputes: number): { label: string; items: NavItem[] }[] {
+function sidebarGroups(activeDisputes: number, hasDisputes: boolean): { label: string; items: NavItem[] }[] {
   return [
     {
       label: "Manage",
@@ -57,7 +63,10 @@ function sidebarGroups(activeDisputes: number): { label: string; items: NavItem[
     {
       label: "Support",
       items: [
-        { to: "/app/dispute", icon: Scales, label: "Disputes", badge: activeDisputes > 0 ? String(activeDisputes) : undefined },
+        // Disputes only appear once a buyer has reported a problem.
+        ...(hasDisputes
+          ? [{ to: "/app/dispute", icon: Scales, label: "Disputes", badge: activeDisputes > 0 ? String(activeDisputes) : undefined }]
+          : []),
         { to: "/app/settings", icon: GearSix, label: "Settings" },
       ],
     },
@@ -80,6 +89,8 @@ export function AppShell({ children, title, subtitle, action }: Props) {
 
   const { orders } = useSellerOrders();
   const activeDisputes = orders.filter((o) => o.status === "disputed").length;
+  const hasDisputes = activeDisputes > 0 || orders.some((o) => o.dispute) || pathname.startsWith("/app/dispute");
+  const mobileTabs = mobileTabsFor(hasDisputes);
   const activeTab = mobileTabs.find((t) => (t.end ? pathname === t.to : pathname.startsWith(t.to)));
 
   const accountProps = {
@@ -106,7 +117,7 @@ export function AppShell({ children, title, subtitle, action }: Props) {
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Seller dashboard">
-          {sidebarGroups(activeDisputes).map((group) => (
+          {sidebarGroups(activeDisputes, hasDisputes).map((group) => (
             <div key={group.label} className="mb-6">
               <p className="px-3 pb-2 text-xs font-medium tracking-wider text-canvas/50 uppercase">{group.label}</p>
               {group.items.map((t) => (
@@ -220,79 +231,5 @@ export function AppShell({ children, title, subtitle, action }: Props) {
         avatarUrl={avatarUrl}
       />
     </div>
-  );
-}
-
-function LogoutDialog({
-  open,
-  onOpenChange,
-  name,
-  avatarSeed,
-  avatarUrl,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  name: string;
-  avatarSeed: string;
-  avatarUrl: string | null;
-}) {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [leaving, setLeaving] = useState(false);
-  const firstName = name.split(" ")[0];
-
-  const confirm = () => {
-    setLeaving(true);
-    window.setTimeout(() => {
-      logout();
-      onOpenChange(false);
-      setLeaving(false);
-      navigate("/");
-      toast({ title: "You're signed out", description: `See you soon, ${firstName}. Your shop is still open.` });
-    }, 700);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !leaving && onOpenChange(o)}>
-      <DialogContent className="max-w-sm overflow-hidden p-0">
-        <div className="flex flex-col items-center bg-mint px-6 pt-8 pb-6 text-center">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="rounded-full ring-4 ring-canvas"
-          >
-            <Avatar seed={avatarSeed} name={name} size={64} src={avatarUrl} />
-          </motion.div>
-          <DialogTitle className="mt-4 font-display text-h2 text-forest">Log out, {firstName}?</DialogTitle>
-          <DialogDescription className="mt-2 text-forest/80">
-            You'll need your email and password (or Google) to come back.
-          </DialogDescription>
-        </div>
-        <div className="space-y-4 p-6">
-          <p className="flex items-start gap-3 rounded-lg bg-canvas-soft p-3 text-sm text-body">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
-            Your shop stays open while you're away. Buyers can still pay, and their money stays protected.
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={leaving}>
-              Stay signed in
-            </Button>
-            <Button onClick={confirm} disabled={leaving}>
-              {leaving ? (
-                <>
-                  <Loader2 className="animate-spin" /> Signing out…
-                </>
-              ) : (
-                <>
-                  <LogOut /> Log out
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }

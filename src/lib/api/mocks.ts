@@ -58,6 +58,11 @@ import type {
   SellerPayout,
   DisputeParty,
   DisputeThreadMessage,
+  AdminOverview,
+  AdminOrderRow,
+  AdminSellerRow,
+  AdminRefund,
+  ApiOrderStatus,
   GetDisputeThreadResponse,
   PostDisputeMessageRequest,
 } from "./types";
@@ -205,6 +210,46 @@ function sellerForListing(listing: ApiListing) {
 }
 
 /* ------------------------------ public API ----------------------------- */
+
+/* ---------------------------- admin helpers ---------------------------- */
+
+const ADMIN_HELD = new Set<ApiOrderStatus>(["paid", "shipped", "delivered", "disputed"]);
+
+function adminOrderRow(e: ReturnType<typeof marketStore.allOrders>[number]): AdminOrderRow {
+  return {
+    ...e.order,
+    seller: { id: e.seller.id, name: e.seller.name, handle: e.seller.handle },
+    listingTitle: e.listing.title,
+    disputeId: e.dispute?.id ?? null,
+  };
+}
+
+/** Demo refunds: every decided dispute that sent money back to the buyer. */
+function adminRefundsFromStore(): AdminRefund[] {
+  return marketStore
+    .allOrders()
+    .filter((e) => (e.order.settlement?.buyerRefundNGN ?? 0) > 0)
+    .map((e) => {
+      const paid = marketStore.refundPaid(e.order.orderToken);
+      return {
+        id: "ref_" + e.order.orderToken.slice(0, 10),
+        status: paid ? "succeeded" : "manual",
+        amountNGN: e.order.settlement!.buyerRefundNGN,
+        reference: paid?.reference ?? null,
+        createdAt: e.order.refundedAt ?? e.order.updatedAt,
+        paidAt: paid?.at ?? null,
+        order: {
+          shortId: e.order.shortId,
+          orderToken: e.order.orderToken,
+          buyerName: e.order.buyerName,
+          buyerPhone: e.order.buyerPhone || null,
+          buyerEmail: e.order.buyerEmail ?? null,
+          sellerName: e.seller.name,
+          disputeId: e.dispute?.id ?? null,
+        },
+      };
+    });
+}
 
 /* --------------------------- dispute threads -------------------------- */
 
@@ -606,6 +651,94 @@ export const mockApi = {
       order: updated.order,
       txRef: `release-${updated.order.shortId}`,
     };
+  },
+
+  /* ---------------------------- admin console --------------------------- */
+
+  async getAdminOverview(): Promise<AdminOverview> {
+    const all = marketStore.allOrders();
+    const weekAgo = Date.now() - 7 * 86_400_000;
+    const byStatus: AdminOverview["ordersByStatus"] = {};
+    for (const e of all) byStatus[e.order.status] = (byStatus[e.order.status] ?? 0) + 1;
+    const held = all.filter((e) => ADMIN_HELD.has(e.order.status)).reduce((n, e) => n + e.order.amountNGN, 0);
+    const paidOutWeek = all
+      .filter((e) => e.order.status === "completed" && new Date(e.order.releasedAt ?? e.order.updatedAt).getTime() >= weekAgo)
+      .reduce((n, e) => n + (e.order.settlement?.sellerReleaseNGN ?? e.order.amountNGN), 0);
+    const sellerIds = new Set(all.map((e) => e.seller.id));
+    const shops = Object.values(marketStore.getSnapshot().sellersById).filter((s) => sellerIds.has(s.id) || !s.id.startsWith("sel_"));
+    const refunds = adminRefundsFromStore().filter((r) => r.status !== "succeeded");
+    return {
+      heldNGN: held,
+      paidOutWeekNGN: paidOutWeek,
+      ordersByStatus: byStatus,
+      totalOrders: all.length,
+      sellers: shops.length,
+      newSellersWeek: shops.filter((s) => new Date(s.createdAt).getTime() >= weekAgo).length,
+      activeListings: marketStore.listAllListings().filter((l) => l.active !== false && l.inStock > 0).length,
+      openDisputes: marketStore.disputes().length,
+      refundsToPay: { count: refunds.length, amountNGN: refunds.reduce((n, r) => n + r.amountNGN, 0) },
+      failedPayouts: 0,
+      recentOrders: all.slice(0, 8).map(adminOrderRow),
+    };
+  },
+
+  async getAdminOrders(params?: { status?: ApiOrderStatus; q?: string }): Promise<{ orders: AdminOrderRow[] }> {
+    const q = params?.q?.trim().toLowerCase();
+    const orders = marketStore
+      .allOrders()
+      .filter((e) => !params?.status || e.order.status === params.status)
+      .filter(
+        (e) =>
+          !q ||
+          [e.order.shortId, e.order.buyerName, e.seller.name, e.seller.handle, e.listing.title].some((v) =>
+            v.toLowerCase().includes(q),
+          ),
+      )
+      .map(adminOrderRow);
+    return { orders };
+  },
+
+  async getAdminSellers(): Promise<{ sellers: AdminSellerRow[] }> {
+    const all = marketStore.allOrders();
+    const sellers = Object.values(marketStore.getSnapshot().sellersById).map((s) => {
+      const mine = all.filter((e) => e.seller.id === s.id);
+      return {
+        id: s.id,
+        name: s.name,
+        handle: s.handle,
+        email: null,
+        verified: !!s.verified,
+        bankName: null,
+        accountNumberLast4: "",
+        listings: marketStore.listingsForSeller(s.id).length,
+        orders: mine.length,
+        heldNGN: mine.filter((e) => ADMIN_HELD.has(e.order.status)).reduce((n, e) => n + e.order.amountNGN, 0),
+        paidOutNGN: mine
+          .filter((e) => e.order.status === "completed")
+          .reduce((n, e) => n + (e.order.settlement?.sellerReleaseNGN ?? e.order.amountNGN), 0),
+        disputes: mine.filter((e) => e.order.status === "disputed").length,
+        createdAt: s.createdAt,
+      };
+    });
+    sellers.sort((a, b) => b.orders - a.orders || b.createdAt.localeCompare(a.createdAt));
+    return { sellers };
+  },
+
+  async getAdminRefunds(): Promise<{ refunds: AdminRefund[] }> {
+    return { refunds: adminRefundsFromStore() };
+  },
+
+  async markRefundPaid(id: string, reference: string): Promise<{ ok: true }> {
+    const refund = adminRefundsFromStore().find((r) => r.id === id);
+    if (!refund) throw new ApiError("NOT_FOUND", "Refund not found.", 404);
+    if (refund.status === "succeeded") throw new ApiError("CONFLICT", "This refund was already recorded as paid.", 409);
+    marketStore.markRefundPaid(refund.order.orderToken, reference);
+    if (refund.order.disputeId) {
+      marketStore.addCaseMessages(refund.order.disputeId, [
+        caseMessage("system", "SafeSale", `SafeSale sent the buyer's refund of ${formatNaira(refund.amountNGN)}.`),
+      ]);
+    }
+    return { ok: true };
   },
 
   /**

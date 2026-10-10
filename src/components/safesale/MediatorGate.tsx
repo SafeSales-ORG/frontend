@@ -52,11 +52,11 @@ function AccessDenied({ reason }: { reason: "signed-out" | "wrong-account" }) {
     <div className="grid min-h-screen place-items-center bg-canvas-soft px-4 py-16">
       <div className="w-full max-w-md rounded-3xl bg-canvas p-10 text-center">
         <BrandIcon icon={LockKey} size="lg" className="mx-auto" />
-        <h1 className="mt-5 font-display text-h2 text-ink">Mediator console</h1>
+        <h1 className="mt-5 font-display text-h2 text-ink">Admin console</h1>
         <p className="mx-auto mt-2 max-w-sm text-body">
           {signedOut
-            ? "Disputes are decided here by the SafeSale mediator. Sign in with the mediator account to continue."
-            : "This account isn't the SafeSale mediator. Sign out and sign in with the mediator account."}
+            ? "This is where the SafeSale team runs the site and decides disputes. Sign in with the SafeSale admin account to continue."
+            : "This account isn't the SafeSale admin. Sign out and sign in with the admin account."}
         </p>
         <div className="mt-7 flex justify-center gap-2">
           {signedOut && (

@@ -10,7 +10,11 @@ import ShopPage from "./pages/ShopPage";
 import Checkout from "./pages/Checkout";
 import BuyerOrder from "./pages/BuyerOrder";
 import Onboarding from "./pages/Onboarding";
-import Admin from "./pages/Admin";
+import AdminDisputes from "./pages/admin/AdminDisputes";
+import AdminOverview from "./pages/admin/AdminOverview";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminSellers from "./pages/admin/AdminSellers";
+import AdminRefunds from "./pages/admin/AdminRefunds";
 import { MediatorGate } from "./components/safesale/MediatorGate";
 import { SellerGate } from "./components/safesale/SellerGate";
 
@@ -55,15 +59,12 @@ export function AppRouter() {
         <Route path="/app/dispute/:id" element={<SellerGate><DisputePage /></SellerGate>} />
         <Route path="/app/settings" element={<SellerGate><SettingsPage /></SellerGate>} />
 
-        {/* Admin / mediator — gated to VITE_MEDIATOR_NPUB only. */}
-        <Route
-          path="/admin"
-          element={
-            <MediatorGate>
-              <Admin />
-            </MediatorGate>
-          }
-        />
+        {/* Admin console: the SafeSale staff account only (backend role MEDIATOR). */}
+        <Route path="/admin" element={<MediatorGate><AdminOverview /></MediatorGate>} />
+        <Route path="/admin/disputes" element={<MediatorGate><AdminDisputes /></MediatorGate>} />
+        <Route path="/admin/orders" element={<MediatorGate><AdminOrders /></MediatorGate>} />
+        <Route path="/admin/sellers" element={<MediatorGate><AdminSellers /></MediatorGate>} />
+        <Route path="/admin/refunds" element={<MediatorGate><AdminRefunds /></MediatorGate>} />
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />
