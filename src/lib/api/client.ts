@@ -16,6 +16,9 @@ import { httpApi } from "./http";
 import { mockApi } from "./mocks";
 import type {
   ApiListing,
+  ApiSeller,
+  GetShopResponse,
+  MarketplaceListing,
   CreateListingRequest,
   CreateListingResponse,
   CreateOrderRequest,
@@ -24,6 +27,15 @@ import type {
   CreateSellerRequest,
   CreateSellerResponse,
   GetDisputesResponse,
+  GetDisputeThreadResponse,
+  AdminOverview,
+  AdminOrderRow,
+  AdminSellerRow,
+  AdminRefund,
+  ApiOrderStatus,
+  DisputeParty,
+  PostDisputeMessageRequest,
+  DisputeThreadMessage,
   GetOrderResponse,
   GetSellerOrdersResponse,
   GoogleAuthRequest,
@@ -42,6 +54,8 @@ import type {
   ShipOrderResponse,
   SimulatePaymentResponse,
   UpdatePayoutRequest,
+  GetMySellerResponse,
+  UpdateShopProfileRequest,
 } from "./types";
 
 export interface ApiClient {
@@ -56,10 +70,14 @@ export interface ApiClient {
    * and receive a JWT session. No Nostr keys are surfaced to the user.
    */
   googleAuth(req: GoogleAuthRequest): Promise<GoogleAuthResponse>;
-  /** POST /api/sellers — register a new seller from their Nostr identity. */
+  /** POST /api/sellers — register a seller profile for the signed-in user. */
   createSeller(req: CreateSellerRequest): Promise<CreateSellerResponse>;
   /** PUT /api/sellers — update the caller's own payout details. */
   updatePayout(req: UpdatePayoutRequest): Promise<void>;
+  /** PUT /api/sellers — edit shop name, bio, delivery info or photo. */
+  updateShopProfile(req: UpdateShopProfileRequest): Promise<{ seller: ApiSeller }>;
+  /** GET /api/sellers/me — own profile + payout account (masked). */
+  getMySeller(): Promise<GetMySellerResponse>;
   /** POST /api/listings — seller publishes a new listing. */
   createListing(req: CreateListingRequest): Promise<CreateListingResponse>;
   /** PATCH /api/listings/:id — edit a listing or toggle stock. */
@@ -68,9 +86,35 @@ export interface ApiClient {
     patch: Partial<ApiListing>,
   ): Promise<CreateListingResponse>;
   /** GET /api/listings/:id — read a single listing. */
-  getListing(id: string): Promise<{ listing: ApiListing } | null>;
+  getListing(id: string): Promise<{ listing: ApiListing; seller?: ApiSeller | null } | null>;
   /** GET /api/orders/seller/:npub — seller dashboard orders feed. */
   getSellerOrders(npub: string): Promise<GetSellerOrdersResponse>;
+  /** POST /api/uploads — store an image, return its URL (inline data URL if storage is off). */
+  uploadImage(dataUrl: string, opts?: { buyerToken?: string }): Promise<string>;
+  /** GET /api/admin/overview — platform totals for the SafeSale admin. */
+  getAdminOverview(): Promise<AdminOverview>;
+  /** GET /api/admin/orders — every order, newest first. */
+  getAdminOrders(params?: { status?: ApiOrderStatus; q?: string }): Promise<{ orders: AdminOrderRow[] }>;
+  /** GET /api/admin/sellers — every shop with its numbers. */
+  getAdminSellers(): Promise<{ sellers: AdminSellerRow[] }>;
+  /** GET /api/admin/refunds — refunds owed to buyers. */
+  getAdminRefunds(): Promise<{ refunds: AdminRefund[] }>;
+  /** POST /api/admin/refunds/:id/mark-paid — record a refund sent by hand. */
+  markRefundPaid(id: string, reference: string): Promise<{ ok: true }>;
+  /** GET /api/disputes/:id/thread — the case conversation (buyer, seller, mediator). */
+  getDisputeThread(disputeId: string, opts?: ThreadViewer): Promise<GetDisputeThreadResponse>;
+  /** POST /api/disputes/:id/thread — add a message to the case. */
+  postDisputeMessage(
+    disputeId: string,
+    req: PostDisputeMessageRequest,
+    opts?: ThreadViewer,
+  ): Promise<{ message: DisputeThreadMessage }>;
+  /** GET /api/listings/mine — the signed-in seller's listings, hidden ones included. */
+  getMyListings(): Promise<{ listings: ApiListing[] }>;
+  /** GET /api/listings — newest active listings across shops. */
+  getMarketplace(): Promise<{ listings: MarketplaceListing[] }>;
+  /** Public shop by handle (null if it doesn't exist). */
+  getShop(handle: string): Promise<GetShopResponse | null>;
   /** POST /api/orders — buyer initiates a purchase. */
   createOrder(req: CreateOrderRequest): Promise<CreateOrderResponse>;
   /** POST /api/orders/:token/simulate-payment — DEMO: mark order paid. */
@@ -115,6 +159,15 @@ export const API_BACKEND_CONFIGURED: boolean =
  * believable data. Set it back to `false` (or remove it) to use the real
  * Railway backend.
  */
+/**
+ * Who is reading a case thread. The buyer proves it with their order link
+ * token; `as` only matters in demo mode, where there are no real accounts.
+ */
+export interface ThreadViewer {
+  buyerToken?: string;
+  as?: DisputeParty;
+}
+
 export const DEMO_MODE: boolean = import.meta.env.VITE_DEMO_MODE === "true";
 
 export const apiClient: ApiClient =

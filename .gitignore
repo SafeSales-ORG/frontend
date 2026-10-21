@@ -1,3 +1,23 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+dist-ssr
+*.tsbuildinfo
+.eslintcache
+
+# Environment variables — never commit real secrets.
+# Only .env.example (placeholders) is tracked.
+.env
+.env.*
+!.env.example
+*.local
+
+# Keys and certificates
+*.pem
+*.key
+
 # Logs
 logs
 *.log
@@ -5,34 +25,19 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-
-node_modules
-dist
-dist-ssr
-*.local
-.eslintcache
-.tsbuildinfo
-.ai/
-yarn.lock
-
-# Editor directories and files
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
-*.ntvs*
-*.njsproj
-*.sln
 *.sw?
 
-# Vercel
+# Tooling
 .vercel
+coverage
+.ai/
 
-# Secrets
-.env
-.env.*
-!.env.example
-
-# Local progress notes (never commit)
+# Local notes (never commit)
 PROGRESS.md

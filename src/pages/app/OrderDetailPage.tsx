@@ -44,11 +44,16 @@
 
 import { useSeoMeta } from "@unhead/react";
 import { useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/safesale/AppShell";
-import { EscrowStatusPill } from "@/components/safesale/EscrowStatus";
+import { BrandIcon } from "@/components/safesale/BrandIcon";
+import { OrderProgress } from "@/components/orders/OrderProgress";
+import { isSplit, sellerTakeNGN } from "@/lib/settlement";
+import { MapPinLine } from "@phosphor-icons/react";
+import { motion } from "motion/react";
 import { OrderChat } from "@/components/safesale/OrderChat";
 import { ListingThumb } from "@/components/safesale/ListingThumb";
 import { Button } from "@/components/ui/button";
@@ -74,6 +79,7 @@ import { useUploadFile } from "@/hooks/useUploadFile";
 import { marketStore } from "@/lib/store/marketStore";
 import {
   apiClient,
+  DEMO_MODE,
   ApiError,
   type ApiDispute,
   type ApiOrder,
@@ -85,6 +91,7 @@ import {
   formatNGN,
   formatRelative,
   formatTime,
+  formatDue,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -97,7 +104,7 @@ export default function OrderDetailPage() {
   useSeoMeta({ title: "Order detail — SafeSale" });
 
   const { token = "" } = useParams<{ token: string }>();
-  const navigate = useNavigate();
+  const goBack = useGoBack("/app/orders");
   const qc = useQueryClient();
   const { toast } = useToast();
 
@@ -142,7 +149,7 @@ export default function OrderDetailPage() {
       setCarrier("");
       toast({
         title: "Marked as shipped",
-        description: "Buyer was notified.",
+        description: "The buyer can see it on their order page.",
       });
     },
     onError: (err: unknown) => {
@@ -154,28 +161,6 @@ export default function OrderDetailPage() {
             : err instanceof Error
               ? err.message
               : "Try again in a moment.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deliverMutation = useMutation({
-    mutationFn: () => apiClient.deliverOrder(token),
-    onSuccess: (res) => {
-      qc.setQueryData<GetOrderResponse>(
-        ["safesale", "order", token],
-        (prev) => (prev ? { ...prev, order: res.order } : prev),
-      );
-      qc.invalidateQueries({ queryKey: ["safesale", "seller-orders"] });
-      toast({
-        title: "Marked as delivered",
-        description: "Buyer notified to confirm receipt and release payment.",
-      });
-    },
-    onError: (err: unknown) => {
-      toast({
-        title: "Couldn't mark as delivered",
-        description: err instanceof Error ? err.message : "Try again.",
         variant: "destructive",
       });
     },
@@ -197,7 +182,7 @@ export default function OrderDetailPage() {
       query.error.code === "ORDER_NOT_FOUND";
     return (
       <AppShell title="Order not found">
-        <div className="rounded-2xl border border-dashed border-border bg-white p-10 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-canvas p-10 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-surface text-ink-soft">
             <AlertTriangle className="h-6 w-6" aria-hidden />
           </div>
@@ -235,8 +220,8 @@ export default function OrderDetailPage() {
       ? (query.data.dispute as ApiDispute)
       : null;
   const isPaymentLocked = order.status === "paid";
-  const shipDisabled =
-    !tracking.trim() || !carrier.trim() || shipMutation.isPending;
+  // Tracking and courier are optional — the backend accepts shipping without them.
+  const shipDisabled = shipMutation.isPending;
 
   return (
     <AppShell
@@ -247,25 +232,42 @@ export default function OrderDetailPage() {
         {/* Back link */}
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={goBack}
           className="inline-flex items-center gap-1 rounded text-xs font-medium text-ink-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Back to orders
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Back
         </button>
 
-        {/* Heading row */}
-        <header className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="font-mono text-2xl font-semibold tabular-nums text-ink">
-              {order.shortId}
-            </h1>
-            <p className="mt-1 text-sm text-ink-soft">
-              Placed · {formatRelative(order.createdAt)} · by{" "}
-              <span className="text-ink">{order.buyerName}</span>
-            </p>
+        {/* Status banner */}
+        <motion.header
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="rounded-3xl bg-forest p-6 text-canvas sm:p-8"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm text-canvas/70">
+                {order.shortId} · placed {formatRelative(order.createdAt)} by {order.buyerName}
+              </p>
+              <h2 className="mt-2 font-display text-h1 text-canvas sm:text-display-md">{statusHeadline(order)}</h2>
+            </div>
+            <div className="shrink-0 sm:text-right">
+              <p className="text-sm text-canvas/70">
+                {order.settlement ? "Your share" : order.status === "completed" ? "Paid out" : "Order total"}
+              </p>
+              <p className="font-display text-h1 text-mint tabular-nums">{formatNGN(sellerTakeNGN(order))}</p>
+              {order.settlement && order.settlement.buyerRefundNGN > 0 && (
+                <p className="text-sm text-canvas/70 tabular-nums">
+                  {formatNGN(order.settlement.buyerRefundNGN)} refunded to the buyer
+                </p>
+              )}
+            </div>
           </div>
-          <EscrowStatusPill status={order.status} />
-        </header>
+          <div className="mt-8">
+            <OrderProgress status={order.status} tone="dark" disputed={!!dispute || !!order.settlement} />
+          </div>
+        </motion.header>
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* LEFT — hero + summary */}
@@ -287,8 +289,6 @@ export default function OrderDetailPage() {
                   : null
               }
               onShip={() => shipMutation.mutate()}
-              onDeliver={() => deliverMutation.mutate()}
-              isDelivering={deliverMutation.isPending}
             />
 
             {/* Dispute working panel — only when disputed */}
@@ -306,7 +306,8 @@ export default function OrderDetailPage() {
           {/* RIGHT — ship-to + timeline + chat */}
           <div className="space-y-6">
             <ShipToCard order={order} />
-            {order.status !== "pending_payment" && (
+            {/* Chat is stored in this browser only, so it's demo-mode only. */}
+            {DEMO_MODE && order.status !== "pending_payment" && (
               <OrderChat orderToken={token} viewer="seller" counterpartyName={order.buyerName} />
             )}
             <TimelineCard order={order} dispute={dispute} />
@@ -317,7 +318,7 @@ export default function OrderDetailPage() {
       {/* Mobile sticky action bar — only when paid */}
       {isPaymentLocked && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-30 flex items-center gap-3 border-t border-border bg-white px-4 py-3 shadow-[0_-1px_3px_rgba(0,0,0,0.04)] sm:hidden"
+          className="fixed right-0 bottom-0 left-0 z-30 flex items-center gap-3 border-t border-line bg-canvas px-4 py-3 shadow-[var(--shadow-float)] sm:hidden"
           role="region"
           aria-label="Quick ship action"
         >
@@ -333,9 +334,8 @@ export default function OrderDetailPage() {
               });
               trackingRef.current?.focus();
             }}
-            className="h-11 rounded-lg bg-brand px-4 text-sm font-semibold text-brand-foreground hover:bg-brand/90"
           >
-            <Send className="mr-1 h-4 w-4" /> Mark shipped
+            <Send /> Mark shipped
           </Button>
         </div>
       )}
@@ -357,8 +357,6 @@ interface HeroProps {
   isShipping: boolean;
   shipError: string | null;
   onShip: () => void;
-  onDeliver: () => void;
-  isDelivering: boolean;
 }
 
 function HeroCard({
@@ -373,8 +371,6 @@ function HeroCard({
   isShipping,
   shipError,
   onShip,
-  onDeliver,
-  isDelivering,
 }: HeroProps) {
   switch (order.status) {
     case "paid":
@@ -391,12 +387,12 @@ function HeroCard({
             Ship this order
           </h2>
           <p className="mt-1 text-sm text-ink-soft">
-            Once you mark this shipped, the buyer gets notified. They have 3
-            days to confirm — after that the payment auto-releases to you.
+            Mark it shipped once it's on its way. The buyer sees the update on their order page. If they
+            don't confirm or report a problem within 7 days, the payment is released to you automatically.
           </p>
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <Label htmlFor="tracking">Tracking number</Label>
+              <Label htmlFor="tracking">Tracking number (optional)</Label>
               <Input
                 id="tracking"
                 ref={trackingRef}
@@ -408,7 +404,7 @@ function HeroCard({
               />
             </div>
             <div>
-              <Label htmlFor="carrier">Carrier</Label>
+              <Label htmlFor="carrier">Courier (optional)</Label>
               <Input
                 id="carrier"
                 value={carrier}
@@ -420,22 +416,21 @@ function HeroCard({
             </div>
           </div>
           {shipError && (
-            <p className="mt-3 text-xs text-rose-700">{shipError}</p>
+            <p className="mt-3 text-xs text-negative">{shipError}</p>
           )}
           <Button
             type="button"
             onClick={onShip}
             disabled={shipDisabled}
-            className="mt-4 h-11 rounded-lg bg-brand px-5 text-sm font-semibold text-brand-foreground hover:bg-brand/90 disabled:opacity-50"
+            className="mt-5"
           >
             {isShipping ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Marking
-                shipped…
+                <Loader2 className="animate-spin" /> Marking shipped…
               </>
             ) : (
               <>
-                <Send className="mr-2 h-4 w-4" /> Mark as shipped
+                <Send /> Mark as shipped
               </>
             )}
           </Button>
@@ -454,40 +449,18 @@ function HeroCard({
                 Item is on the way
               </h2>
               <p className="mt-1 text-sm text-ink-soft">
-                You've shipped this order. The buyer has until{" "}
+                You've shipped this order. If the buyer doesn't confirm or report a problem, the payment is released to you{" "}
                 <span className="font-medium text-ink">
-                  {order.autoReleaseAt
-                    ? formatRelative(order.autoReleaseAt)
-                    : "release"}
-                </span>{" "}
-                to release the payment, or it'll release automatically.
+                  {order.autoReleaseAt ? formatDue(order.autoReleaseAt) : "after 7 days"}
+                </span>
+                .
               </p>
             </div>
           </div>
           <ShipmentData order={order} />
-          <div className="mt-4 border-t border-border pt-4">
-            <p className="text-xs text-ink-soft">
-              Courier confirmed delivery? Mark it delivered to prompt the buyer
-              to confirm receipt.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onDeliver}
-              disabled={isDelivering}
-              className="mt-3 h-10 rounded-lg"
-            >
-              {isDelivering ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating…
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" /> Mark as delivered
-                </>
-              )}
-            </Button>
-          </div>
+          <p className="mt-4 border-t border-line pt-4 text-sm text-mute">
+            The buyer confirms delivery from their private order link. You don't need to do anything else.
+          </p>
         </Card>
       );
 
@@ -521,15 +494,20 @@ function HeroCard({
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-ink">
-                Payment released — you got paid
+                {isSplit(order) ? "The mediator split the payment" : "Payment released — you got paid"}
               </h2>
               <p className="mt-1 text-sm text-ink-soft">
-                The buyer released the escrow on{" "}
-                {order.releasedAt ? formatTime(order.releasedAt) : "—"}.{" "}
-                {formatNGN(order.amountNGN)} is on its way to your bank.
+                {order.settlement
+                  ? `A SafeSale mediator decided this dispute on ${order.releasedAt ? formatTime(order.releasedAt) : "—"}. `
+                  : `The buyer released the escrow on ${order.releasedAt ? formatTime(order.releasedAt) : "—"}. `}
+                {formatNGN(sellerTakeNGN(order))} is on its way to your bank
+                {isSplit(order) && order.settlement
+                  ? ` and ${formatNGN(order.settlement.buyerRefundNGN)} goes back to the buyer`
+                  : ""}
+                .
               </p>
             </div>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-brand-soft px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-soft-foreground">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-brand-soft px-2 py-1 text-xs font-semibold uppercase tracking-wide text-brand-soft-foreground">
               <CheckCircle2 className="h-3 w-3" aria-hidden /> Completed
             </span>
           </div>
@@ -544,25 +522,24 @@ function HeroCard({
               <AlertTriangle className="h-5 w-5" aria-hidden />
             </IconCircle>
             <div className="flex-1">
-              <h2 className="text-base font-semibold text-rose-800">
+              <h2 className="text-base font-semibold text-negative">
                 This order is in dispute
               </h2>
               <p className="mt-1 text-sm text-ink-soft">
-                A mediator is reviewing. You'll be notified when there's a
-                decision.
+                A SafeSale mediator is reviewing. The decision will show on this page.
               </p>
             </div>
           </div>
           {dispute && (
-            <div className="mt-4 space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-800">
+            <div className="mt-4 space-y-2 rounded-xl border border-negative/25 bg-negative-pale p-4 text-sm">
+              <p className="text-xs font-semibold uppercase tracking-wider text-negative">
                 Dispute reason
               </p>
-              <p className="text-rose-900">{dispute.reason}</p>
+              <p className="text-negative">{dispute.reason}</p>
               {dispute.summary && (
-                <p className="text-xs text-rose-800">{dispute.summary}</p>
+                <p className="text-xs text-negative">{dispute.summary}</p>
               )}
-              <p className="text-[11px] text-rose-700">
+              <p className="text-xs text-negative">
                 Opened by {dispute.openedBy} ·{" "}
                 {formatRelative(dispute.createdAt)} · priority:{" "}
                 {dispute.priority}
@@ -670,21 +647,21 @@ function SellerDisputePanel({
   return (
     <Card>
       <div className="flex items-center gap-2">
-        <AlertTriangle className="h-4 w-4 text-rose-600" />
-        <h2 className="text-base font-semibold text-rose-800">Respond to this dispute</h2>
+        <AlertTriangle className="h-4 w-4 text-negative" />
+        <h2 className="text-base font-semibold text-negative">Respond to this dispute</h2>
       </div>
       <p className="mt-1 text-sm text-ink-soft">
         Reason: <span className="font-medium text-ink">{dispute.reason}</span>
       </p>
       {dispute.summary && (
-        <p className="mt-1 rounded-lg bg-rose-50 p-3 text-sm text-rose-900">
+        <p className="mt-1 rounded-lg bg-negative-pale p-3 text-sm text-negative">
           “{dispute.summary}”
         </p>
       )}
 
       {/* Buyer's evidence */}
       <div className="mt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
           Buyer's evidence
         </p>
         {buyerEvidence.length === 0 ? (
@@ -708,7 +685,7 @@ function SellerDisputePanel({
 
       {/* Seller counter-evidence */}
       <div className="mt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
           Your evidence
         </p>
         <div className="mt-2 grid grid-cols-4 gap-2">
@@ -725,7 +702,7 @@ function SellerDisputePanel({
               className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border bg-surface text-ink-soft hover:border-brand hover:text-ink disabled:opacity-60"
             >
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
-              <span className="text-[10px]">Add proof</span>
+              <span className="text-xs">Add proof</span>
             </button>
           )}
         </div>
@@ -734,7 +711,7 @@ function SellerDisputePanel({
 
       {/* Written response */}
       <div className="mt-4">
-        <Label htmlFor="seller-response" className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+        <Label htmlFor="seller-response" className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
           Your response
         </Label>
         <Input
@@ -752,7 +729,7 @@ function SellerDisputePanel({
         >
           <Send className="mr-2 h-4 w-4" /> Submit response
         </Button>
-        <p className="mt-2 text-[11px] text-ink-soft">
+        <p className="mt-2 text-xs text-ink-soft">
           A SafeSale mediator reviews both sides and issues a decision. Funds
           stay locked until then.
         </p>
@@ -797,9 +774,10 @@ function ShipToCard({ order }: { order: ApiOrder }) {
   const { toast } = useToast();
   return (
     <Card>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
-        Ship to
-      </p>
+      <div className="flex items-center gap-3">
+        <BrandIcon icon={MapPinLine} size="sm" />
+        <p className="font-semibold text-ink">Deliver to</p>
+      </div>
       <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-1">
         <Field label="Buyer name">
           <p className="text-sm text-ink">{order.buyerName}</p>
@@ -835,15 +813,6 @@ function ShipToCard({ order }: { order: ApiOrder }) {
               Buyer didn't provide an address — contact them via phone above.
             </p>
           )}
-        </Field>
-        <Field label="Contact preference">
-          <span className="inline-block rounded-md border border-border bg-surface px-2 py-0.5 text-xs text-ink-soft">
-            {order.contactMethod === "phone"
-              ? "Phone"
-              : order.contactMethod === "email"
-                ? "Email"
-                : "Either"}
-          </span>
         </Field>
         {order.buyerEmail && (
           <Field label="Email">
@@ -883,7 +852,7 @@ function SummaryCard({
 }) {
   return (
     <Card>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <p className="font-semibold text-ink">
         Order summary
       </p>
 
@@ -893,33 +862,29 @@ function SummaryCard({
           <p className="truncate text-sm font-medium text-ink">
             {listing.title}
           </p>
-          <p className="mt-0.5 truncate font-mono text-[11px] tabular-nums text-ink-soft">
-            {listing.id}
-          </p>
+          {order.variant && <p className="mt-0.5 truncate text-sm text-mute">{order.variant}</p>}
         </div>
       </div>
 
       <dl className="mt-4 space-y-0 text-sm">
-        <SummaryRow label="Unit price">
+        <SummaryRow label="Item">
+          <span className="tabular-nums text-ink">{formatNGN(order.itemNGN ?? listing.priceNGN)}</span>
+        </SummaryRow>
+        <SummaryRow label="Delivery">
           <span className="tabular-nums text-ink">
-            {formatNGN(listing.priceNGN)}
+            {order.deliveryFee ? formatNGN(order.deliveryFee) : "Free"}
           </span>
         </SummaryRow>
-        {order.variant && (
-          <SummaryRow label="Variant">
-            <span className="text-ink">{order.variant}</span>
-          </SummaryRow>
-        )}
-        <SummaryRow label="Total (NGN)">
+        <SummaryRow label="Total paid">
           <span className="font-semibold tabular-nums text-ink">
             {formatNGN(order.amountNGN)}
           </span>
         </SummaryRow>
       </dl>
 
-      <p className="mt-4 text-[11px] italic text-ink-soft">
-        Buyer paid in Naira via Nomba; funds are held in escrow until the
-        buyer confirms delivery.
+      <p className="mt-4 text-xs italic text-ink-soft">
+        Paid by bank transfer. SafeSale holds the money until the buyer confirms delivery, or 7 days
+        after you ship if no problem is reported.
       </p>
     </Card>
   );
@@ -945,7 +910,7 @@ function TimelineCard({
   const steps = buildTimelineSteps(order, dispute);
   return (
     <Card>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <p className="font-semibold text-ink">
         Activity
       </p>
       <ol className="mt-4 space-y-0">
@@ -972,9 +937,9 @@ function TimelineRow({
     step.state === "past"
       ? "bg-brand-soft text-brand-soft-foreground"
       : step.state === "current"
-        ? "bg-amber-100 text-amber-800"
+        ? "bg-warning-pale text-warning"
         : step.state === "alert"
-          ? "bg-rose-100 text-rose-800"
+          ? "bg-negative-pale text-negative"
           : "border border-border bg-surface text-ink-soft opacity-60";
 
   let Icon = CheckCircle2;
@@ -1005,7 +970,7 @@ function TimelineRow({
         <p className="text-sm font-medium text-ink">{step.title}</p>
         <p className="mt-0.5 text-xs text-ink-soft">{step.at ?? "—"}</p>
         {step.detail && (
-          <p className="mt-1 font-mono text-[11px] tabular-nums text-ink-soft">
+          <p className="mt-1 font-mono text-xs tabular-nums text-ink-soft">
             {step.detail}
           </p>
         )}
@@ -1112,7 +1077,7 @@ function buildTimelineSteps(
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
+    <section className="rounded-2xl bg-canvas p-5 sm:p-6">
       {children}
     </section>
   );
@@ -1128,17 +1093,9 @@ function AccentStrip({
   children: React.ReactNode;
 }) {
   // single tone for now; keeps prop API ready for future variants
-  const cls =
-    tone === "amber"
-      ? "border-amber-200 bg-amber-50 text-amber-900"
-      : "border-border bg-surface text-ink";
+  const cls = tone === "amber" ? "bg-warning-pale text-warning" : "bg-canvas-soft text-ink";
   return (
-    <div
-      className={cn(
-        "-mx-5 -mt-5 flex items-center gap-2 rounded-t-2xl border-b px-5 py-2 text-xs font-medium sm:-mx-6 sm:-mt-6 sm:px-6",
-        cls,
-      )}
-    >
+    <div className={cn("flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium", cls)}>
       {icon}
       <span>{children}</span>
     </div>
@@ -1154,9 +1111,9 @@ function IconCircle({
 }) {
   const cls =
     tone === "sky"
-      ? "bg-sky-50 text-sky-800"
+      ? "bg-info-pale text-info"
       : tone === "rose"
-        ? "bg-rose-50 text-rose-800"
+        ? "bg-negative-pale text-negative"
         : "bg-surface text-ink-soft";
   return (
     <div
@@ -1180,7 +1137,7 @@ function Field({
 }) {
   return (
     <div>
-      <dt className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <dt className="text-sm text-mute">
         {label}
       </dt>
       <dd className="mt-1">{children}</dd>
@@ -1197,7 +1154,7 @@ function DataPair({
 }) {
   return (
     <div>
-      <dt className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <dt className="text-sm text-mute">
         {label}
       </dt>
       <dd className="mt-1 flex items-center justify-between gap-2">
@@ -1257,7 +1214,7 @@ function OrderSkeleton() {
       </div>
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <div className="rounded-2xl border border-border bg-white p-6">
+          <div className="rounded-2xl border border-border bg-canvas p-6">
             <Skeleton className="h-5 w-1/2" />
             <div className="mt-3 space-y-2">
               <Skeleton className="h-4 w-full" />
@@ -1265,7 +1222,7 @@ function OrderSkeleton() {
               <Skeleton className="h-4 w-3/5" />
             </div>
           </div>
-          <div className="rounded-2xl border border-border bg-white p-6">
+          <div className="rounded-2xl border border-border bg-canvas p-6">
             <Skeleton className="h-4 w-32" />
             <div className="mt-3 space-y-2">
               <Skeleton className="h-4 w-full" />
@@ -1274,7 +1231,7 @@ function OrderSkeleton() {
           </div>
         </div>
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-white p-6">
+          <div className="rounded-2xl border border-border bg-canvas p-6">
             <Skeleton className="h-4 w-24" />
             <div className="mt-3 space-y-2">
               <Skeleton className="h-4 w-full" />
@@ -1282,7 +1239,7 @@ function OrderSkeleton() {
               <Skeleton className="h-4 w-2/3" />
             </div>
           </div>
-          <div className="rounded-2xl border border-border bg-white p-6">
+          <div className="rounded-2xl border border-border bg-canvas p-6">
             <Skeleton className="h-4 w-24" />
             <div className="mt-3 space-y-2">
               <Skeleton className="h-4 w-full" />
@@ -1294,4 +1251,26 @@ function OrderSkeleton() {
       </div>
     </div>
   );
+}
+
+function statusHeadline(order: ApiOrder): string {
+  const buyer = order.buyerName.split(" ")[0];
+  switch (order.status) {
+    case "pending_payment":
+      return "Waiting for payment";
+    case "paid":
+      return "Paid and ready to ship";
+    case "shipped":
+      return `On its way to ${buyer}`;
+    case "delivered":
+      return `Delivered — waiting for ${buyer} to release`;
+    case "completed":
+      return isSplit(order) ? "Split by the mediator" : "Paid out to your bank";
+    case "disputed":
+      return `${buyer} reported a problem`;
+    case "refunded":
+      return "Refunded to the buyer";
+    default:
+      return "Order";
+  }
 }

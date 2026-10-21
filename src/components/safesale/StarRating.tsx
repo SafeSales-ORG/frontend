@@ -19,7 +19,7 @@ export function StarRating({ rating, size = 14, className, showNumber = false }:
           return (
             <span key={i} className="relative" style={{ width: size, height: size }}>
               <Star
-                className="absolute inset-0 text-amber-200"
+                className="absolute inset-0 text-warning-pale"
                 fill="currentColor"
                 strokeWidth={0}
                 style={{ width: size, height: size }}
@@ -29,7 +29,7 @@ export function StarRating({ rating, size = 14, className, showNumber = false }:
                 style={{ width: `${fillPct}%` }}
               >
                 <Star
-                  className="text-amber-500"
+                  className="text-warning"
                   fill="currentColor"
                   strokeWidth={0}
                   style={{ width: size, height: size }}

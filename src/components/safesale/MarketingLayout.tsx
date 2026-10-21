@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { Logo } from "./Logo";
+import { PageTransition } from "@/components/motion";
 import { Avatar } from "./Avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -8,25 +9,21 @@ import { Menu, X } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
+import { Package } from "@phosphor-icons/react";
+import { useSavedOrders } from "@/hooks/useSavedOrders";
 
 interface Props {
   children: React.ReactNode;
 }
 
 /**
- * Public marketing layout — wraps Landing (and the deferred how-it-works
- * and for-sellers marketing pages). The header is session-aware:
+ * Public marketing layout. The header is session-aware:
  *
- *   - logged out          → "Sign in" + "Start selling" CTAs
- *   - logged in + seller  → avatar + "Go to dashboard"
- *   - logged in + no seller → avatar + "Finish setup"
+ *   - logged out            → "Sign in" + "Start selling"
+ *   - logged in + seller    → avatar + "Go to dashboard"
+ *   - logged in + no seller → avatar + "Start selling"
  *
- * "Mediator" is intentionally NOT in the public nav. The mediator
- * surface lives behind the `/admin` route, which is itself gated to a
- * single hardcoded mediator npub (see AppRouter / MediatorGate). Public
- * users have no reason to see admin links — it leaks an unprofessional
- * impression at exactly the wrong moment of a hackathon demo and, in
- * production, it's a real exposure of internal tooling.
+ * The mediator console (/admin) is deliberately not linked here.
  */
 const PUBLIC_LINKS = [
   { to: "/market", label: "Marketplace" },
@@ -35,6 +32,7 @@ const PUBLIC_LINKS = [
 ] as const;
 
 export function MarketingLayout({ children }: Props) {
+  const myOrders = useSavedOrders();
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
 
@@ -58,8 +56,8 @@ export function MarketingLayout({ children }: Props) {
     : { to: "/onboarding", label: "Start selling" };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <header className="sticky top-0 z-40 border-b border-line bg-canvas">
         <div className="container flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center" onClick={() => setOpen(false)}>
             <Logo />
@@ -71,7 +69,7 @@ export function MarketingLayout({ children }: Props) {
                 key={l.to}
                 to={l.to}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium text-ink-soft transition-colors hover:bg-secondary hover:text-ink",
+                  "rounded-full px-3.5 py-2 text-sm font-medium text-body transition-colors hover:bg-canvas-soft hover:text-ink",
                   pathname === l.to && "text-ink",
                 )}
               >
@@ -81,11 +79,24 @@ export function MarketingLayout({ children }: Props) {
           </nav>
 
           <div className="hidden items-center gap-2 md:flex">
+            {myOrders.length > 0 && (
+              <Link
+                to="/my-orders"
+                className={cn(
+                  "inline-flex h-10 items-center gap-2 rounded-full px-3.5 text-sm font-medium text-body transition-colors hover:bg-canvas-soft hover:text-ink",
+                  pathname === "/my-orders" && "text-ink",
+                )}
+              >
+                <Package size={18} weight="duotone" />
+                My orders
+                <span className="rounded-full bg-mint px-1.5 text-xs font-semibold text-forest tabular-nums">{myOrders.length}</span>
+              </Link>
+            )}
             {loggedIn ? (
               <>
                 <Link
                   to={dashboardCta.to}
-                  className="inline-flex h-9 items-center gap-2 rounded-md pl-1 pr-3 text-sm font-medium text-ink hover:bg-secondary"
+                  className="inline-flex h-10 items-center gap-2 rounded-full pr-4 pl-1 text-sm font-medium text-ink hover:bg-canvas-soft"
                   aria-label={`${dashboardCta.label} — signed in as ${displayName ?? "you"}`}
                 >
                   <Avatar
@@ -99,15 +110,10 @@ export function MarketingLayout({ children }: Props) {
               </>
             ) : (
               <>
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                  className="text-sm font-medium text-ink-soft hover:text-ink"
-                >
+                <Button asChild variant="ghost" size="sm">
                   <Link to="/onboarding">Sign in</Link>
                 </Button>
-                <Button asChild size="sm" className="bg-brand text-brand-foreground hover:bg-brand/90">
+                <Button asChild size="sm">
                   <Link to="/onboarding">Start selling</Link>
                 </Button>
               </>
@@ -125,7 +131,7 @@ export function MarketingLayout({ children }: Props) {
         </div>
 
         {open && (
-          <div className="border-t border-border/60 bg-background md:hidden">
+          <div className="border-t border-line bg-canvas md:hidden">
             <div className="container flex flex-col gap-1 py-3">
               {PUBLIC_LINKS.map((l) => (
                 <Link
@@ -137,29 +143,31 @@ export function MarketingLayout({ children }: Props) {
                   {l.label}
                 </Link>
               ))}
-              <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
+              {myOrders.length > 0 && (
+                <Link
+                  to="/my-orders"
+                  className="flex items-center gap-2 rounded-md px-2 py-2 text-base font-medium text-ink"
+                  onClick={() => setOpen(false)}
+                >
+                  My orders
+                  <span className="rounded-full bg-mint px-1.5 text-xs font-semibold text-forest tabular-nums">{myOrders.length}</span>
+                </Link>
+              )}
+              <div className="mt-2 grid grid-cols-2 gap-2 border-t border-line pt-3">
                 {loggedIn ? (
-                  <Button
-                    asChild
-                    size="sm"
-                    className="col-span-2 bg-brand text-brand-foreground hover:bg-brand/90"
-                  >
+                  <Button asChild className="col-span-2">
                     <Link to={dashboardCta.to} onClick={() => setOpen(false)}>
                       {dashboardCta.label}
                     </Link>
                   </Button>
                 ) : (
                   <>
-                    <Button asChild variant="outline" size="sm">
+                    <Button asChild variant="outline">
                       <Link to="/onboarding" onClick={() => setOpen(false)}>
                         Sign in
                       </Link>
                     </Button>
-                    <Button
-                      asChild
-                      size="sm"
-                      className="bg-brand text-brand-foreground hover:bg-brand/90"
-                    >
+                    <Button asChild>
                       <Link to="/onboarding" onClick={() => setOpen(false)}>
                         Start selling
                       </Link>
@@ -171,7 +179,9 @@ export function MarketingLayout({ children }: Props) {
           </div>
         )}
       </header>
-      <main>{children}</main>
+      <main className="flex-1">
+        <PageTransition key={pathname}>{children}</PageTransition>
+      </main>
       <SiteFooter />
     </div>
   );
@@ -179,13 +189,13 @@ export function MarketingLayout({ children }: Props) {
 
 function SiteFooter() {
   return (
-    <footer className="border-t border-border/60 bg-surface-2/40">
-      <div className="container py-12">
-        <div className="grid gap-8 md:grid-cols-4">
-          <div className="md:col-span-1">
-            <Logo />
-            <p className="mt-3 max-w-xs text-sm text-ink-soft">
-              Trustless escrow for social-commerce sellers. Built for Africa.
+    <footer className="bg-forest text-canvas-sunken">
+      <div className="container py-14">
+        <div className="grid gap-10 md:grid-cols-[2fr_1fr_1fr]">
+          <div>
+            <Logo className="[&_span]:text-canvas" />
+            <p className="mt-4 max-w-xs text-sm text-canvas-sunken/70">
+              Escrow for people who buy and sell on social media in Nigeria.
             </p>
           </div>
           <FooterCol
@@ -193,32 +203,22 @@ function SiteFooter() {
             items={[
               { to: "/how-it-works", label: "How it works" },
               { to: "/for-sellers", label: "For sellers" },
+              { to: "/market", label: "Marketplace" },
+            ]}
+          />
+          <FooterCol
+            title="Account"
+            items={[
               { to: "/onboarding", label: "Start selling" },
+              { to: "/onboarding", label: "Sign in" },
               { to: "/app", label: "Seller dashboard" },
-            ]}
-          />
-          <FooterCol
-            title="Trust"
-            items={[
-              { to: "/how-it-works#protection", label: "Buyer protection" },
-              { to: "/how-it-works#dispute", label: "Dispute process" },
-              { to: "/how-it-works#fees", label: "Fees" },
-            ]}
-          />
-          <FooterCol
-            title="Company"
-            items={[
-              { to: "/", label: "About" },
-              { to: "/", label: "Careers" },
-              { to: "/", label: "Press" },
-              { to: "/", label: "Contact" },
+              { to: "/admin", label: "Admin console" },
             ]}
           />
         </div>
-        <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-border/60 pt-6 text-xs text-ink-soft sm:flex-row sm:items-center">
-          <p>© 2026 SafeSale. Made with care in Lagos.</p>
-          <p>Built for the DevCareer × Nomba Hackathon.</p>
-        </div>
+        <p className="mt-12 border-t border-canvas-sunken/15 pt-6 text-xs text-canvas-sunken/60">
+          © {new Date().getFullYear()} SafeSale. Made in Lagos.
+        </p>
       </div>
     </footer>
   );
@@ -233,11 +233,11 @@ function FooterCol({
 }) {
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">{title}</p>
-      <ul className="mt-3 space-y-2 text-sm">
+      <p className="text-xs font-medium tracking-wider text-canvas-sunken/60 uppercase">{title}</p>
+      <ul className="mt-4 space-y-3 text-sm">
         {items.map((i) => (
           <li key={i.label}>
-            <Link to={i.to} className="text-ink hover:text-brand">
+            <Link to={i.to} className="text-canvas-sunken hover:text-canvas">
               {i.label}
             </Link>
           </li>

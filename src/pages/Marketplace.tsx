@@ -1,53 +1,39 @@
 /**
- * Buyer Marketplace — `/market`.
- *
- * The buyer's browse surface: every live listing in the marketplace, with
- * search + category filter. Buyers don't need an account — they tap a
- * product, land on the public listing, and check out via the secret order
- * link (the product's USP). Sellers reach their own dashboard via "Start
- * selling" / Sign in instead.
- *
- * Reads live from the market store, so a seller publishing a new product
- * (or editing / marking it out of stock) reflects here instantly.
+ * Marketplace — `/market`. Newest live listings across all shops
+ * (`GET /api/listings`), with search and category filters. Buyers need no
+ * account: a product opens its buy page.
  */
 
 import { useSeoMeta } from "@unhead/react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import { Search, ShieldCheck, Store } from "lucide-react";
 
 import { MarketingLayout } from "@/components/safesale/MarketingLayout";
 import { Avatar } from "@/components/safesale/Avatar";
-import { ProductImage } from "@/components/safesale/ProductImage";
+import { ListingThumb } from "@/components/safesale/ListingThumb";
 import { Input } from "@/components/ui/input";
-import { useMarketState } from "@/hooks/useMarket";
-import { marketStore } from "@/lib/store/marketStore";
-import type { ApiListing, ApiListingImage } from "@/lib/api/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { apiClient } from "@/lib/api";
+import type { MarketplaceListing } from "@/lib/api/types";
 import { formatNGN } from "@/lib/format";
-import { hashStr } from "@/lib/seeded";
 import { cn, sanitizeUrl } from "@/lib/utils";
 
 export default function Marketplace() {
   useSeoMeta({
     title: "Marketplace — SafeSale",
-    description:
-      "Browse social-commerce listings. Pay safely with SafeSale escrow.",
+    description: "Shop from social-commerce sellers. Every purchase is protected by SafeSale escrow.",
   });
 
-  const state = useMarketState();
+  const { data, isLoading } = useQuery({
+    queryKey: ["safesale", "marketplace"],
+    queryFn: () => apiClient.getMarketplace(),
+  });
+  const listings = useMemo(() => data?.listings ?? [], [data]);
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string>("all");
-
-  const listings = useMemo(
-    () =>
-      Object.values(state.listings)
-        .filter((l) => l.active)
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        ),
-    [state.listings],
-  );
+  const [category, setCategory] = useState("all");
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -62,159 +48,142 @@ export default function Marketplace() {
       if (!q) return true;
       return (
         l.title.toLowerCase().includes(q) ||
-        l.description.toLowerCase().includes(q)
+        l.description.toLowerCase().includes(q) ||
+        l.seller.name.toLowerCase().includes(q)
       );
     });
   }, [listings, query, category]);
 
   return (
     <MarketingLayout>
-      <div className="container py-8 sm:py-10">
-        <header className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-            Marketplace
-          </h1>
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-soft">
-            <ShieldCheck className="h-4 w-4 text-brand" />
-            Every purchase is protected by SafeSale escrow.
+      <section className="bg-mint">
+        <div className="container py-12 md:py-16">
+          <h1 className="text-display-md text-forest sm:text-display-lg">Shop without the fear.</h1>
+          <p className="mt-3 flex items-center gap-2 text-lg text-forest/80">
+            <ShieldCheck className="h-5 w-5" aria-hidden />
+            Every purchase is held by SafeSale until you confirm it arrived.
           </p>
-        </header>
-
-        {/* Search + categories */}
-        <div className="mb-6 space-y-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
+          <div className="relative mt-8 max-w-2xl">
+            <Search className="pointer-events-none absolute top-1/2 left-5 h-5 w-5 -translate-y-1/2 text-mute" aria-hidden />
             <Input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search products"
-              className="h-11 pl-10"
+              placeholder="Search products or shops"
+              aria-label="Search products or shops"
+              className="h-14 rounded-full border-0 bg-canvas pl-13 text-base shadow-[var(--shadow-float)]"
             />
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {categories.map((c) => (
+        </div>
+      </section>
+
+      <div className="container py-8">
+        <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none]" role="tablist" aria-label="Categories">
+          {categories.map((c) => {
+            const active = c === category;
+            return (
               <button
                 key={c}
                 type="button"
+                role="tab"
+                aria-selected={active}
                 onClick={() => setCategory(c)}
                 className={cn(
-                  "inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-xs font-medium capitalize transition-colors",
-                  category === c
-                    ? "border-brand bg-brand-soft text-brand-soft-foreground"
-                    : "border-border bg-white text-ink-soft hover:text-ink",
+                  "relative shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                  active ? "text-mint" : "bg-canvas text-body hover:text-ink",
                 )}
               >
-                {c === "all" ? "All categories" : c}
+                {active && (
+                  <motion.span
+                    layoutId="market-category"
+                    className="absolute inset-0 rounded-full bg-forest"
+                    transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                  />
+                )}
+                <span className="relative">{c === "all" ? "All" : capitalize(c)}</span>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
-        {filtered.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-white px-6 py-16 text-center">
-            <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-surface text-ink-soft">
-              <Store className="h-7 w-7" />
-            </span>
-            <p className="mt-4 text-base font-semibold text-ink">
-              {query || category !== "all"
-                ? "No products match your search"
-                : "No products listed yet"}
-            </p>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
-              {query || category !== "all"
-                ? "Try a different search or category."
-                : "Be the first — open a shop and list something."}
-            </p>
-            <Link
-              to="/onboarding"
-              className="mt-5 inline-flex h-11 items-center rounded-lg bg-brand px-4 text-sm font-semibold text-brand-foreground hover:bg-brand/90"
-            >
-              Start selling
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {filtered.map((l) => (
-              <MarketCard key={l.id} listing={l} />
+        <p className="mt-4 text-sm text-mute" aria-live="polite">
+          {isLoading ? "Loading products…" : `${filtered.length} product${filtered.length === 1 ? "" : "s"}`}
+        </p>
+
+        {isLoading ? (
+          <div className="mt-6 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i}>
+                <Skeleton className="aspect-square rounded-lg" />
+                <Skeleton className="mt-3 h-4 w-3/4" />
+                <Skeleton className="mt-2 h-4 w-1/3" />
+              </div>
             ))}
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="mt-6 rounded-lg bg-canvas px-6 py-16 text-center">
+            <Store className="mx-auto h-6 w-6 text-mute" aria-hidden />
+            <p className="mt-3 text-h3 text-ink">{listings.length === 0 ? "No products yet" : "Nothing matches that"}</p>
+            <p className="mt-1 text-body">
+              {listings.length === 0 ? "New products from sellers appear here." : "Try another search or category."}
+            </p>
+          </div>
+        ) : (
+          <motion.ul layout className="mt-6 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+            <AnimatePresence mode="popLayout">
+              {filtered.map((l, i) => (
+                <motion.li
+                  key={l.id}
+                  layout
+                  initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.3, delay: Math.min(i, 12) * 0.03, ease: [0.2, 0, 0, 1] }}
+                  whileHover={{ y: -4 }}
+                >
+                  <ProductCard listing={l} />
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </motion.ul>
         )}
       </div>
     </MarketingLayout>
   );
 }
 
-function MarketCard({ listing }: { listing: ApiListing }) {
-  const seller = marketStore.getSellerById(listing.sellerId);
-  const isOut = listing.inStock <= 0;
+function ProductCard({ listing }: { listing: MarketplaceListing }) {
+  const avatar = sanitizeUrl(listing.seller.avatarUrl);
   return (
-    <Link
-      to={`/buy/${listing.id}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-white transition-all hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md"
-    >
-      <div className="relative aspect-square overflow-hidden bg-surface">
-        <CardImage image={listing.images[0]} alt={listing.title} />
-        {isOut && (
-          <span className="absolute left-0 top-3 rounded-r-md bg-amber-100/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-900 shadow-sm">
-            Out of stock
-          </span>
-        )}
+    <Link to={`/buy/${listing.id}`} className="group block">
+      <div className="relative aspect-square overflow-hidden rounded-lg bg-canvas">
+        <ListingThumb
+          image={listing.images[0]}
+          alt={listing.title}
+          size={600}
+          fill
+          className="transition-transform duration-500 group-hover:scale-105"
+        />
         {listing.category && (
-          <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold capitalize text-white">
-            {listing.category}
+          <span className="absolute top-3 left-3 rounded-full bg-canvas/90 px-2.5 py-1 text-xs font-medium text-ink">
+            {capitalize(listing.category)}
           </span>
         )}
       </div>
-      <div className="flex-1 space-y-1 p-3">
-        <p className="line-clamp-2 text-sm font-medium text-ink group-hover:text-brand">
-          {listing.title}
-        </p>
-        <p className="text-base font-semibold tabular-nums text-ink">
-          {formatNGN(listing.priceNGN)}
-        </p>
-        {seller && (
-          <div className="flex items-center gap-1.5 pt-0.5">
-            <Avatar
-              seed={seller.handle}
-              name={seller.name}
-              size={18}
-              src={seller.avatarUrl}
-            />
-            <p className="truncate text-xs text-ink-soft">{seller.name}</p>
-          </div>
+      <p className="mt-3 line-clamp-2 font-medium text-ink group-hover:underline">{listing.title}</p>
+      <p className="mt-1 font-semibold text-ink tabular-nums">{formatNGN(listing.priceNGN)}</p>
+      <div className="mt-2 flex items-center gap-2 text-sm text-mute">
+        {avatar ? (
+          <img src={avatar} alt="" className="h-5 w-5 rounded-full object-cover" />
+        ) : (
+          <Avatar seed={listing.seller.npub} name={listing.seller.name} size={20} />
         )}
+        <span className="truncate">{listing.seller.name}</span>
       </div>
     </Link>
   );
 }
 
-/** Render a listing's first image: real URL, or a deterministic gradient. */
-function CardImage({
-  image,
-  alt,
-}: {
-  image: ApiListingImage | undefined;
-  alt: string;
-}) {
-  const url = image?.url ? sanitizeUrl(image.url) : undefined;
-  if (url) {
-    return (
-      <img
-        src={url}
-        alt={alt}
-        loading="lazy"
-        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-      />
-    );
-  }
-  const seed = image?.seed ?? alt;
-  const h = hashStr(seed);
-  return (
-    <ProductImage
-      image={{ seed, hueA: h % 360, hueB: (h >> 8) % 360, label: "" }}
-      className="h-full w-full"
-      rounded="rounded-none"
-    />
-  );
+function capitalize(s: string): string {
+  return s ? s[0].toUpperCase() + s.slice(1) : s;
 }

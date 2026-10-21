@@ -5,10 +5,12 @@ interface QRCodeCanvasProps {
   value: string;
   size?: number;
   level?: 'L' | 'M' | 'Q' | 'H';
+  /** Module colour; must stay dark enough for phone cameras. */
+  dark?: string;
   className?: string;
 }
 
-export function QRCodeCanvas({ value, size = 256, level = 'M', className }: QRCodeCanvasProps) {
+export function QRCodeCanvas({ value, size = 256, level = 'M', dark = '#000000', className }: QRCodeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -21,12 +23,13 @@ export function QRCodeCanvas({ value, size = 256, level = 'M', className }: QRCo
         width: size,
         margin: 1,
         errorCorrectionLevel: level,
+        color: { dark, light: '#ffffff' },
       },
       (error) => {
         if (error) console.error('QR Code generation error:', error);
       }
     );
-  }, [value, size, level]);
+  }, [value, size, level, dark]);
 
   return <canvas ref={canvasRef} className={className} />;
 }

@@ -6,10 +6,16 @@ import HowItWorks from "./pages/HowItWorks";
 import ForSellers from "./pages/ForSellers";
 import Marketplace from "./pages/Marketplace";
 import PublicListing from "./pages/PublicListing";
+import ShopPage from "./pages/ShopPage";
 import Checkout from "./pages/Checkout";
 import BuyerOrder from "./pages/BuyerOrder";
+import MyOrders from "./pages/MyOrders";
 import Onboarding from "./pages/Onboarding";
-import Admin from "./pages/Admin";
+import AdminDisputes from "./pages/admin/AdminDisputes";
+import AdminOverview from "./pages/admin/AdminOverview";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminSellers from "./pages/admin/AdminSellers";
+import AdminRefunds from "./pages/admin/AdminRefunds";
 import { MediatorGate } from "./components/safesale/MediatorGate";
 import { SellerGate } from "./components/safesale/SellerGate";
 
@@ -19,6 +25,7 @@ import OrdersPage from "./pages/app/OrdersPage";
 import OrderDetailPage from "./pages/app/OrderDetailPage";
 import EarningsPage from "./pages/app/EarningsPage";
 import DisputePage from "./pages/app/DisputePage";
+import SettingsPage from "./pages/app/SettingsPage";
 
 import NotFound from "./pages/NotFound";
 
@@ -34,10 +41,12 @@ export function AppRouter() {
         <Route path="/market" element={<Marketplace />} />
 
         {/* Buyer flow */}
+        <Route path="/s/:handle" element={<ShopPage />} />
         <Route path="/buy/:id" element={<PublicListing />} />
         <Route path="/checkout/:id" element={<Checkout />} />
         {/* Buyer order page — token is the buyer's secret credential. */}
         <Route path="/order/:token" element={<BuyerOrder />} />
+        <Route path="/my-orders" element={<MyOrders />} />
 
         {/* Seller onboarding */}
         <Route path="/onboarding" element={<Onboarding />} />
@@ -50,16 +59,14 @@ export function AppRouter() {
         <Route path="/app/earnings" element={<SellerGate><EarningsPage /></SellerGate>} />
         <Route path="/app/dispute" element={<SellerGate><DisputePage /></SellerGate>} />
         <Route path="/app/dispute/:id" element={<SellerGate><DisputePage /></SellerGate>} />
+        <Route path="/app/settings" element={<SellerGate><SettingsPage /></SellerGate>} />
 
-        {/* Admin / mediator — gated to VITE_MEDIATOR_NPUB only. */}
-        <Route
-          path="/admin"
-          element={
-            <MediatorGate>
-              <Admin />
-            </MediatorGate>
-          }
-        />
+        {/* Admin console: the SafeSale staff account only (backend role MEDIATOR). */}
+        <Route path="/admin" element={<MediatorGate><AdminOverview /></MediatorGate>} />
+        <Route path="/admin/disputes" element={<MediatorGate><AdminDisputes /></MediatorGate>} />
+        <Route path="/admin/orders" element={<MediatorGate><AdminOrders /></MediatorGate>} />
+        <Route path="/admin/sellers" element={<MediatorGate><AdminSellers /></MediatorGate>} />
+        <Route path="/admin/refunds" element={<MediatorGate><AdminRefunds /></MediatorGate>} />
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />

@@ -4,7 +4,37 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Type scale — DESIGN.md */
+  --text-display-2xl: 72px;
+  --text-display-2xl--line-height: 72px;
+  --text-display-2xl--letter-spacing: -0.04em;
+  --text-display-2xl--font-weight: 800;
+  --text-display-xl: 56px;
+  --text-display-xl--line-height: 60px;
+  --text-display-xl--letter-spacing: -0.035em;
+  --text-display-xl--font-weight: 800;
+  --text-display-lg: 44px;
+  --text-display-lg--line-height: 48px;
+  --text-display-lg--letter-spacing: -0.03em;
+  --text-display-lg--font-weight: 800;
+  --text-display-md: 36px;
+  --text-display-md--line-height: 40px;
+  --text-display-md--letter-spacing: -0.03em;
+  --text-display-md--font-weight: 800;
+  --text-h1: 32px;
+  --text-h1--line-height: 38px;
+  --text-h1--letter-spacing: -0.02em;
+  --text-h1--font-weight: 700;
+  --text-h2: 24px;
+  --text-h2--line-height: 30px;
+  --text-h2--letter-spacing: -0.015em;
+  --text-h2--font-weight: 650;
+  --text-h3: 18px;
+  --text-h3--line-height: 26px;
+  --text-h3--letter-spacing: -0.01em;
+  --text-h3--font-weight: 600;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -60,12 +90,36 @@
   --color-ink-soft: var(--ink-soft);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-forest: var(--forest);
+  --color-forest-hover: var(--forest-hover);
+  --color-mint: var(--mint);
+  --color-mint-soft: var(--mint-soft);
+  --font-display: "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif;
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-body: var(--body);
+  --color-mute: var(--mute);
+  --color-canvas: var(--canvas);
+  --color-canvas-soft: var(--canvas-soft);
+  --color-canvas-sunken: var(--canvas-sunken);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-pale: var(--brand-pale);
+  --color-brand-ink: var(--brand-ink);
+  --color-info: var(--info);
+  --color-info-pale: var(--info-pale);
+  --color-warning: var(--warning);
+  --color-warning-pale: var(--warning-pale);
+  --color-negative: var(--negative);
+  --color-negative-pale: var(--negative-pale);
 
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 20px;
+  --radius-3xl: 20px;
+
+  --shadow-float: var(--shadow-float);
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
@@ -107,88 +161,75 @@
   @media (width >= 1400px) { max-width: 1320px; }
 }
 
+/*
+ * SafeSale design tokens — see DESIGN.md. Light theme only for now.
+ * Legacy names (brand-soft, ink-soft, surface, line…) are kept as aliases
+ * so existing screens pick up the new palette.
+ */
 :root {
-  --radius: 0.625rem;
+  --radius: 14px;
 
-  /* SafeSale palette - warm, calm, trustworthy */
-  --background: hsl(36 33% 97%);         /* warm off-white */
-  --foreground: hsl(220 18% 14%);        /* charcoal, not pure black */
+  /* Brand — Wise-style pairing in SafeSale's emerald family */
+  --forest: #0b3a2a;        /* primary buttons, headings on mint, dark bands */
+  --forest-hover: #0f4a36;
+  --mint: #9df2c0;          /* accent: hero field, text on forest */
+  --mint-soft: #c9f7dc;
+  --brand: #0e6b4e;         /* links, icons, status */
+  --brand-hover: #0b5a41;
+  --brand-active: #08472f;
+  --brand-pale: #e6f8ee;
+  --brand-ink: #0a3f2d;
+  --brand-foreground: #ffffff;
 
-  --card: hsl(0 0% 100%);
-  --card-foreground: hsl(220 18% 14%);
+  /* Neutrals (sage-tinted) */
+  --ink: #0e1411;
+  --body: #434a46;
+  --mute: #6a736d;
+  --canvas: #ffffff;
+  --canvas-soft: #f3f5f2;
+  --canvas-sunken: #e9ede8;
+  --line: #e1e6e1;
+  --line-strong: #c7cec8;
 
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(220 18% 14%);
+  /* Semantic — status only */
+  --info: #1d5fd1;
+  --info-pale: #e8f0fd;
+  --warning: #9a5b00;
+  --warning-pale: #fdf3dc;
+  --negative: #c2312f;
+  --negative-pale: #fcebea;
 
-  --primary: hsl(158 64% 32%);           /* deep emerald */
-  --primary-foreground: hsl(150 30% 98%);
+  /* Legacy aliases */
+  --brand-soft: var(--brand-pale);
+  --brand-soft-foreground: var(--brand-ink);
+  --ink-soft: var(--body);
+  --surface: var(--canvas-soft);
+  --surface-2: var(--canvas-sunken);
+  --gold: var(--warning);
+  --gold-soft: var(--warning-pale);
 
-  --secondary: hsl(36 28% 94%);
-  --secondary-foreground: hsl(220 18% 18%);
+  /* shadcn roles */
+  --background: var(--canvas-soft);
+  --foreground: var(--ink);
+  --card: var(--canvas);
+  --card-foreground: var(--ink);
+  --popover: var(--canvas);
+  --popover-foreground: var(--ink);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --secondary: var(--canvas-sunken);
+  --secondary-foreground: var(--ink);
+  --muted: var(--canvas-sunken);
+  --muted-foreground: var(--mute);
+  --accent: var(--canvas-soft);
+  --accent-foreground: var(--ink);
+  --destructive: var(--negative);
+  --destructive-foreground: #ffffff;
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--brand);
 
-  --muted: hsl(36 22% 95%);
-  --muted-foreground: hsl(220 9% 46%);
-
-  --accent: hsl(150 38% 94%);
-  --accent-foreground: hsl(158 64% 22%);
-
-  --destructive: hsl(0 72% 50%);
-  --destructive-foreground: hsl(0 0% 100%);
-
-  --border: hsl(35 18% 90%);
-  --input: hsl(35 18% 88%);
-  --ring: hsl(158 64% 38%);
-
-  /* brand tokens */
-  --brand: hsl(158 64% 32%);
-  --brand-foreground: hsl(150 30% 98%);
-  --brand-soft: hsl(150 50% 95%);
-  --brand-soft-foreground: hsl(158 64% 22%);
-  --gold: hsl(38 92% 50%);
-  --gold-soft: hsl(43 95% 94%);
-  --ink: hsl(220 25% 12%);
-  --ink-soft: hsl(220 14% 36%);
-  --surface: hsl(36 33% 97%);
-  --surface-2: hsl(36 28% 94%);
-  --line: hsl(35 18% 90%);
-
-  --chart-1: hsl(158 64% 32%);
-  --chart-2: hsl(170 50% 45%);
-  --chart-3: hsl(38 92% 50%);
-  --chart-4: hsl(220 30% 30%);
-  --chart-5: hsl(12 60% 55%);
-
-  --sidebar: hsl(36 33% 97%);
-  --sidebar-foreground: hsl(220 18% 14%);
-  --sidebar-primary: hsl(158 64% 32%);
-  --sidebar-primary-foreground: hsl(150 30% 98%);
-  --sidebar-accent: hsl(36 28% 94%);
-  --sidebar-accent-foreground: hsl(220 18% 14%);
-  --sidebar-border: hsl(35 18% 90%);
-  --sidebar-ring: hsl(158 64% 38%);
-}
-
-/* SafeSale is light-mode only. Keep .dark as alias of root to ignore any dark toggles. */
-.dark {
-  --background: hsl(36 33% 97%);
-  --foreground: hsl(220 18% 14%);
-  --card: hsl(0 0% 100%);
-  --card-foreground: hsl(220 18% 14%);
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(220 18% 14%);
-  --primary: hsl(158 64% 32%);
-  --primary-foreground: hsl(150 30% 98%);
-  --secondary: hsl(36 28% 94%);
-  --secondary-foreground: hsl(220 18% 18%);
-  --muted: hsl(36 22% 95%);
-  --muted-foreground: hsl(220 9% 46%);
-  --accent: hsl(150 38% 94%);
-  --accent-foreground: hsl(158 64% 22%);
-  --destructive: hsl(0 72% 50%);
-  --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(35 18% 90%);
-  --input: hsl(35 18% 88%);
-  --ring: hsl(158 64% 38%);
+  --shadow-float: 0 1px 2px rgb(17 22 19 / 0.06), 0 8px 24px rgb(17 22 19 / 0.08);
 }
 
 @layer base {
@@ -207,12 +248,26 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "ss01", "cv11";
+    font-feature-settings: "cv11", "ss01";
     font-family: var(--font-sans);
   }
 
-  h1, h2, h3, h4, h5 {
+  h1, h2 {
+    font-family: var(--font-display);
     letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  h3, h4, h5 {
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 

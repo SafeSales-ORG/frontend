@@ -1,17 +1,14 @@
 /**
  * SafeSale HTTP API — real (fetch) implementation.
  *
- * Hits the backend (Fastify + Prisma + Postgres, Nomba rail).
- * Activated by setting `VITE_API_URL`; the toggle lives in `client.ts`.
+ * Hits the backend (Fastify + Prisma + Postgres). Activated by setting
+ * `VITE_API_URL`; the toggle lives in `client.ts`.
  *
  * All methods reject with `ApiError` on non-2xx. The backend's error
- * envelope per `backend/src/lib/errors.ts` is `{ message, code? }` at
- * the top level — we accept both that shape and the older
- * `{ error: { code, message } }` envelope for forward compatibility.
+ * envelope is `{ error: { code, message } }`.
  *
- * Auth: buyer endpoints are public (the orderToken in the URL IS the
- * auth). Seller endpoints will need NIP-98 signed-event headers (added
- * in a later commit when seller wiring lands).
+ * Auth: seller and mediator routes use the JWT session. Buyer actions are
+ * authorised by the buyer's secret token in the order URL.
  */
 
 import type {
@@ -28,8 +25,19 @@ import type {
   CreateSellerRequest,
   CreateSellerResponse,
   GetDisputesResponse,
+  GetDisputeThreadResponse,
+  AdminOverview,
+  AdminOrderRow,
+  AdminSellerRow,
+  AdminRefund,
+  ApiOrderStatus,
+  PostDisputeMessageRequest,
+  DisputeThreadMessage,
+  DisputeThreadSummary,
   GetOrderResponse,
   GetSellerOrdersResponse,
+  GetShopResponse,
+  MarketplaceListing,
   GoogleAuthRequest,
   GoogleAuthResponse,
   LoginRequest,
@@ -46,6 +54,8 @@ import type {
   ShipOrderResponse,
   SimulatePaymentResponse,
   UpdatePayoutRequest,
+  GetMySellerResponse,
+  UpdateShopProfileRequest,
 } from "./types";
 import { ApiError } from "./errors";
 import { getToken } from "@/lib/auth/session";
@@ -66,6 +76,7 @@ async function request<T>(
   method: "GET" | "POST" | "PATCH" | "PUT",
   path: string,
   body?: unknown,
+  extraHeaders?: Record<string, string>,
 ): Promise<T> {
   const url = getBaseUrl() + path;
 
@@ -76,6 +87,7 @@ async function request<T>(
   if (body) headers["Content-Type"] = "application/json";
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  Object.assign(headers, extraHeaders);
 
   let res: Response;
   try {
@@ -109,9 +121,7 @@ async function request<T>(
   }
 
   if (!res.ok) {
-    // Accept both envelope shapes — the Fastify backend throws HttpError
-    // which serializes as { message, statusCode }; an older draft used
-    // { error: { code, message } }. Handle both.
+    // The backend sends { error: { code, message } }; tolerate a flat shape too.
     const flat = payload as { message?: string; code?: string } | null;
     const nested = payload as { error?: { code?: string; message?: string } } | null;
     const code = flat?.code ?? nested?.error?.code ?? "UNKNOWN";
@@ -125,10 +135,13 @@ async function request<T>(
   return payload as T;
 }
 
-/** Shape the backend returns from GET /api/mediator/disputes (listing/seller
- * nested under `order`). We flatten it to the frontend's AdminDisputeRow. */
+/** Shape the backend returns from GET /api/admin/disputes. We flatten it to
+ * the frontend's AdminDisputeRow. */
 interface BackendAdminDispute extends ApiDispute {
-  order: ApiOrder & { listing: ApiListing; seller: ApiSeller };
+  order: ApiOrder & { listing: ApiListing };
+  seller: ApiSeller;
+  listing: ApiListing;
+  thread?: DisputeThreadSummary;
 }
 
 /**
@@ -141,6 +154,8 @@ const STATUS_MAP: Record<string, string> = {
   funded: "paid",
   released: "completed",
 };
+/** Frontend status → backend enum, for query parameters. */
+const BACKEND_STATUS: Record<string, string> = { paid: "funded", completed: "released" };
 function mapOrderStatus<T extends { status?: string } | null | undefined>(
   order: T,
 ): T {
@@ -167,9 +182,14 @@ export const httpApi = {
     return request<CreateSellerResponse>("POST", "/api/sellers", req);
   },
   updatePayout(req: UpdatePayoutRequest): Promise<void> {
-    // Backend updates the caller's OWN seller via the JWT at PUT /api/sellers
-    // (no `:id`); it re-runs the Nomba lookup to refresh the account name.
+    // Updates the caller's own seller; the backend re-checks the account name with the bank.
     return request<void>("PUT", "/api/sellers", req);
+  },
+  updateShopProfile(req: UpdateShopProfileRequest): Promise<{ seller: ApiSeller }> {
+    return request<{ seller: ApiSeller }>("PUT", "/api/sellers", req);
+  },
+  getMySeller(): Promise<GetMySellerResponse> {
+    return request<GetMySellerResponse>("GET", "/api/sellers/me");
   },
   createListing(req: CreateListingRequest): Promise<CreateListingResponse> {
     return request<CreateListingResponse>("POST", "/api/listings", req);
@@ -184,12 +204,49 @@ export const httpApi = {
       patch,
     );
   },
-  async getListing(id: string): Promise<{ listing: ApiListing } | null> {
+  async getListing(id: string): Promise<{ listing: ApiListing; seller?: ApiSeller | null } | null> {
     try {
-      return await request<{ listing: ApiListing }>(
+      return await request<{ listing: ApiListing; seller: ApiSeller }>(
         "GET",
         `/api/listings/${encodeURIComponent(id)}`,
       );
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
+    }
+  },
+  getMarketplace(): Promise<{ listings: MarketplaceListing[] }> {
+    return request<{ listings: MarketplaceListing[] }>("GET", "/api/listings?limit=60");
+  },
+  async uploadImage(dataUrl: string, opts?: { buyerToken?: string }): Promise<string> {
+    try {
+      const res = await request<{ url: string }>(
+        "POST",
+        "/api/uploads",
+        { dataUrl },
+        opts?.buyerToken ? { "X-Buyer-Token": opts.buyerToken } : undefined,
+      );
+      return res.url;
+    } catch (err) {
+      // Server without storage configured: keep the photo inline (legacy).
+      if (err instanceof ApiError && err.code === "STORAGE_NOT_CONFIGURED") return dataUrl;
+      throw err;
+    }
+  },
+  getMyListings(): Promise<{ listings: ApiListing[] }> {
+    return request<{ listings: ApiListing[] }>("GET", "/api/listings/mine");
+  },
+  async getShop(handle: string): Promise<GetShopResponse | null> {
+    try {
+      const { seller } = await request<{ seller: ApiSeller }>(
+        "GET",
+        `/api/sellers/${encodeURIComponent(handle)}`,
+      );
+      const { listings } = await request<{ listings: ApiListing[] }>(
+        "GET",
+        `/api/listings?seller=${encodeURIComponent(seller.npub)}`,
+      );
+      return { seller, listings };
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) return null;
       throw err;
@@ -207,8 +264,7 @@ export const httpApi = {
     // shape, so adapt both directions here (Checkout stays backend-agnostic):
     //  - it REQUIRES a single `deliveryAddress` (min 5) — the FE collects a
     //    city + optional street, so we join them.
-    //  - `_listingHint`/`buyerNpub`/`buyerName`/`contactMethod` are mock-only
-    //    or backend-ignored; we drop them (backend hardcodes buyerName).
+    //  - `_listingHint`/`contactMethod` are mock-only; we drop them.
     const deliveryAddress =
       [req.buyerAddress, req.buyerCity].filter(Boolean).join(", ").trim() ||
       req.buyerCity;
@@ -217,14 +273,17 @@ export const httpApi = {
       quantity: 1,
       variant: req.variant,
       deliveryAddress,
+      buyerName: req.buyerName?.trim() || undefined,
       buyerPhone: req.buyerPhone || undefined,
       buyerEmail: req.buyerEmail || undefined,
     };
 
-    // Backend responds `{ order, payment }`; the FE wants a flat
-    // `{ orderToken, shortId, amountNGN, payIn }`. Map it.
+    // Backend responds `{ order, buyerToken, payment }`; the FE wants a flat
+    // `{ orderToken, shortId, amountNGN, payIn }`. The buyer's pages are keyed
+    // by their secret `buyerToken`, so that's what we hand back as the token.
     const raw = await request<{
-      order: { orderToken: string; shortId: string; priceNGN: number };
+      order: { orderToken: string; shortId: string; amountNGN: number };
+      buyerToken: string;
       payment: {
         accountName: string;
         accountNumber: string;
@@ -233,9 +292,9 @@ export const httpApi = {
       } | null;
     }>("POST", "/api/orders", body);
 
-    const amountNGN = raw.payment?.amount ?? raw.order.priceNGN;
+    const amountNGN = raw.payment?.amount ?? raw.order.amountNGN;
     return {
-      orderToken: raw.order.orderToken,
+      orderToken: raw.buyerToken,
       shortId: raw.order.shortId,
       amountNGN,
       payIn: raw.payment
@@ -252,18 +311,17 @@ export const httpApi = {
     };
   },
   /**
-   * DEV/DEMO: mark an order funded without a real bank transfer. The real
-   * backend route is `POST /api/dev/simulate-payment` with `{ orderToken }`
-   * (enabled on the deployed server via `NOMBA_SIMULATION`; in true production
-   * payment is confirmed by the Nomba webhook instead). We then re-read the
-   * order so callers get the updated `{ order }` shape.
+   * Buyer says they've paid. In production the payment provider's webhook
+   * marks the order funded, so this just re-reads the order. On a staging
+   * backend with `PAYMENT_SIMULATION=true`, set `VITE_PAYMENT_SIMULATION=true`
+   * to mark it paid without a real transfer.
    */
   async confirmPayment(token: string): Promise<SimulatePaymentResponse> {
-    await request<{ ok: boolean; simulatedAmountNGN: number }>(
-      "POST",
-      `/api/dev/simulate-payment`,
-      { orderToken: token },
-    );
+    if (import.meta.env.VITE_PAYMENT_SIMULATION === "true") {
+      await request<{ ok: boolean }>("POST", `/api/dev/simulate-payment`, {
+        orderToken: token,
+      });
+    }
     const { order } = await request<GetOrderResponse>(
       "GET",
       `/api/orders/${encodeURIComponent(token)}`,
@@ -287,8 +345,8 @@ export const httpApi = {
     return { ...res, order: mapOrderStatus(res.order) };
   },
   async releaseOrder(token: string): Promise<ReleaseOrderResponse> {
-    // No body — possession of the orderToken in the URL is the buyer's
-    // authority. The backend triggers the Nomba payout to the seller.
+    // No body — the buyer's secret token in the URL is their authority.
+    // The backend pays the seller out.
     const res = await request<ReleaseOrderResponse>(
       "POST",
       `/api/orders/${encodeURIComponent(token)}/release`,
@@ -330,6 +388,51 @@ export const httpApi = {
     );
     return { ...res, order: mapOrderStatus(res.order) };
   },
+  async getAdminOverview(): Promise<AdminOverview> {
+    const res = await request<AdminOverview>("GET", "/api/admin/overview");
+    const byStatus: AdminOverview["ordersByStatus"] = {};
+    for (const [k, v] of Object.entries(res.ordersByStatus)) {
+      const key = (STATUS_MAP[k] ?? k) as ApiOrderStatus;
+      byStatus[key] = v;
+    }
+    return { ...res, ordersByStatus: byStatus, recentOrders: res.recentOrders.map(mapOrderStatus) };
+  },
+  async getAdminOrders(params?: { status?: ApiOrderStatus; q?: string }): Promise<{ orders: AdminOrderRow[] }> {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set("status", BACKEND_STATUS[params.status] ?? params.status);
+    if (params?.q) qs.set("q", params.q);
+    const res = await request<{ orders: AdminOrderRow[] }>("GET", `/api/admin/orders${qs.size ? `?${qs}` : ""}`);
+    return { orders: res.orders.map(mapOrderStatus) };
+  },
+  getAdminSellers(): Promise<{ sellers: AdminSellerRow[] }> {
+    return request("GET", "/api/admin/sellers");
+  },
+  getAdminRefunds(): Promise<{ refunds: AdminRefund[] }> {
+    return request("GET", "/api/admin/refunds");
+  },
+  markRefundPaid(id: string, reference: string): Promise<{ ok: true }> {
+    return request("POST", `/api/admin/refunds/${encodeURIComponent(id)}/mark-paid`, { reference });
+  },
+  getDisputeThread(disputeId: string, opts?: { buyerToken?: string }): Promise<GetDisputeThreadResponse> {
+    return request<GetDisputeThreadResponse>(
+      "GET",
+      `/api/disputes/${encodeURIComponent(disputeId)}/thread`,
+      undefined,
+      opts?.buyerToken ? { "X-Buyer-Token": opts.buyerToken } : undefined,
+    );
+  },
+  postDisputeMessage(
+    disputeId: string,
+    req: PostDisputeMessageRequest,
+    opts?: { buyerToken?: string },
+  ): Promise<{ message: DisputeThreadMessage }> {
+    return request<{ message: DisputeThreadMessage }>(
+      "POST",
+      `/api/disputes/${encodeURIComponent(disputeId)}/thread`,
+      req,
+      opts?.buyerToken ? { "X-Buyer-Token": opts.buyerToken } : undefined,
+    );
+  },
   async getDisputes(): Promise<GetDisputesResponse> {
     const { disputes } = await request<{ disputes: BackendAdminDispute[] }>(
       "GET",
@@ -337,9 +440,10 @@ export const httpApi = {
     );
     // Flatten the backend's nested shape into the frontend's AdminDisputeRow.
     const rows: AdminDisputeRow[] = disputes.map((d) => {
-      const { order, ...dispute } = d;
-      const { listing, seller, ...orderRest } = order;
-      return { order: orderRest, listing, seller, dispute };
+      const { order, seller, listing, thread, ...dispute } = d;
+      const { listing: _orderListing, ...orderRest } = order;
+      void _orderListing;
+      return { order: mapOrderStatus(orderRest), listing, seller, dispute, thread };
     });
     return { disputes: rows };
   },
@@ -347,13 +451,10 @@ export const httpApi = {
     disputeId: string,
     req: ResolveDisputeRequest,
   ): Promise<ResolveDisputeResponse> {
-    // Backend expects `buyerPercent`; the frontend form uses `splitPct`.
-    const { splitPct, ...rest } = req;
-    const body = splitPct === undefined ? rest : { ...rest, buyerPercent: splitPct };
     const res = await request<ResolveDisputeResponse>(
       "POST",
       `/api/admin/disputes/${encodeURIComponent(disputeId)}/resolve`,
-      body,
+      req,
     );
     return { ...res, order: mapOrderStatus(res.order) };
   },

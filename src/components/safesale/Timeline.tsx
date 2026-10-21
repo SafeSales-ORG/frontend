@@ -33,9 +33,9 @@ export function Timeline({ steps, className }: { steps: TimelineStep[]; classNam
               className={cn(
                 "relative z-10 mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full ring-4",
                 isDone && "bg-brand text-brand-foreground ring-brand/15",
-                isActive && "bg-white text-brand ring-brand/15 border border-brand/40",
-                step.state === "pending" && "bg-white text-muted-foreground ring-border/30 border border-border",
-                isAlert && "bg-rose-500 text-white ring-rose-500/15"
+                isActive && "bg-canvas text-brand ring-brand/15 border border-brand/40",
+                step.state === "pending" && "bg-canvas text-muted-foreground ring-border/30 border border-border",
+                isAlert && "bg-negative text-white ring-negative"
               )}
             >
               {isDone ? (
@@ -43,7 +43,7 @@ export function Timeline({ steps, className }: { steps: TimelineStep[]; classNam
               ) : isActive ? (
                 <span className="h-1.5 w-1.5 rounded-full bg-brand" />
               ) : isAlert ? (
-                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                <span className="h-1.5 w-1.5 rounded-full bg-canvas" />
               ) : (
                 <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
               )}
@@ -59,7 +59,7 @@ export function Timeline({ steps, className }: { steps: TimelineStep[]; classNam
                   {step.title}
                 </p>
                 {step.at && (
-                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                  <span className="text-xs tabular-nums text-muted-foreground">
                     {step.at}
                   </span>
                 )}
