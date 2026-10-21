@@ -18,3 +18,8 @@ export function listingUrl(id: string): string {
 export function displayUrl(url: string): string {
   return url.replace(/^https?:\/\//, "");
 }
+
+/** The buyer's private order page (keyed by their secret buyer token). */
+export function orderUrl(buyerToken: string): string {
+  return `${baseUrl()}/order/${encodeURIComponent(buyerToken)}`;
+}

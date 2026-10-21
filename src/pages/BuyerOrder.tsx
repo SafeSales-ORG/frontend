@@ -73,6 +73,7 @@ import {
 import { Logo } from "@/components/safesale/Logo";
 import { OrderProgress } from "@/components/orders/OrderProgress";
 import { CaseThread } from "@/components/disputes/CaseThread";
+import { savedOrders } from "@/lib/savedOrders";
 import { Avatar } from "@/components/safesale/Avatar";
 import { HelpDialog } from "@/components/safesale/HelpDialog";
 import { OrderChat } from "@/components/safesale/OrderChat";
@@ -154,6 +155,21 @@ export default function BuyerOrder() {
       return failureCount < 2;
     },
   });
+
+  // Opening the link (e.g. from WhatsApp on a new phone) remembers the order
+  // on this device for "My orders".
+  const saved = query.data;
+  useEffect(() => {
+    if (!saved) return;
+    const image = saved.listing.images[0];
+    savedOrders.save({
+      token,
+      shortId: saved.order.shortId,
+      title: saved.listing.title,
+      amountNGN: saved.order.amountNGN,
+      image: typeof image === "string" ? image : (image?.url ?? null),
+    });
+  }, [saved, token]);
 
   // ------------------------------ ui state -------------------------- //
 

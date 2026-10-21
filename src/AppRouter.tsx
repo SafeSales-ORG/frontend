@@ -9,6 +9,7 @@ import PublicListing from "./pages/PublicListing";
 import ShopPage from "./pages/ShopPage";
 import Checkout from "./pages/Checkout";
 import BuyerOrder from "./pages/BuyerOrder";
+import MyOrders from "./pages/MyOrders";
 import Onboarding from "./pages/Onboarding";
 import AdminDisputes from "./pages/admin/AdminDisputes";
 import AdminOverview from "./pages/admin/AdminOverview";
@@ -45,6 +46,7 @@ export function AppRouter() {
         <Route path="/checkout/:id" element={<Checkout />} />
         {/* Buyer order page — token is the buyer's secret credential. */}
         <Route path="/order/:token" element={<BuyerOrder />} />
+        <Route path="/my-orders" element={<MyOrders />} />
 
         {/* Seller onboarding */}
         <Route path="/onboarding" element={<Onboarding />} />

@@ -9,6 +9,8 @@ import { Menu, X } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentSeller } from "@/hooks/useCurrentSeller";
+import { Package } from "@phosphor-icons/react";
+import { useSavedOrders } from "@/hooks/useSavedOrders";
 
 interface Props {
   children: React.ReactNode;
@@ -30,6 +32,7 @@ const PUBLIC_LINKS = [
 ] as const;
 
 export function MarketingLayout({ children }: Props) {
+  const myOrders = useSavedOrders();
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
 
@@ -76,6 +79,19 @@ export function MarketingLayout({ children }: Props) {
           </nav>
 
           <div className="hidden items-center gap-2 md:flex">
+            {myOrders.length > 0 && (
+              <Link
+                to="/my-orders"
+                className={cn(
+                  "inline-flex h-10 items-center gap-2 rounded-full px-3.5 text-sm font-medium text-body transition-colors hover:bg-canvas-soft hover:text-ink",
+                  pathname === "/my-orders" && "text-ink",
+                )}
+              >
+                <Package size={18} weight="duotone" />
+                My orders
+                <span className="rounded-full bg-mint px-1.5 text-xs font-semibold text-forest tabular-nums">{myOrders.length}</span>
+              </Link>
+            )}
             {loggedIn ? (
               <>
                 <Link
@@ -127,6 +143,16 @@ export function MarketingLayout({ children }: Props) {
                   {l.label}
                 </Link>
               ))}
+              {myOrders.length > 0 && (
+                <Link
+                  to="/my-orders"
+                  className="flex items-center gap-2 rounded-md px-2 py-2 text-base font-medium text-ink"
+                  onClick={() => setOpen(false)}
+                >
+                  My orders
+                  <span className="rounded-full bg-mint px-1.5 text-xs font-semibold text-forest tabular-nums">{myOrders.length}</span>
+                </Link>
+              )}
               <div className="mt-2 grid grid-cols-2 gap-2 border-t border-line pt-3">
                 {loggedIn ? (
                   <Button asChild className="col-span-2">
